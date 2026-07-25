@@ -8,6 +8,11 @@
 - ResearchGraph with add_claim, add_experiment, get_affected
 - AffectedNodes dataclass returned by get_affected
 - 12 passing tests across test_models.py and test_graph.py
+- paperforge init command — creates .paperforge/ in any project directory
+- PaperForgeProject loader — reads paper.yaml, claims/, experiments/ into typed objects
+- ProjectConfig dataclass for paper.yaml deserialization
+- commands/ package for future CLI command modules
+- 13 new tests across test_init.py and test_project.py (25 total)
 
 ## [0.1.0] — Unreleased
 

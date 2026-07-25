@@ -1,5 +1,7 @@
 """PaperForge command-line interface."""
 
+from pathlib import Path
+
 import typer
 
 from paperforge import __version__
@@ -28,3 +30,16 @@ def main(
     ),
 ) -> None:
     """PaperForge: a research dependency engine."""
+
+
+@app.command()
+def init(
+    path: Path = typer.Argument(
+        default=Path("."),
+        help="Directory to initialize. Defaults to current directory.",
+    ),
+) -> None:
+    """Initialize PaperForge in a research project directory."""
+    from paperforge.commands.init import run
+
+    run(path.resolve())

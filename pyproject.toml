@@ -23,3 +23,10 @@ dev = [
     "pytest>=8.0",
     "ruff>=0.5",
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"src/paperforge/cli.py" = ["B008"]
+
+[[tool.mypy.overrides]]
+module = "yaml"
+ignore_missing_imports = true
