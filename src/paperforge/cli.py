@@ -2,7 +2,7 @@
 
 import typer
 
-from paperforge import version
+from paperforge import __version__
 
 app = typer.Typer(
     name="paperforge",
@@ -13,7 +13,7 @@ app = typer.Typer(
 
 def _version_callback(value: bool) -> None:
     if value:
-        typer.echo(f"paperforge {version}")
+        typer.echo(f"paperforge {__version__}")
         raise typer.Exit()
 
 
