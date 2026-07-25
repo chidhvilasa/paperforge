@@ -62,6 +62,26 @@ paperforge build --target ieee
 paperforge export bibtex
 ```
 
+## What's New in v0.7.0
+
+Traceability matrix export.
+
+One command generates three files:
+
+```bash
+paperforge export traceability
+```
+
+The Markdown file renders on GitHub and shows verification
+status at a glance. The CSV opens in Excel for further
+analysis. The LaTeX longtable can be included directly in
+your paper appendix.
+
+The matrix directly answers CONSTITUTION principle 2:
+"Every published claim must be explainable." Every row
+shows exactly what evidence, figures, tables, and citations
+support that claim.
+
 ## What's New in v0.6.0
 
 Table objects are now fully supported.

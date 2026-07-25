@@ -125,6 +125,10 @@ paperforge build --target ieee-journal   # transactions/journal
 # 9. Export for reference managers
 paperforge export bibtex
 
+# 9b. Export full traceability matrix
+paperforge export traceability
+# Creates: traceability.md, traceability.csv, traceability.tex
+
 # 9a. Check claim history
 paperforge log claim_01
 
@@ -153,7 +157,7 @@ paperforge review
 | `paperforge review` | AI-assisted review via llm (advisory only) |
 | `paperforge venues` | List available venue targets |
 | `paperforge install-hooks` | Install git pre-commit hook |
-| `paperforge export` | Export as BibTeX, JSON, or Markdown |
+| `paperforge export` | Export as BibTeX, JSON, Markdown, or traceability matrix |
 | `paperforge status` | Project health dashboard |
 | `paperforge find` | Search claims and experiments by keyword |
 | `paperforge log` | Show change history for a claim |
@@ -219,6 +223,27 @@ of claim state recorded whenever PaperForge writes a claim.
 Use `paperforge log` and `paperforge diff` to inspect.
 
 All three are committed to git as part of your research record.
+
+## Traceability Matrix
+
+`paperforge export traceability` generates three files at once:
+
+```
+.paperforge/output/
+├── traceability.md ← human-readable, renders on GitHub
+├── traceability.csv ← opens in Excel
+└── traceability.tex ← \input{} in paper appendix
+```
+
+Each row answers: "Is this claim explainable?" with columns
+for experiment, key metric, figures, tables, citations,
+sections, and verification date.
+
+Include in your paper appendix:
+```latex
+\usepackage{longtable}  % in preamble
+\input{traceability}    % in appendix
+```
 
 ## Documentation
 

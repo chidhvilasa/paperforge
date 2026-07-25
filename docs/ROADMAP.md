@@ -34,7 +34,7 @@ affiliations field in paper.yaml.
 microtype and hyperref in all IEEE preambles.
 Doctor check 36 (MISSING_AFFILIATION).
 
-### v0.6.0 (this release)
+### v0.6.0
 Table as a first-class object.
 paperforge add-table with row-by-row data entry.
 IEEE LaTeX table generation (caption above tabular, no vertical lines).
@@ -42,22 +42,25 @@ IEEE LaTeX table generation (caption above tabular, no vertical lines).
 TABLE_NO_COLUMNS, TABLE_REFERENCED_BUT_NO_YAML,
 TABLE_YAML_BUT_NO_CLAIM, TABLE_ROW_COLUMN_MISMATCH.
 
+### v0.7.0 (this release)
+Traceability matrix export.
+paperforge export traceability: MD + CSV + LaTeX longtable
+generated simultaneously. Full claim-evidence linkage visible
+in one artifact.
+
 ## Planned
 
-### v0.7.0 — Citation Verification
+### v0.8.0 — Citation Verification (was v0.7.0)
 - Integrate with Semantic Scholar API (opt-in, offline default)
-- Verify that citation keys in claims actually exist in the
-  literature
-- Flag citations that appear hallucinated or unreachable
+- Verify citation keys in claims exist in the literature
+- Flag citations that appear hallucinated
 - paperforge cite-check command
 
-### v0.8.0 — Traceability Matrix Export
-- paperforge export traceability: generates a full matrix
-  showing every claim's linked experiment, figures, tables,
-  citations, and verification status
-- Output formats: Markdown table, CSV, and LaTeX longtable
-- Machine-readable for integration with review workflows
-- Answers "which claim is supported by what?" at a glance
+### v0.9.0 — Claim Versioning Dashboard
+- paperforge status --history: show how claim statuses have
+  changed over time
+- Trend view: verified claims increasing over project lifetime
+- Export verification timeline
 
 ## Non-Goals
 
