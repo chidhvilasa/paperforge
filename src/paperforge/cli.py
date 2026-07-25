@@ -71,11 +71,17 @@ def doctor(
     fix: bool = typer.Option(
         False, "--fix", help="Auto-resolve fixable warnings."
     ),
+    target: str | None = typer.Option(
+        None,
+        "--target",
+        "-t",
+        help="Venue target for additional checks: ieee, acm, neurips",
+    ),
 ) -> None:
     """Check research project consistency."""
     from paperforge.commands.doctor import run
 
-    run(project_root=path.resolve(), fix=fix)
+    run(project_root=path.resolve(), fix=fix, target=target)
 
 
 @app.command()
@@ -92,8 +98,52 @@ def impact(
 @app.command()
 def build(
     path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    target: str = typer.Option(
+        "ieee", "--target", "-t", help="Venue target: ieee, acm, neurips"
+    ),
 ) -> None:
     """Compile research data into an IEEE LaTeX paper."""
     from paperforge.commands.build import run
 
-    run(project_root=path.resolve())
+    run(project_root=path.resolve(), target=target)
+
+
+@app.command()
+def review(
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    model: str | None = typer.Option(
+        None,
+        "--model",
+        "-m",
+        help="llm model to use, e.g. gpt-4o. Uses llm default if omitted.",
+    ),
+) -> None:
+    """AI-assisted paper review. Advisory only."""
+    from paperforge.commands.review import run
+
+    run(project_root=path.resolve(), model=model)
+
+
+@app.command()
+def venues() -> None:
+    """List available venue targets for --target option."""
+    from rich.console import Console
+    from rich.table import Table
+
+    from paperforge.venues.registry import get_plugin, list_plugins
+
+    console = Console()
+    table = Table(title="Available Venue Targets")
+    table.add_column("Target", style="cyan")
+    table.add_column("Display Name")
+    table.add_column("Document Class")
+    table.add_column("Page Limit")
+    for name in list_plugins():
+        plugin = get_plugin(name)
+        table.add_row(
+            plugin.name,
+            plugin.display_name,
+            plugin.latex_documentclass[:40] + "...",
+            str(plugin.max_pages) if plugin.max_pages else "None",
+        )
+    console.print(table)

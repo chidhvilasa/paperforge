@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Literal, cast
 
 import yaml
 from rich.console import Console
@@ -147,7 +147,7 @@ def _apply_fix(project_root: Path, unverified_claims: list[Claim]) -> None:
         console.print(f"  Fixed: {loaded.id} status set to stale")
 
 
-def run(project_root: Path, fix: bool = False) -> None:
+def run(project_root: Path, fix: bool = False, target: str | None = None) -> None:
     if not (project_root / ".paperforge").exists():
         console.print("[red]Not a PaperForge project. Run `paperforge init` first.[/red]")
         sys.exit(1)
@@ -156,9 +156,28 @@ def run(project_root: Path, fix: bool = False) -> None:
 
     issues = collect_issues(project)
 
+    venue_issues: list[Issue] = []
+    plugin = None
+    if target is not None:
+        from paperforge.venues.registry import get_plugin
+
+        try:
+            plugin = get_plugin(target)
+        except ValueError as exc:
+            console.print(f"[red]{exc}[/red]")
+            sys.exit(1)
+        venue_issues = [
+            Issue(
+                code=vi.code,
+                severity=cast(Literal["ERROR", "WARNING"], vi.severity),
+                message=vi.message,
+            )
+            for vi in plugin.validate(project)
+        ]
+
     console.print(Text("PaperForge Doctor", style="bold"))
 
-    if not issues:
+    if not issues and not venue_issues:
         console.print(
             Panel("All checks passed. No issues found.", border_style="green")
         )
@@ -170,6 +189,8 @@ def run(project_root: Path, fix: bool = False) -> None:
 
     errors = [issue for issue in issues if issue.severity == "ERROR"]
     warnings = [issue for issue in issues if issue.severity == "WARNING"]
+    venue_errors = [issue for issue in venue_issues if issue.severity == "ERROR"]
+    venue_warnings = [issue for issue in venue_issues if issue.severity == "WARNING"]
 
     if errors:
         console.print()
@@ -183,14 +204,25 @@ def run(project_root: Path, fix: bool = False) -> None:
         for issue in warnings:
             console.print(Text(f"  [{issue.code}] {issue.message}"))
 
+    if plugin is not None and venue_issues:
+        console.print()
+        console.print(Text(f"VENUE ({plugin.display_name})", style="bold cyan"))
+        for issue in venue_issues:
+            console.print(Text(f"  [{issue.code}] {issue.message}"))
+
+    total_errors = errors + venue_errors
+    total_warnings = warnings + venue_warnings
+
     console.print()
     console.print("─" * 40)
-    console.print(f"Summary: {len(errors)} error(s), {len(warnings)} warning(s)")
+    console.print(
+        f"Summary: {len(total_errors)} error(s), {len(total_warnings)} warning(s)"
+    )
 
-    if not fix and warnings:
+    if not fix and total_warnings:
         console.print(
             "Run `paperforge doctor --fix` to auto-resolve fixable warnings."
         )
 
-    if errors:
+    if total_errors:
         sys.exit(1)

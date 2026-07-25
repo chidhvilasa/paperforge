@@ -14,6 +14,8 @@ from rich.text import Text
 from paperforge.commands.doctor import collect_issues
 from paperforge.core.project import PaperForgeProject
 from paperforge.models.claim import Claim
+from paperforge.venues.base import VenuePlugin
+from paperforge.venues.registry import get_plugin
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -67,13 +69,9 @@ def _generate_sections(sections: list[str], claims: list[Claim]) -> str:
     return "\n\n".join(blocks)
 
 
-def _generate_latex(project: PaperForgeProject) -> str:
+def _generate_latex(project: PaperForgeProject, plugin: VenuePlugin) -> str:
     title = project.config.title or "Untitled Paper"
-    authors_block = (
-        " \\and ".join(project.config.authors)
-        if project.config.authors
-        else "Author(s) TBD"
-    )
+    author_block = plugin.generate_author_block(project.config.authors)
     abstract_content = _generate_abstract(project.claims)
     sections = _generate_sections(project.config.sections, project.claims)
 
@@ -84,21 +82,15 @@ def _generate_latex(project: PaperForgeProject) -> str:
         else ""
     )
 
-    return f"""\\documentclass[conference]{{IEEEtran}}
-\\IEEEoverridecommandlockouts
+    return f"""{plugin.latex_documentclass}
 
-\\usepackage{{cite}}
-\\usepackage{{amsmath,amssymb,amsfonts}}
-\\usepackage{{graphicx}}
-\\usepackage{{textcomp}}
-\\usepackage{{xcolor}}
-\\usepackage{{hyperref}}
+{plugin.generate_preamble()}
 
 \\begin{{document}}
 
 \\title{{{title}}}
 
-\\author{{{authors_block}}}
+{author_block}
 
 \\maketitle
 
@@ -114,28 +106,40 @@ def _generate_latex(project: PaperForgeProject) -> str:
 """
 
 
-def run(project_root: Path) -> None:
+def run(project_root: Path, target: str = "ieee") -> None:
     if not (project_root / ".paperforge").exists():
         console.print("[red]Not a PaperForge project. Run `paperforge init` first.[/red]")
         sys.exit(1)
 
     project = PaperForgeProject.load(project_root)
 
+    try:
+        plugin = get_plugin(target)
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/red]")
+        sys.exit(1)
+
     issues = collect_issues(project)
+    venue_issues = plugin.validate(project)
+
     errors = [issue for issue in issues if issue.severity == "ERROR"]
-    if errors:
+    venue_errors = [issue for issue in venue_issues if issue.severity == "ERROR"]
+    if errors or venue_errors:
         body = Group(
             Text("Build blocked. Fix all ERRORs before building."),
             *(Text(f"  [{issue.code}] {issue.message}") for issue in errors),
+            *(Text(f"  [{issue.code}] {issue.message}") for issue in venue_errors),
             Text("Run `paperforge doctor` for full details."),
         )
         console.print(Panel(body, border_style="red"))
         sys.exit(1)
 
+    venue_warnings = [issue for issue in venue_issues if issue.severity == "WARNING"]
+
     output_dir = project_root / ".paperforge" / "output"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    latex = _generate_latex(project)
+    latex = _generate_latex(project, plugin)
     tex_path = output_dir / "paper.tex"
     tex_path.write_text(latex, encoding="utf-8")
 
@@ -189,3 +193,9 @@ def run(project_root: Path) -> None:
     )
 
     console.print(Panel(body, title="Build Complete", border_style="green"))
+
+    if venue_warnings:
+        console.print()
+        console.print(Text(f"VENUE ({plugin.display_name})", style="bold yellow"))
+        for issue in venue_warnings:
+            console.print(Text(f"  [{issue.code}] {issue.message}"))

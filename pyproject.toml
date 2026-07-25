@@ -8,6 +8,7 @@ dependencies = [
     "typer>=0.12",
     "pyyaml>=6.0",
     "rich>=13.0",
+    "llm>=0.31.1",
 ]
 
 [project.scripts]

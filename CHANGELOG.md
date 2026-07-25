@@ -25,6 +25,16 @@
 - collect_issues() refactored out of doctor.run() for reuse
   by build's pre-flight ERROR check
 - 22 new tests across test_impact.py and test_build.py (69 total)
+- paperforge review — AI-assisted paper review via llm CLI tool;
+  advisory only; runs doctor checks first; saves to .paperforge/review/
+- Venue plugin architecture — VenuePlugin ABC with name, display_name,
+  latex_documentclass, required_sections, max_pages, validate(),
+  generate_preamble(), generate_author_block()
+- IEEEPlugin, ACMPlugin, NeurIPSPlugin venue implementations
+- Venue registry with get_plugin() and list_plugins()
+- paperforge venues command — lists all available venue targets
+- paperforge build --target and paperforge doctor --target options
+- 20 new tests across test_review.py and test_venues.py (89 total)
 
 ## [0.1.0] — Unreleased
 
