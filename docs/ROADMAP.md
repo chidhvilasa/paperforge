@@ -27,19 +27,22 @@ paper_type and keywords fields in paper.yaml.
 10 new doctor checks (30 total, 3 severity levels: ERROR/WARNING/INFO).
 ieee-journal and ieee-trans venue targets.
 
-### v0.5.0 (this release)
+### v0.5.0
 latexmk compilation support (preferred over pdflatex).
 Figure \label/\ref LaTeX integration.
 affiliations field in paper.yaml.
 microtype and hyperref in all IEEE preambles.
 Doctor check 36 (MISSING_AFFILIATION).
 
-## Planned
+### v0.6.0 (this release)
+Table as a first-class object.
+paperforge add-table with row-by-row data entry.
+IEEE LaTeX table generation (caption above tabular, no vertical lines).
+5 new doctor checks (41 total): TABLE_NO_CAPTION (ERROR),
+TABLE_NO_COLUMNS, TABLE_REFERENCED_BUT_NO_YAML,
+TABLE_YAML_BUT_NO_CLAIM, TABLE_ROW_COLUMN_MISMATCH.
 
-### v0.6.0 — Template Library
-- Reusable section templates (threat model, experimental setup)
-- `paperforge template add --name "threat-model" --from claim_07`
-- `paperforge template apply "threat-model"` inserts into new project
+## Planned
 
 ### v0.7.0 — Citation Verification
 - Integrate with Semantic Scholar API (opt-in, offline default)
@@ -48,15 +51,13 @@ Doctor check 36 (MISSING_AFFILIATION).
 - Flag citations that appear hallucinated or unreachable
 - paperforge cite-check command
 
-### v0.7.0 — Multi-Paper Support
-- Shared experiment library across multiple papers
-- `paperforge library add exp_01` adds to personal library
-- `paperforge library search "accuracy"` finds across all papers
-
-### v0.8.0 — VS Code Extension
-- Hover over a number in paper text: see which experiment it came from
-- Inline claim status indicators
-- Run doctor from the editor
+### v0.8.0 — Traceability Matrix Export
+- paperforge export traceability: generates a full matrix
+  showing every claim's linked experiment, figures, tables,
+  citations, and verification status
+- Output formats: Markdown table, CSV, and LaTeX longtable
+- Machine-readable for integration with review workflows
+- Answers "which claim is supported by what?" at a glance
 
 ## Non-Goals
 

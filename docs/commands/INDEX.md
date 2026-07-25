@@ -61,6 +61,37 @@ paperforge build --target ieee
 paperforge export bibtex
 ```
 
+## What's New in v0.6.0
+
+Table objects are now fully supported.
+
+Run `paperforge add-table` to create `.paperforge/tables/tbl_NN.yaml`
+with column headers and row data. The build command generates
+correct IEEE LaTeX tables automatically:
+
+```latex
+\begin{table}[!t]
+\renewcommand{\arraystretch}{1.3}
+\caption{Performance Comparison}      % Caption ABOVE tabular
+\label{tab:tbl_01}
+\centering
+\begin{tabular}{c c c}
+\hline
+Method & Accuracy & F1 \\
+\hline
+Baseline & 91.2\% & 90.8\% \\
+Proposed & 98.4\% & 97.9\% \\
+\hline
+\end{tabular}
+\end{table}
+```
+
+`TABLE_NO_CAPTION` is an ERROR (not a warning) because
+IEEE submissions cannot contain uncaptioned tables.
+
+`paperforge doctor` now runs 41 checks total across
+ERROR, WARNING, and INFO severity levels.
+
 ## What's New in v0.4.0
 
 IEEE Transactions journal support.

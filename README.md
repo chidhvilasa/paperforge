@@ -131,6 +131,9 @@ paperforge log claim_01
 # 9b. Diff a claim against its linked experiment
 paperforge diff claim_01 --against experiment
 
+# 9c. Add a data table
+paperforge add-table
+
 # 11. Optional: AI-assisted review (requires llm)
 paperforge review
 ```
@@ -142,7 +145,9 @@ paperforge review
 | `paperforge init` | Initialize PaperForge in a project directory |
 | `paperforge capture` | Capture experiment results, create draft claim |
 | `paperforge add-claim` | Interactively create a new claim |
-| `paperforge doctor` | Run 20 deterministic consistency checks |
+| `paperforge add-figure` | Interactively create a new figure YAML |
+| `paperforge add-table` | Interactively create a new table YAML |
+| `paperforge doctor` | Run 41 deterministic consistency checks |
 | `paperforge impact` | Show everything affected by an experiment change |
 | `paperforge build` | Compile research data into LaTeX paper |
 | `paperforge review` | AI-assisted review via llm (advisory only) |
@@ -167,7 +172,7 @@ For journal papers, set `paper_type: "journal"` in `.paperforge/paper.yaml`.
 
 ## Doctor Checks
 
-`paperforge doctor` runs 30 deterministic checks with three severity levels:
+`paperforge doctor` runs 41 deterministic checks with three severity levels:
 
 - **ERROR** — blocks `paperforge build` and git commits (if hook installed)
 - **WARNING** — reported but does not block
@@ -179,7 +184,7 @@ coverage, and IEEE reproducibility requirements (seed, dataset,
 hardware).
 
 Run `paperforge doctor --target ieee-journal` to add
-venue-specific checks on top of the core 30.
+venue-specific checks on top of the core 41.
 
 ## Build Quality
 
@@ -194,6 +199,26 @@ Install TeX Live for full compilation support:
 
 Figure environments with `\label{}` and `\ref{}` are generated
 automatically when figures have YAML metadata.
+
+## Data Objects
+
+PaperForge tracks three types of structured research data
+alongside claims and experiments:
+
+**Figures** (`.paperforge/figures/fig_NN.yaml`) — image
+metadata including caption, path, resolution, and first
+mention section. Build generates `\begin{figure}` environments.
+
+**Tables** (`.paperforge/tables/tbl_NN.yaml`) — tabular data
+with columns, rows, caption, and source experiment. Build
+generates IEEE-compliant `\begin{table}` environments with
+caption above the tabular (IEEE requirement).
+
+**History** (`.paperforge/history/`) — automatic snapshots
+of claim state recorded whenever PaperForge writes a claim.
+Use `paperforge log` and `paperforge diff` to inspect.
+
+All three are committed to git as part of your research record.
 
 ## Documentation
 

@@ -63,7 +63,7 @@ On a project with issues, each issue is printed with its code and severity:
 
 ## Notes
 
-### All 30 checks
+### All 41 checks
 
 | # | Code | Severity | Description |
 |---|------|----------|-------------|
@@ -87,7 +87,6 @@ On a project with issues, each issue is printed with its code and severity:
 | 18 | `UNCLAIMED_EXPERIMENT` | WARNING | Experiment has no claims linked to it |
 | 19 | `INVALID_FIGURE_ID` | WARNING | Figure ID does not start with `fig_` |
 | 20 | `INVALID_TABLE_ID` | WARNING | Table ID does not start with `tbl_` |
-
 | 21 | `UNDEFINED_ACRONYM` | WARNING | An acronym is used without definition |
 | 22 | `ABSTRACT_TOO_LONG` | WARNING | Abstract exceeds 250 words |
 | 23 | `ABSTRACT_TOO_SHORT` | WARNING | Abstract is under 50 words |
@@ -98,17 +97,32 @@ On a project with issues, each issue is printed with its code and severity:
 | 28 | `EXPERIMENT_OVERCROWDED` | WARNING | Experiment is linked to 5 or more claims |
 | 29 | `RESULTS_SECTION_EMPTY` | ERROR | Results section contains no claims |
 | 30 | `EVIDENCE_COVERAGE` | INFO | Informational score of claim evidence coverage |
+| 31 | `FIGURE_NO_CAPTION` | WARNING | Figure has no caption |
+| 32 | `FIGURE_NO_FIRST_MENTION` | WARNING | Figure has no first_mentioned_in section |
+| 33 | `FIGURE_REFERENCED_BUT_NO_YAML` | WARNING | Claim references figure ID with no YAML |
+| 34 | `FIGURE_YAML_BUT_NO_CLAIM` | WARNING | Figure YAML exists but is not referenced in any claim |
+| 35 | `LOW_RESOLUTION_FIGURE` | WARNING | Raster figure has resolution under 300 DPI |
+| 36 | `MISSING_AFFILIATION` | WARNING | Authors are defined but affiliations are missing |
+| 37 | `TABLE_NO_CAPTION` | ERROR | Table has no caption (placed ABOVE table in IEEE) |
+| 38 | `TABLE_NO_COLUMNS` | WARNING | Table has no column headers defined |
+| 39 | `TABLE_REFERENCED_BUT_NO_YAML` | WARNING | Claim references table ID with no YAML |
+| 40 | `TABLE_YAML_BUT_NO_CLAIM` | WARNING | Table YAML exists but is not referenced in any claim |
+| 41 | `TABLE_ROW_COLUMN_MISMATCH` | WARNING | Table row cell count does not match column count |
 
-These 30 checks are always run by `collect_issues()`, independent of `--target`.
+These 41 checks are always run by `collect_issues()`, independent of `--target`.
 
-- **ERRORs block `paperforge build`** and `paperforge review`.
-- **WARNINGs do not block** any command.
-- **INFOs are informational only** and never block any command.
+### Severity Breakdown (41 Checks Total)
+- **6 ERRORs**: `ORPHAN_CLAIM`, `MISSING_EXPERIMENT`, `STALE_CLAIM`, `EMPTY_CLAIM_TEXT`, `RESULTS_SECTION_EMPTY`, `TABLE_NO_CAPTION` (blocks build and git hook).
+- **34 WARNINGs**: advisory issues that report potential problems but do not block commands.
+- **1 INFO**: `EVIDENCE_COVERAGE` score, informational only.
+
+Note on `TABLE_NO_CAPTION` vs `FIGURE_NO_CAPTION`: `TABLE_NO_CAPTION` is an **ERROR** (unlike `FIGURE_NO_CAPTION` which is a WARNING) because a table without a caption cannot appear in any IEEE submission, whereas figures may occasionally be used inline or in draft contexts without captions.
+
 - `--fix` only auto-resolves `UNVERIFIED_CLAIM` by setting those claims to `stale`.
-- `--target` runs the venue plugin's own `validate()` on top of these 30 checks and
+- `--target` runs the venue plugin's own `validate()` on top of these 41 checks and
   prints the results under a separate `VENUE (<display name>)` heading. Venue checks
   include things like `UNCITED_CLAIM` (IEEE), `MISSING_SEED`/`MISSING_DATASET` (NeurIPS),
   and `MISSING_RELATED_WORK` (ACM) — see `paperforge venues` and each plugin's source
   for the full list.
 
-**Related commands:** `paperforge build`, `paperforge status`, `paperforge add-claim`
+**Related commands:** `paperforge build`, `paperforge status`, `paperforge add-claim`, `paperforge add-table`

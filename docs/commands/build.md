@@ -35,7 +35,13 @@ paperforge build --target ieee-journal
 paperforge build --target acm
 
 # With custom output path
+# After custom output path or target selection
 paperforge build --target ieee-journal --path /path/to/project
+
+# After adding figures and tables, build generates full LaTeX:
+# - \begin{figure} environments for linked figures
+# - \begin{table} environments for linked tables
+# - \bibliographystyle{IEEEtran} + references.bib stubs
 ```
 
 ## Output
@@ -80,9 +86,12 @@ panel under a `VENUE (<display name>)` heading.
 - `references.bib` generated in output directory when citations exist.
 - `latexmk` is used when available, `pdflatex` as fallback.
 - Figure environments with `\label` and `\ref` generated automatically.
+- Tables with YAML data generate full `\begin{table}` environments with IEEE-compliant formatting (caption above tabular).
+- `TABLE_NO_CAPTION` is an ERROR that blocks build.
+- Table row/column data is embedded directly in the LaTeX output.
 - `affiliations` in `paper.yaml` improve author block for journals.
 - `hyperref` and `microtype` now included in all IEEE preambles.
 - Output goes to `.paperforge/output/` by default.
 - Use `paperforge venues` to see all available targets.
 
-**Related commands:** `paperforge doctor`, `paperforge venues`, `paperforge review`
+**Related commands:** `paperforge doctor`, `paperforge venues`, `paperforge review`, `paperforge add-table`
