@@ -1,8 +1,15 @@
 # Changelog
 
-## [0.1.0] — Unreleased
+## [Unreleased]
+
+## [0.1.0] — 2026-07-25
 
 ### Added
+- Project bootstrap
+- CONSTITUTION.md with 10 core principles
+- Directory structure for src layout
+- Typer CLI shell (--version, --help)
+- Placeholder modules for models, graph, core
 - Claim dataclass with from_yaml / to_yaml and ClaimStatus literal type
 - Experiment dataclass with from_yaml / to_yaml
 - ResearchGraph with add_claim, add_experiment, get_affected
@@ -35,12 +42,7 @@
 - paperforge venues command — lists all available venue targets
 - paperforge build --target and paperforge doctor --target options
 - 20 new tests across test_review.py and test_venues.py (89 total)
-
-## [0.1.0] — Unreleased
-
-### Added
-- Project bootstrap
-- CONSTITUTION.md with 10 core principles
-- Directory structure for src layout
-- Typer CLI shell (--version, --help)
-- Placeholder modules for models, graph, core
+- PyPI packaging metadata (classifiers, keywords, project URLs)
+- LICENSE (MIT)
+- CONTRIBUTING.md with venue plugin extension guide
+- README.md rewritten for public audience with quick start guide

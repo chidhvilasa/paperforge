@@ -1,15 +1,41 @@
 [project]
 name = "paperforge"
 version = "0.1.0"
-description = "A research dependency engine that tracks the graph between experiments and scientific claims."
+description = "A research dependency engine that tracks the graph between experiments and scientific claims so your paper is always internally consistent."
 readme = "README.md"
+license = { text = "MIT" }
 requires-python = ">=3.11"
+keywords = [
+    "research",
+    "academic-writing",
+    "latex",
+    "ieee",
+    "reproducibility",
+    "dependency-graph",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Text Processing :: Markup :: LaTeX",
+    "Environment :: Console",
+]
 dependencies = [
     "typer>=0.12",
     "pyyaml>=6.0",
     "rich>=13.0",
     "llm>=0.31.1",
 ]
+
+[project.urls]
+Homepage = "https://github.com/chidhvilasa/paperforge"
+Repository = "https://github.com/chidhvilasa/paperforge"
+"Bug Tracker" = "https://github.com/chidhvilasa/paperforge/issues"
 
 [project.scripts]
 paperforge = "paperforge.cli:app"
@@ -20,9 +46,11 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
+    "build>=1.5.0",
     "mypy>=1.10",
     "pytest>=8.0",
     "ruff>=0.5",
+    "twine>=6.2.0",
 ]
 
 [tool.ruff.lint.per-file-ignores]
