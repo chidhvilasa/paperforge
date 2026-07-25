@@ -21,6 +21,7 @@ Defaults to the current directory.
 | [venues](venues.md) | List venue targets for --target flag |
 | [install-hooks](install-hooks.md) | Install git pre-commit hook |
 | [export](export.md) | Export as BibTeX, JSON, or Markdown |
+| [export traceability](traceability.md) | Full claim-evidence matrix as MD, CSV, LaTeX |
 | [status](status.md) | Project health dashboard |
 | [find](find.md) | Search claims and experiments by keyword |
 | [log](log.md) | Show change history for a claim |

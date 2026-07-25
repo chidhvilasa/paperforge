@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Added
+- paperforge export traceability — generates full claim-evidence
+  matrix in three formats simultaneously:
+  traceability.md (Markdown with emoji status),
+  traceability.csv (machine-readable, pipe-separated inner lists),
+  traceability.tex (LaTeX longtable for paper appendix)
+- _escape_latex() helper for safe LaTeX string escaping
+- Summary block in Markdown output (evidence coverage %)
+- docs/commands/traceability.md
+- 16 new tests in test_traceability.py (285 total)
+
 ## [0.6.0] — 2026-07-26
 
 ### Added

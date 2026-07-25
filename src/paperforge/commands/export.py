@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import csv
+import io
 import json
 import sys
 from datetime import UTC, datetime
@@ -19,7 +21,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 console = Console()
 
-_VALID_FORMATS = ("bibtex", "json", "markdown")
+_VALID_FORMATS = ("bibtex", "json", "markdown", "traceability")
 
 _DEFAULT_OUTPUTS = {
     "bibtex": "references.bib",
@@ -213,13 +215,191 @@ def _generate_markdown(project: PaperForgeProject) -> str:
     return "\n".join(lines)
 
 
+# --- Traceability Matrix ---
+
+def _escape_latex(text: str) -> str:
+    if not text:
+        return ""
+    text = text.replace("\\", "\x00BACKSLASH\x00")
+    text = text.replace("%", "\\%")
+    text = text.replace("$", "\\$")
+    text = text.replace("&", "\\&")
+    text = text.replace("#", "\\#")
+    text = text.replace("_", "\\_")
+    text = text.replace("{", "\\{")
+    text = text.replace("}", "\\}")
+    text = text.replace("~", "\x00TILDE\x00")
+    text = text.replace("^", "\x00CIRCUM\x00")
+
+    text = text.replace("\x00BACKSLASH\x00", "\\textbackslash{}")
+    text = text.replace("\x00TILDE\x00", "\\textasciitilde{}")
+    text = text.replace("\x00CIRCUM\x00", "\\textasciicircum{}")
+    return text
+
+
+def _generate_traceability_md(project: PaperForgeProject) -> str:
+    title = project.config.title or "Untitled Paper"
+    now = datetime.now(tz=UTC).isoformat(timespec="seconds")
+    claims_total = len(project.claims)
+    claims_linked = sum(1 for c in project.claims if c.experiment)
+    coverage_pct = int(claims_linked / claims_total * 100) if claims_total > 0 else 0
+
+    lines: list[str] = []
+    lines.append(f"# Claim Traceability Matrix — {title}")
+    lines.append("")
+    lines.append(f"**Generated:** {now}")
+    lines.append(
+        f"**Evidence Coverage:** {coverage_pct}% ({claims_linked}/{claims_total} claims linked to experiments)"
+    )
+    lines.append("")
+    lines.append(
+        "| Claim ID | Text | Status | Experiment | Key Metric | Figures | Tables | Citations | Sections | Verified |"
+    )
+    lines.append("|---|---|---|---|---|---|---|---|---|---|")
+
+    exp_map = {exp.id: exp for exp in project.experiments}
+
+    for claim in sorted(project.claims, key=lambda c: c.id):
+        text_disp = claim.text[:60] + "..." if len(claim.text) > 60 else claim.text
+
+        if claim.status == "verified":
+            status_disp = "✅ verified"
+        elif claim.status == "unverified":
+            status_disp = "⚠️ unverified"
+        elif claim.status == "stale":
+            status_disp = "❌ stale"
+        else:
+            status_disp = claim.status
+
+        exp_id = claim.experiment or "none"
+        key_metric = "none"
+        if claim.experiment and claim.experiment in exp_map:
+            exp_obj = exp_map[claim.experiment]
+            if exp_obj.metrics:
+                first_k = next(iter(exp_obj.metrics))
+                key_metric = f"{first_k}: {exp_obj.metrics[first_k]}"
+
+        figs = ", ".join(claim.figures) if claim.figures else "none"
+        tbls = ", ".join(claim.tables) if claim.tables else "none"
+        cits = ", ".join(claim.citations) if claim.citations else "none"
+        secs = ", ".join(claim.sections) if claim.sections else "none"
+        verified_date = (
+            claim.last_verified.strftime("%Y-%m-%d")
+            if claim.last_verified
+            else "never"
+        )
+
+        lines.append(
+            f"| {claim.id} | {text_disp} | {status_disp} | {exp_id} | {key_metric} | {figs} | {tbls} | {cits} | {secs} | {verified_date} |"
+        )
+
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _generate_traceability_csv(project: PaperForgeProject) -> str:
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "Claim ID",
+        "Text",
+        "Status",
+        "Experiment",
+        "Key Metric",
+        "Figures",
+        "Tables",
+        "Citations",
+        "Sections",
+        "Verified",
+    ])
+
+    exp_map = {exp.id: exp for exp in project.experiments}
+
+    for claim in sorted(project.claims, key=lambda c: c.id):
+        exp_id = claim.experiment or ""
+        key_metric = ""
+        if claim.experiment and claim.experiment in exp_map:
+            exp_obj = exp_map[claim.experiment]
+            if exp_obj.metrics:
+                first_k = next(iter(exp_obj.metrics))
+                key_metric = f"{first_k}: {exp_obj.metrics[first_k]}"
+
+        figs = "|".join(claim.figures) if claim.figures else ""
+        tbls = "|".join(claim.tables) if claim.tables else ""
+        cits = "|".join(claim.citations) if claim.citations else ""
+        secs = "|".join(claim.sections) if claim.sections else ""
+        verified_date = (
+            claim.last_verified.strftime("%Y-%m-%d")
+            if claim.last_verified
+            else ""
+        )
+
+        writer.writerow([
+            claim.id,
+            claim.text,
+            claim.status,
+            exp_id,
+            key_metric,
+            figs,
+            tbls,
+            cits,
+            secs,
+            verified_date,
+        ])
+
+    return output.getvalue()
+
+
+def _generate_traceability_tex(project: PaperForgeProject) -> str:
+    lines: list[str] = [
+        "\\begin{longtable}{|l|p{4.5cm}|c|c|p{2.5cm}|}",
+        "\\caption{Claim Traceability Matrix} \\label{tab:traceability} \\\\",
+        "\\hline",
+        "\\textbf{ID} & \\textbf{Claim Text} & \\textbf{Status} & \\textbf{Exp} & \\textbf{Evidence} \\\\",
+        "\\hline",
+        "\\endfirsthead",
+        "\\hline",
+        "\\textbf{ID} & \\textbf{Claim Text} & \\textbf{Status} & \\textbf{Exp} & \\textbf{Evidence} \\\\",
+        "\\hline",
+        "\\endhead",
+        "\\hline",
+        "\\endfoot",
+    ]
+
+    for claim in sorted(project.claims, key=lambda c: c.id):
+        cid = _escape_latex(claim.id)
+        ctext = _escape_latex(claim.text)
+        cstatus = _escape_latex(claim.status)
+        cexp = _escape_latex(claim.experiment or "none")
+
+        evidence_items = []
+        if claim.figures:
+            evidence_items.append("Figs: " + ", ".join(claim.figures))
+        if claim.tables:
+            evidence_items.append("Tabs: " + ", ".join(claim.tables))
+        if claim.citations:
+            evidence_items.append("Cits: " + ", ".join(claim.citations))
+
+        evidence_str = _escape_latex(
+            "; ".join(evidence_items) if evidence_items else "none"
+        )
+
+        lines.append(
+            f"{cid} & {ctext} & {cstatus} & {cexp} & {evidence_str} \\\\ \\hline"
+        )
+
+    lines.append("\\end{longtable}")
+    lines.append("")
+    return "\n".join(lines)
+
+
 # --- Main run ---
 
 def run(project_root: Path, fmt: str, output: Path | None) -> None:
-    """Export research graph as BibTeX, JSON, or Markdown."""
+    """Export research graph as BibTeX, JSON, Markdown, or Traceability Matrix."""
     if fmt not in _VALID_FORMATS:
         console.print(
-            f"[red]Unknown format '{fmt}'. Choose: bibtex, json, markdown[/red]"
+            f"[red]Unknown format '{fmt}'. Choose: bibtex, json, markdown, traceability[/red]"
         )
         sys.exit(1)
 
@@ -232,7 +412,28 @@ def run(project_root: Path, fmt: str, output: Path | None) -> None:
 
     project = PaperForgeProject.load(project_root)
 
-    # STEP 2 — Determine output path
+    if fmt == "traceability":
+        output_dir = output if output is not None else project_root / ".paperforge" / "output"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        md_content = _generate_traceability_md(project)
+        csv_content = _generate_traceability_csv(project)
+        tex_content = _generate_traceability_tex(project)
+
+        (output_dir / "traceability.md").write_text(md_content, encoding="utf-8")
+        (output_dir / "traceability.csv").write_text(csv_content, encoding="utf-8")
+        (output_dir / "traceability.tex").write_text(tex_content, encoding="utf-8")
+
+        body = Text()
+        body.append(f"Format:      {fmt}\n")
+        body.append(f"Output:      {output_dir}\n")
+        body.append("Files:       traceability.md, traceability.csv, traceability.tex\n")
+        body.append(f"Claims:      {len(project.claims)}\n")
+        body.append(f"Experiments: {len(project.experiments)}")
+        console.print(Panel(body, title="Export Complete", border_style="green"))
+        return
+
+    # STEP 2 — Determine output path for single-file exports
     output_path = output if output is not None else _default_output_path(project_root, fmt)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -253,3 +454,4 @@ def run(project_root: Path, fmt: str, output: Path | None) -> None:
     body.append(f"Claims:      {len(project.claims)}\n")
     body.append(f"Experiments: {len(project.experiments)}")
     console.print(Panel(body, title="Export Complete", border_style="green"))
+

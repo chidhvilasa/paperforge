@@ -167,16 +167,16 @@ def install_hooks(
 
 @app.command()
 def export(
-    fmt: str = typer.Argument("json", help="Format: bibtex, json, markdown"),
+    fmt: str = typer.Argument("json", help="Format: bibtex, json, markdown, traceability"),
     path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
     output: Path | None = typer.Option(
         None,
         "--output",
         "-o",
-        help="Output file path. Defaults to .paperforge/output/<format-file>.",
+        help="Output file path or directory. Defaults to .paperforge/output/.",
     ),
 ) -> None:
-    """Export research graph as BibTeX, JSON, or Markdown."""
+    """Export research graph as BibTeX, JSON, Markdown, or Traceability Matrix."""
     from paperforge.commands.export import run
 
     run(
