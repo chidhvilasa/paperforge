@@ -14,6 +14,7 @@ from rich.text import Text
 from paperforge.commands.doctor import collect_issues
 from paperforge.core.project import Affiliation, PaperForgeProject
 from paperforge.models.claim import Claim
+from paperforge.models.figure import Figure
 from paperforge.models.table import Table
 from paperforge.venues.base import VenuePlugin
 from paperforge.venues.registry import get_plugin
@@ -58,6 +59,25 @@ def _generate_abstract(claims: list[Claim]) -> str:
     if not abstract_claims:
         return "% TODO: Add claims to the abstract section."
     return " ".join(c.text for c in sorted(abstract_claims, key=lambda c: c.id))
+
+
+def _generate_figure_latex(fig_obj: Figure) -> str:
+    if fig_obj.caption and fig_obj.path:
+        width = f"{fig_obj.width_inches}in" if fig_obj.width_inches else "\\columnwidth"
+        path = fig_obj.path if fig_obj.path else f"figures/{fig_obj.id}"
+        return (
+            f"\\begin{{figure}}[!t]\n"
+            f"\\centering\n"
+            f"\\includegraphics[width={width}]{{{path}}}\n"
+            f"\\caption{{{fig_obj.caption}}}\n"
+            f"\\label{{fig:{fig_obj.id}}}\n"
+            f"\\end{{figure}}"
+        )
+    caption_text = (fig_obj.caption or "")[:60]
+    return (
+        f"% Figure: {fig_obj.id} — {caption_text} (path not set)\n"
+        f"% \\label{{fig:{fig_obj.id}}}"
+    )
 
 
 def _generate_table_latex(table: Table) -> str:
@@ -107,6 +127,9 @@ def _generate_table_latex(table: Table) -> str:
 
 def _generate_sections(sections: list[str], project: PaperForgeProject) -> str:
     blocks: list[str] = []
+    emitted_figures: set[str] = set()
+    emitted_tables: set[str] = set()
+
     for section in sections:
         if section == "abstract":
             continue
@@ -122,24 +145,11 @@ def _generate_sections(sections: list[str], project: PaperForgeProject) -> str:
                 fig_envs = []
                 for fig_id in c.figures:
                     fig_obj = next((f for f in project.figures if f.id == fig_id), None)
-                    if fig_obj:
-                        if fig_obj.caption and fig_obj.path:
-                            width = f"{fig_obj.width_inches}in" if fig_obj.width_inches else "\\columnwidth"
-                            path = fig_obj.path if fig_obj.path else f"figures/{fig_id}"
-                            fig_envs.append(
-                                f"\\begin{{figure}}[!t]\n"
-                                f"\\centering\n"
-                                f"\\includegraphics[width={width}]{{{path}}}\n"
-                                f"\\caption{{{fig_obj.caption}}}\n"
-                                f"\\label{{fig:{fig_id}}}\n"
-                                f"\\end{{figure}}"
-                            )
-                        else:
-                            caption_text = (fig_obj.caption or "")[:60]
-                            fig_envs.append(
-                                f"% Figure: {fig_id} — {caption_text} (path not set)\n"
-                                f"% \\label{{fig:{fig_id}}}"
-                            )
+                    if fig_obj and fig_id not in emitted_figures:
+                        emitted_figures.add(fig_id)
+                        fig_envs.append(_generate_figure_latex(fig_obj))
+                    elif fig_obj and fig_id in emitted_figures:
+                        fig_envs.append(f"% Figure~\\ref{{fig:{fig_id}}} already defined above.")
                     else:
                         fig_envs.append(f"% Reference: {fig_id} (no figure YAML — run paperforge add-figure)")
                 if fig_envs:
@@ -148,7 +158,8 @@ def _generate_sections(sections: list[str], project: PaperForgeProject) -> str:
                 tbl_envs = []
                 for tbl_id in c.tables:
                     tbl_obj = next((t for t in project.tables if t.id == tbl_id), None)
-                    if tbl_obj:
+                    if tbl_obj and tbl_id not in emitted_tables:
+                        emitted_tables.add(tbl_id)
                         if tbl_obj.caption:
                             tbl_envs.append(_generate_table_latex(tbl_obj))
                         else:
@@ -157,6 +168,8 @@ def _generate_sections(sections: list[str], project: PaperForgeProject) -> str:
                                 f"% Table: {tbl_id} — {caption_text} (no caption set)\n"
                                 f"% \\label{{tab:{tbl_id}}}"
                             )
+                    elif tbl_obj and tbl_id in emitted_tables:
+                        tbl_envs.append(f"% Table~\\ref{{tab:{tbl_id}}} already defined above.")
                     else:
                         tbl_envs.append(f"% Table reference: {tbl_id} (no YAML — run paperforge add-table)")
                 if tbl_envs:
@@ -184,6 +197,9 @@ def _ieee_parstart(text: str) -> str:
 
 def _generate_journal_sections(sections: list[str], project: PaperForgeProject) -> str:
     blocks: list[str] = []
+    emitted_figures: set[str] = set()
+    emitted_tables: set[str] = set()
+
     for section in sections:
         if section == "abstract":
             continue
@@ -205,24 +221,11 @@ def _generate_journal_sections(sections: list[str], project: PaperForgeProject) 
                 first_envs = []
                 for fig_id in first.figures:
                     fig_obj = next((f for f in project.figures if f.id == fig_id), None)
-                    if fig_obj:
-                        if fig_obj.caption and fig_obj.path:
-                            width = f"{fig_obj.width_inches}in" if fig_obj.width_inches else "\\columnwidth"
-                            path = fig_obj.path if fig_obj.path else f"figures/{fig_id}"
-                            first_envs.append(
-                                f"\\begin{{figure}}[!t]\n"
-                                f"\\centering\n"
-                                f"\\includegraphics[width={width}]{{{path}}}\n"
-                                f"\\caption{{{fig_obj.caption}}}\n"
-                                f"\\label{{fig:{fig_id}}}\n"
-                                f"\\end{{figure}}"
-                            )
-                        else:
-                            caption_text = (fig_obj.caption or "")[:60]
-                            first_envs.append(
-                                f"% Figure: {fig_id} — {caption_text} (path not set)\n"
-                                f"% \\label{{fig:{fig_id}}}"
-                            )
+                    if fig_obj and fig_id not in emitted_figures:
+                        emitted_figures.add(fig_id)
+                        first_envs.append(_generate_figure_latex(fig_obj))
+                    elif fig_obj and fig_id in emitted_figures:
+                        first_envs.append(f"% Figure~\\ref{{fig:{fig_id}}} already defined above.")
                     else:
                         first_envs.append(f"% Reference: {fig_id} (no figure YAML — run paperforge add-figure)")
                 if first_envs:
@@ -231,7 +234,8 @@ def _generate_journal_sections(sections: list[str], project: PaperForgeProject) 
                 first_tbl_envs = []
                 for tbl_id in first.tables:
                     tbl_obj = next((t for t in project.tables if t.id == tbl_id), None)
-                    if tbl_obj:
+                    if tbl_obj and tbl_id not in emitted_tables:
+                        emitted_tables.add(tbl_id)
                         if tbl_obj.caption:
                             first_tbl_envs.append(_generate_table_latex(tbl_obj))
                         else:
@@ -240,6 +244,8 @@ def _generate_journal_sections(sections: list[str], project: PaperForgeProject) 
                                 f"% Table: {tbl_id} — {caption_text} (no caption set)\n"
                                 f"% \\label{{tab:{tbl_id}}}"
                             )
+                    elif tbl_obj and tbl_id in emitted_tables:
+                        first_tbl_envs.append(f"% Table~\\ref{{tab:{tbl_id}}} already defined above.")
                     else:
                         first_tbl_envs.append(f"% Table reference: {tbl_id} (no YAML — run paperforge add-table)")
                 if first_tbl_envs:
@@ -252,24 +258,11 @@ def _generate_journal_sections(sections: list[str], project: PaperForgeProject) 
                     fig_envs = []
                     for fig_id in c.figures:
                         fig_obj = next((f for f in project.figures if f.id == fig_id), None)
-                        if fig_obj:
-                            if fig_obj.caption and fig_obj.path:
-                                width = f"{fig_obj.width_inches}in" if fig_obj.width_inches else "\\columnwidth"
-                                path = fig_obj.path if fig_obj.path else f"figures/{fig_id}"
-                                fig_envs.append(
-                                    f"\\begin{{figure}}[!t]\n"
-                                    f"\\centering\n"
-                                    f"\\includegraphics[width={width}]{{{path}}}\n"
-                                    f"\\caption{{{fig_obj.caption}}}\n"
-                                    f"\\label{{fig:{fig_id}}}\n"
-                                    f"\\end{{figure}}"
-                                )
-                            else:
-                                caption_text = (fig_obj.caption or "")[:60]
-                                fig_envs.append(
-                                    f"% Figure: {fig_id} — {caption_text} (path not set)\n"
-                                    f"% \\label{{fig:{fig_id}}}"
-                                )
+                        if fig_obj and fig_id not in emitted_figures:
+                            emitted_figures.add(fig_id)
+                            fig_envs.append(_generate_figure_latex(fig_obj))
+                        elif fig_obj and fig_id in emitted_figures:
+                            fig_envs.append(f"% Figure~\\ref{{fig:{fig_id}}} already defined above.")
                         else:
                             fig_envs.append(f"% Reference: {fig_id} (no figure YAML — run paperforge add-figure)")
                     if fig_envs:
@@ -278,7 +271,8 @@ def _generate_journal_sections(sections: list[str], project: PaperForgeProject) 
                     tbl_envs = []
                     for tbl_id in c.tables:
                         tbl_obj = next((t for t in project.tables if t.id == tbl_id), None)
-                        if tbl_obj:
+                        if tbl_obj and tbl_id not in emitted_tables:
+                            emitted_tables.add(tbl_id)
                             if tbl_obj.caption:
                                 tbl_envs.append(_generate_table_latex(tbl_obj))
                             else:
@@ -287,6 +281,8 @@ def _generate_journal_sections(sections: list[str], project: PaperForgeProject) 
                                     f"% Table: {tbl_id} — {caption_text} (no caption set)\n"
                                     f"% \\label{{tab:{tbl_id}}}"
                                 )
+                        elif tbl_obj and tbl_id in emitted_tables:
+                            tbl_envs.append(f"% Table~\\ref{{tab:{tbl_id}}} already defined above.")
                         else:
                             tbl_envs.append(f"% Table reference: {tbl_id} (no YAML — run paperforge add-table)")
                     if tbl_envs:
@@ -307,24 +303,11 @@ def _generate_journal_sections(sections: list[str], project: PaperForgeProject) 
                 fig_envs = []
                 for fig_id in c.figures:
                     fig_obj = next((f for f in project.figures if f.id == fig_id), None)
-                    if fig_obj:
-                        if fig_obj.caption and fig_obj.path:
-                            width = f"{fig_obj.width_inches}in" if fig_obj.width_inches else "\\columnwidth"
-                            path = fig_obj.path if fig_obj.path else f"figures/{fig_id}"
-                            fig_envs.append(
-                                f"\\begin{{figure}}[!t]\n"
-                                f"\\centering\n"
-                                f"\\includegraphics[width={width}]{{{path}}}\n"
-                                f"\\caption{{{fig_obj.caption}}}\n"
-                                f"\\label{{fig:{fig_id}}}\n"
-                                f"\\end{{figure}}"
-                            )
-                        else:
-                            caption_text = (fig_obj.caption or "")[:60]
-                            fig_envs.append(
-                                f"% Figure: {fig_id} — {caption_text} (path not set)\n"
-                                f"% \\label{{fig:{fig_id}}}"
-                            )
+                    if fig_obj and fig_id not in emitted_figures:
+                        emitted_figures.add(fig_id)
+                        fig_envs.append(_generate_figure_latex(fig_obj))
+                    elif fig_obj and fig_id in emitted_figures:
+                        fig_envs.append(f"% Figure~\\ref{{fig:{fig_id}}} already defined above.")
                     else:
                         fig_envs.append(f"% Reference: {fig_id} (no figure YAML — run paperforge add-figure)")
                 if fig_envs:
@@ -333,7 +316,8 @@ def _generate_journal_sections(sections: list[str], project: PaperForgeProject) 
                 tbl_envs = []
                 for tbl_id in c.tables:
                     tbl_obj = next((t for t in project.tables if t.id == tbl_id), None)
-                    if tbl_obj:
+                    if tbl_obj and tbl_id not in emitted_tables:
+                        emitted_tables.add(tbl_id)
                         if tbl_obj.caption:
                             tbl_envs.append(_generate_table_latex(tbl_obj))
                         else:
@@ -342,6 +326,8 @@ def _generate_journal_sections(sections: list[str], project: PaperForgeProject) 
                                 f"% Table: {tbl_id} — {caption_text} (no caption set)\n"
                                 f"% \\label{{tab:{tbl_id}}}"
                             )
+                    elif tbl_obj and tbl_id in emitted_tables:
+                        tbl_envs.append(f"% Table~\\ref{{tab:{tbl_id}}} already defined above.")
                     else:
                         tbl_envs.append(f"% Table reference: {tbl_id} (no YAML — run paperforge add-table)")
                 if tbl_envs:
@@ -360,8 +346,8 @@ def _generate_author_block_journal(
     affiliations: list[Affiliation],
 ) -> str:
     if not affiliations:
-        return f"\\author{{{', '.join(authors)}}}"
-    lines = ["\\author{"]
+        return ", ".join(authors)
+    lines = []
     for i, author in enumerate(authors):
         if i < len(affiliations):
             aff = affiliations[i]
@@ -380,9 +366,6 @@ def _generate_author_block_journal(
                 )
         else:
             lines.append(f"  {author}")
-        if i < len(authors) - 1:
-            lines.append("")
-    lines.append("}")
     return "\n".join(lines)
 
 

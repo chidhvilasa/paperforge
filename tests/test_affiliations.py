@@ -64,4 +64,4 @@ def test_journal_author_block_with_affiliations():
 def test_journal_author_block_no_affiliations_fallback():
     authors = ["Alice", "Bob"]
     block = _generate_author_block_journal(authors, [])
-    assert "\\author{Alice, Bob}" in block
+    assert block == "Alice, Bob"
