@@ -21,26 +21,32 @@ History recorded automatically by capture, add-claim, doctor --fix.
 Rich markup injection fix.
 Rich markup injection fix.
 
-### v0.4.0 (this release)
+### v0.4.0
 IEEE Transactions journal LaTeX template.
 paper_type and keywords fields in paper.yaml.
 10 new doctor checks (30 total, 3 severity levels: ERROR/WARNING/INFO).
 ieee-journal and ieee-trans venue targets.
 
-## Planned
+### v0.5.0 (this release)
+latexmk compilation support (preferred over pdflatex).
+Figure \label/\ref LaTeX integration.
+affiliations field in paper.yaml.
+microtype and hyperref in all IEEE preambles.
+Doctor check 36 (MISSING_AFFILIATION).
 
-### v0.5.0 — Figure Objects
-- Promote Figure from a reference string to a first-class object
-- .paperforge/figures/ directory with fig_NN.yaml files
-- Figure completeness checks in doctor (caption, first reference,
-  resolution metadata)
-- paperforge add-figure command
-- Figure traceability in impact output
+## Planned
 
 ### v0.6.0 — Template Library
 - Reusable section templates (threat model, experimental setup)
 - `paperforge template add --name "threat-model" --from claim_07`
 - `paperforge template apply "threat-model"` inserts into new project
+
+### v0.7.0 — Citation Verification
+- Integrate with Semantic Scholar API (opt-in, offline default)
+- Verify that citation keys in claims actually exist in the
+  literature
+- Flag citations that appear hallucinated or unreachable
+- paperforge cite-check command
 
 ### v0.7.0 — Multi-Paper Support
 - Shared experiment library across multiple papers

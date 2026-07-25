@@ -17,6 +17,7 @@ PAPER_YAML = """\
 version: "0.1"
 title: ""
 authors: []
+affiliations: []
 venue: ""
 status: "draft"
 paper_type: "conference"

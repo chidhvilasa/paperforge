@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -11,6 +12,25 @@ from paperforge.graph.dependency import ResearchGraph
 from paperforge.models.claim import Claim
 from paperforge.models.experiment import Experiment
 from paperforge.models.figure import Figure
+
+
+@dataclass
+class Affiliation:
+    name: str = ""
+    institution: str = ""
+    department: str = ""
+    city: str = ""
+    country: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Affiliation:
+        return cls(
+            name=data.get("name", ""),
+            institution=data.get("institution", ""),
+            department=data.get("department", ""),
+            city=data.get("city", ""),
+            country=data.get("country", ""),
+        )
 
 
 @dataclass
@@ -25,6 +45,7 @@ class ProjectConfig:
     latex_template: str
     paper_type: str = "conference"
     keywords: list[str] = field(default_factory=list)
+    affiliations: list[Affiliation] = field(default_factory=list)
 
     @classmethod
     def from_yaml(cls, data: dict) -> ProjectConfig:
@@ -40,6 +61,7 @@ class ProjectConfig:
             latex_template=build.get("latex_template", "ieee"),
             paper_type=data.get("paper_type", "conference"),
             keywords=data.get("keywords", []),
+            affiliations=[Affiliation.from_dict(a) for a in data.get("affiliations", [])],
         )
 
 

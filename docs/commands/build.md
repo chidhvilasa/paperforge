@@ -78,7 +78,10 @@ panel under a `VENUE (<display name>)` heading.
 - `paper_type` in `paper.yaml` controls template selection ("conference" default, "journal" for transactions).
 - `keywords` field in `paper.yaml` used in `\IEEEkeywords` block.
 - `references.bib` generated in output directory when citations exist.
-- Attempts `pdflatex` compilation if `pdflatex` is on the system PATH.
+- `latexmk` is used when available, `pdflatex` as fallback.
+- Figure environments with `\label` and `\ref` generated automatically.
+- `affiliations` in `paper.yaml` improve author block for journals.
+- `hyperref` and `microtype` now included in all IEEE preambles.
 - Output goes to `.paperforge/output/` by default.
 - Use `paperforge venues` to see all available targets.
 

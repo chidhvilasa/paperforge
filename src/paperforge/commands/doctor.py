@@ -534,6 +534,20 @@ def collect_issues(project: PaperForgeProject) -> list[Issue]:
                 )
             )
 
+    # Check 36 — MISSING_AFFILIATION (WARNING)
+    if project.config.authors and not project.config.affiliations:
+        issues.append(
+            Issue(
+                code="MISSING_AFFILIATION",
+                severity="WARNING",
+                message=(
+                    "Authors are set but no affiliations are defined. "
+                    "IEEE journal submissions require author affiliations. "
+                    "Add affiliations to paper.yaml."
+                ),
+            )
+        )
+
     return issues
 
 

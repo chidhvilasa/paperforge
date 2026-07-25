@@ -87,6 +87,19 @@ Requires Python 3.11+.
 cd my-research-project
 paperforge init
 
+```yaml
+# .paperforge/paper.yaml
+title: "My Paper"
+authors: ["A. Author"]
+paper_type: "journal"
+keywords: ["security", "IoT"]
+affiliations:
+  - institution: "VIT Vellore"
+    department: "Dept. of CSE"
+    city: "Vellore"
+    country: "India"
+```
+
 # 2. Capture experiment results
 paperforge capture results/exp_01/metrics.json --experiment exp_01
 
@@ -167,6 +180,20 @@ hardware).
 
 Run `paperforge doctor --target ieee-journal` to add
 venue-specific checks on top of the core 30.
+
+## Build Quality
+
+PaperForge uses `latexmk` for PDF compilation when available
+(preferred over raw `pdflatex` — handles cross-references
+automatically). Falls back to `pdflatex` if latexmk is absent.
+
+Install TeX Live for full compilation support:
+- Linux: `sudo apt install texlive-full`
+- macOS: install MacTeX
+- Windows: install MiKTeX or TeX Live
+
+Figure environments with `\label{}` and `\ref{}` are generated
+automatically when figures have YAML metadata.
 
 ## Documentation
 

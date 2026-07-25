@@ -70,7 +70,8 @@ class IEEEPlugin(VenuePlugin):
             "\\usepackage{graphicx}\n"
             "\\usepackage{textcomp}\n"
             "\\usepackage{xcolor}\n"
-            "\\usepackage{hyperref}"
+            "\\usepackage{microtype}\n"
+            "\\usepackage[hidelinks]{hyperref}"
         )
 
     def generate_author_block(self, authors: list[str]) -> str:

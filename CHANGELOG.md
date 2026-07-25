@@ -2,7 +2,22 @@
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-07-25
+
 ### Added
+- affiliations field in paper.yaml — list of institution/department/
+  city/country objects, matched to authors by index
+- Affiliation dataclass in ProjectConfig
+- Figure \label{fig:id} and \ref{fig:id} integration in
+  LaTeX build output — figure environments emitted for claims
+  with linked Figure objects
+- latexmk support in paperforge build — preferred over pdflatex,
+  falls back gracefully; build panel shows compiler used
+- microtype and \usepackage[hidelinks]{hyperref} added to all
+  IEEE venue preambles
+- Doctor check 36: MISSING_AFFILIATION (WARNING)
+- Competitive analysis: PaperShell, ieee-enhanced, and
+  generator-latex-template reviewed; key improvements adopted
 - Figure as a first-class object: paperforge.models.figure.Figure
   with id, caption, path, format, width_inches, resolution_dpi,
   first_mentioned_in, notes fields
@@ -18,6 +33,10 @@
 - docs/commands/add-figure.md
 - 24 new tests across test_figure_model.py, test_add_figure.py,
   test_doctor_figures.py (225 total)
+
+### Fixed
+- Journal author block now emits \IEEEcompsocitemizethanks
+  structure when affiliations are provided
 
 ## [0.4.0] — 2026-07-25
 
