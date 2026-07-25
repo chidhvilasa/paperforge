@@ -58,3 +58,18 @@ paperforge doctor --target ieee
 paperforge build --target ieee
 paperforge export bibtex
 ```
+
+## What's New in v0.3.0
+
+Claim versioning is now built into PaperForge.
+
+Every time PaperForge writes a claim (via `capture`,
+`add-claim`, or `doctor --fix`), it snapshots the previous
+state to `.paperforge/history/`.
+
+Use `paperforge log` to see when and how a claim changed.
+Use `paperforge diff` to compare the current state against
+history or a linked experiment.
+
+History files live in `.paperforge/history/` and should be
+committed to git. They are part of your research record.

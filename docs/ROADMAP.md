@@ -8,17 +8,19 @@ init, capture, doctor (20 checks), impact, build,
 review, venues (ieee/acm/neurips), add-claim,
 install-hooks, export, status, find.
 
-### v0.2.0 (this release)
+### v0.2.0
 Full command reference documentation.
 README updated for all 12 commands.
 PyPI package v0.2.0.
 
-## Planned
+### v0.3.0 (this release)
+Claim versioning.
+paperforge log: full change history for any claim.
+paperforge diff: field-level diff against history or experiment.
+History recorded automatically by capture, add-claim, doctor --fix.
+Rich markup injection fix.
 
-### v0.3.0 — Claim Versioning
-- Track claim history: when text changed, when status changed
-- `paperforge log claim_01` shows full change history
-- `paperforge diff exp_01` shows what changed since last run
+## Planned
 
 ### v0.4.0 — Template Library
 - Reusable section templates (threat model, experimental setup)

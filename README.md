@@ -111,7 +111,13 @@ paperforge build
 # 9. Export for reference managers
 paperforge export bibtex
 
-# 10. Optional: AI-assisted review (requires llm)
+# 9a. Check claim history
+paperforge log claim_01
+
+# 9b. Diff a claim against its linked experiment
+paperforge diff claim_01 --against experiment
+
+# 11. Optional: AI-assisted review (requires llm)
 paperforge review
 ```
 
@@ -131,6 +137,8 @@ paperforge review
 | `paperforge export` | Export as BibTeX, JSON, or Markdown |
 | `paperforge status` | Project health dashboard |
 | `paperforge find` | Search claims and experiments by keyword |
+| `paperforge log` | Show change history for a claim |
+| `paperforge diff` | Diff a claim against its history or experiment |
 
 ## Venue Targets
 
