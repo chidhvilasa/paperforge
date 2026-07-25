@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+### Added
+- paperforge add-claim — interactive terminal claim creation
+  with guided prompts for all claim fields
+- paperforge install-hooks — installs git pre-commit hook that
+  runs paperforge doctor and blocks commits on ERRORs
+- 10 new deterministic doctor checks (checks 11-20):
+  METRIC_CLAIM_MISMATCH, DUPLICATE_CLAIM_TEXT,
+  CLAIM_IN_NO_SECTION, EXPERIMENT_NO_DESCRIPTION,
+  EXPERIMENT_NO_HARDWARE, EXPERIMENT_NO_DATASET,
+  EXPERIMENT_NO_SEED, UNCLAIMED_EXPERIMENT,
+  INVALID_FIGURE_ID, INVALID_TABLE_ID
+- paperforge.utils.numbers — number extraction and matching
+  utilities used by METRIC_CLAIM_MISMATCH check
+- 36 new tests across test_add_claim.py, test_install_hooks.py,
+  test_numbers.py, test_doctor_extended.py (125 total)
+
 ## [0.1.0] — 2026-07-25
 
 ### Added

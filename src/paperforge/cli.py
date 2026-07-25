@@ -124,6 +124,27 @@ def review(
     run(project_root=path.resolve(), model=model)
 
 
+@app.command(name="add-claim")
+def add_claim(
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+) -> None:
+    """Interactively create a new claim linked to an experiment."""
+    from paperforge.commands.add_claim import run
+
+    run(project_root=path.resolve())
+
+
+@app.command(name="install-hooks")
+def install_hooks(
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    uninstall: bool = typer.Option(False, "--uninstall", help="Remove the hook."),
+) -> None:
+    """Install a git pre-commit hook that runs paperforge doctor."""
+    from paperforge.commands.install_hooks import run
+
+    run(project_root=path.resolve(), uninstall=uninstall)
+
+
 @app.command()
 def venues() -> None:
     """List available venue targets for --target option."""

@@ -14,6 +14,7 @@ from rich.text import Text
 
 from paperforge.core.project import PaperForgeProject
 from paperforge.models.claim import Claim
+from paperforge.utils.numbers import extract_numbers, numbers_match
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -130,6 +131,170 @@ def collect_issues(project: PaperForgeProject) -> list[Issue]:
                 message="paper.yaml authors list is empty",
             )
         )
+
+    # --- Checks 11-20: Number consistency ---
+
+    # Check 11 — METRIC_CLAIM_MISMATCH (ERROR)
+    experiment_map = {exp.id: exp for exp in project.experiments}
+    for claim in project.claims:
+        if not claim.text or not claim.experiment:
+            continue
+        exp = experiment_map.get(claim.experiment)
+        if exp is None:
+            continue
+        if not exp.metrics:
+            continue
+        percentage_numbers = [
+            n for n in extract_numbers(claim.text) if n.is_percentage
+        ]
+        if not percentage_numbers:
+            continue
+        # Only consider metrics whose values are in the 0-100 range
+        range_metrics = {
+            k: v for k, v in exp.metrics.items() if 0 <= v <= 100
+        }
+        if not range_metrics:
+            continue
+        for extracted in percentage_numbers:
+            matched = any(
+                numbers_match(extracted.value, mv)
+                for mv in range_metrics.values()
+            )
+            if not matched:
+                issues.append(
+                    Issue(
+                        code="METRIC_CLAIM_MISMATCH",
+                        severity="ERROR",
+                        message=(
+                            f"{claim.id} contains '{extracted.raw}' "
+                            f"but no metric in {exp.id} matches "
+                            f"(metrics: {exp.metrics})"
+                        ),
+                    )
+                )
+                break  # at most one METRIC_CLAIM_MISMATCH per claim
+
+    # Check 12 — DUPLICATE_CLAIM_TEXT (WARNING)
+    text_to_ids: dict[str, list[str]] = {}
+    for claim in project.claims:
+        if not claim.text:
+            continue
+        key = claim.text.strip().lower()
+        text_to_ids.setdefault(key, []).append(claim.id)
+    for text_key, claim_ids in text_to_ids.items():
+        if len(claim_ids) >= 2:
+            issues.append(
+                Issue(
+                    code="DUPLICATE_CLAIM_TEXT",
+                    severity="WARNING",
+                    message=(
+                        f"Identical text in {claim_ids}: '{text_key[:60]}...'"
+                    ),
+                )
+            )
+
+    # Check 13 — CLAIM_IN_NO_SECTION (WARNING)
+    for claim in project.claims:
+        if not claim.sections:
+            issues.append(
+                Issue(
+                    code="CLAIM_IN_NO_SECTION",
+                    severity="WARNING",
+                    message=f"{claim.id} is not placed in any section",
+                )
+            )
+
+    # Check 14 — EXPERIMENT_NO_DESCRIPTION (WARNING)
+    for experiment in project.experiments:
+        if not experiment.description:
+            issues.append(
+                Issue(
+                    code="EXPERIMENT_NO_DESCRIPTION",
+                    severity="WARNING",
+                    message=f"{experiment.id} has no description",
+                )
+            )
+
+    # Check 15 — EXPERIMENT_NO_HARDWARE (WARNING)
+    for experiment in project.experiments:
+        if experiment.hardware is None:
+            issues.append(
+                Issue(
+                    code="EXPERIMENT_NO_HARDWARE",
+                    severity="WARNING",
+                    message=(
+                        f"{experiment.id} has no hardware recorded "
+                        f"— reviewers expect reproducibility details"
+                    ),
+                )
+            )
+
+    # Check 16 — EXPERIMENT_NO_DATASET (WARNING)
+    for experiment in project.experiments:
+        if experiment.dataset is None:
+            issues.append(
+                Issue(
+                    code="EXPERIMENT_NO_DATASET",
+                    severity="WARNING",
+                    message=f"{experiment.id} has no dataset recorded",
+                )
+            )
+
+    # Check 17 — EXPERIMENT_NO_SEED (WARNING)
+    for experiment in project.experiments:
+        if experiment.seed is None:
+            issues.append(
+                Issue(
+                    code="EXPERIMENT_NO_SEED",
+                    severity="WARNING",
+                    message=(
+                        f"{experiment.id} has no random seed recorded "
+                        f"— required for reproducibility"
+                    ),
+                )
+            )
+
+    # Check 18 — UNCLAIMED_EXPERIMENT (WARNING)
+    claimed_exp_ids = {c.experiment for c in project.claims if c.experiment}
+    for experiment in project.experiments:
+        if experiment.id not in claimed_exp_ids:
+            issues.append(
+                Issue(
+                    code="UNCLAIMED_EXPERIMENT",
+                    severity="WARNING",
+                    message=f"{experiment.id} exists but no claim references it",
+                )
+            )
+
+    # Check 19 — INVALID_FIGURE_ID (WARNING)
+    for claim in project.claims:
+        for fig_id in claim.figures:
+            if not fig_id.startswith("fig_"):
+                issues.append(
+                    Issue(
+                        code="INVALID_FIGURE_ID",
+                        severity="WARNING",
+                        message=(
+                            f"{claim.id} references figure '{fig_id}' — "
+                            f"convention is fig_NN (e.g. fig_01)"
+                        ),
+                    )
+                )
+
+    # Check 20 — INVALID_TABLE_ID (WARNING)
+    for claim in project.claims:
+        for tbl_id in claim.tables:
+            if not tbl_id.startswith("tbl_"):
+                issues.append(
+                    Issue(
+                        code="INVALID_TABLE_ID",
+                        severity="WARNING",
+                        message=(
+                            f"{claim.id} references table '{tbl_id}' — "
+                            f"convention is tbl_NN (e.g. tbl_01)"
+                        ),
+                    )
+                )
 
     return issues
 
