@@ -28,9 +28,8 @@ class Issue:
     message: str
 
 
-def _collect_issues(project: PaperForgeProject) -> tuple[list[Issue], list[Claim]]:
+def collect_issues(project: PaperForgeProject) -> list[Issue]:
     issues: list[Issue] = []
-    unverified_claims: list[Claim] = []
 
     for claim in project.claims:
         if not claim.experiment:
@@ -85,7 +84,6 @@ def _collect_issues(project: PaperForgeProject) -> tuple[list[Issue], list[Claim
                     message=f"{claim.id} is unverified",
                 )
             )
-            unverified_claims.append(claim)
 
     for experiment in project.experiments:
         if experiment.metrics == {}:
@@ -133,7 +131,7 @@ def _collect_issues(project: PaperForgeProject) -> tuple[list[Issue], list[Claim
             )
         )
 
-    return issues, unverified_claims
+    return issues
 
 
 def _apply_fix(project_root: Path, unverified_claims: list[Claim]) -> None:
@@ -156,7 +154,7 @@ def run(project_root: Path, fix: bool = False) -> None:
 
     project = PaperForgeProject.load(project_root)
 
-    issues, unverified_claims = _collect_issues(project)
+    issues = collect_issues(project)
 
     console.print(Text("PaperForge Doctor", style="bold"))
 
@@ -167,6 +165,7 @@ def run(project_root: Path, fix: bool = False) -> None:
         return
 
     if fix:
+        unverified_claims = [c for c in project.claims if c.status == "unverified"]
         _apply_fix(project_root, unverified_claims)
 
     errors = [issue for issue in issues if issue.severity == "ERROR"]

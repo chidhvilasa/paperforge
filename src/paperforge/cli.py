@@ -76,3 +76,24 @@ def doctor(
     from paperforge.commands.doctor import run
 
     run(project_root=path.resolve(), fix=fix)
+
+
+@app.command()
+def impact(
+    experiment_id: str = typer.Argument(..., help="Experiment ID, e.g. exp_27"),
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+) -> None:
+    """Show everything affected by a change to an experiment."""
+    from paperforge.commands.impact import run
+
+    run(experiment_id=experiment_id, project_root=path.resolve())
+
+
+@app.command()
+def build(
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+) -> None:
+    """Compile research data into an IEEE LaTeX paper."""
+    from paperforge.commands.build import run
+
+    run(project_root=path.resolve())
