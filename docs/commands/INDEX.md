@@ -21,6 +21,8 @@ Defaults to the current directory.
 | [export](export.md) | Export as BibTeX, JSON, or Markdown |
 | [status](status.md) | Project health dashboard |
 | [find](find.md) | Search claims and experiments by keyword |
+| [log](log.md) | Show change history for a claim |
+| [diff](diff.md) | Show what changed vs history or linked experiment |
 
 ## Common Workflows
 

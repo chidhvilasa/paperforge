@@ -13,6 +13,7 @@ from rich.panel import Panel
 from rich.text import Text
 
 from paperforge.core.project import PaperForgeProject
+from paperforge.history import record_snapshot
 from paperforge.models.claim import Claim
 from paperforge.utils.numbers import extract_numbers, numbers_match
 
@@ -303,7 +304,14 @@ def _apply_fix(project_root: Path, unverified_claims: list[Claim]) -> None:
     claims_dir = project_root / ".paperforge" / "claims"
     for claim in unverified_claims:
         claim_path = claims_dir / f"{claim.id}.yaml"
-        loaded = Claim.from_yaml(yaml.safe_load(claim_path.read_text(encoding="utf-8")))
+        current_data = yaml.safe_load(claim_path.read_text(encoding="utf-8"))
+        record_snapshot(
+            paperforge_dir=project_root / ".paperforge",
+            claim_id=claim.id,
+            claim_data=current_data,
+            recorded_by="paperforge doctor --fix",
+        )
+        loaded = Claim.from_yaml(current_data)
         loaded.status = "stale"
         claim_path.write_text(
             yaml.dump(loaded.to_yaml(), default_flow_style=False, allow_unicode=True),

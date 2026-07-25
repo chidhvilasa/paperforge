@@ -12,6 +12,7 @@ from rich.panel import Panel
 from rich.text import Text
 
 from paperforge.core.project import PaperForgeProject
+from paperforge.history import record_snapshot
 from paperforge.models.claim import Claim
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -123,6 +124,16 @@ def run(project_root: Path) -> None:
     claim_id = _next_claim_id(claims_dir)
 
     # STEP 5 — Write claim file
+    claim_path = claims_dir / f"{claim_id}.yaml"
+    if claim_path.exists():
+        current_data = yaml.safe_load(claim_path.read_text(encoding="utf-8"))
+        record_snapshot(
+            paperforge_dir=project_root / ".paperforge",
+            claim_id=claim_id,
+            claim_data=current_data,
+            recorded_by="paperforge add-claim",
+        )
+
     claim = Claim(
         id=claim_id,
         text=text,
@@ -133,7 +144,6 @@ def run(project_root: Path) -> None:
         sections=sections,
         status=status,  # type: ignore[arg-type]
     )
-    claim_path = claims_dir / f"{claim_id}.yaml"
     claim_path.write_text(
         yaml.dump(claim.to_yaml(), default_flow_style=False, allow_unicode=True),
         encoding="utf-8",

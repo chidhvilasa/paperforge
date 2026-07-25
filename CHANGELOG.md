@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+### Added
+- Claim versioning: history snapshots recorded in
+  .paperforge/history/ whenever PaperForge writes a claim
+- paperforge log — shows full change history of a claim,
+  newest first, with per-entry diffs between snapshots
+- paperforge diff --against previous: shows field-level
+  diff between current claim and most recent history snapshot
+- paperforge diff --against experiment: compares percentage
+  values in claim text to linked experiment metrics
+- paperforge.history module: record_snapshot, load_history,
+  diff_snapshots utilities
+- History integrated into capture, add-claim, and doctor --fix
+- docs/commands/log.md and docs/commands/diff.md
+- 26 new tests across test_history.py, test_log.py, test_diff.py
+  (179 total)
+
 ## [0.2.0] — 2026-07-25
 
 ### Added

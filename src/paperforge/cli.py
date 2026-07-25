@@ -193,6 +193,37 @@ def find(
     run(query=query, project_root=path.resolve(), field=field)
 
 
+@app.command(name="log")
+def log_cmd(
+    claim_id: str = typer.Argument(..., help="Claim ID, e.g. claim_01"),
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    limit: int = typer.Option(
+        10, "--limit", "-n", help="Maximum number of history entries to show."
+    ),
+) -> None:
+    """Show change history for a claim."""
+    from paperforge.commands.log_cmd import run
+
+    run(claim_id=claim_id, project_root=path.resolve(), limit=limit)
+
+
+@app.command()
+def diff(
+    claim_id: str = typer.Argument(..., help="Claim ID, e.g. claim_01"),
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    against: str = typer.Option(
+        "previous",
+        "--against",
+        "-a",
+        help="Diff target: previous, HEAD~1, experiment",
+    ),
+) -> None:
+    """Show what changed in a claim vs its history or linked experiment."""
+    from paperforge.commands.diff import run
+
+    run(claim_id=claim_id, project_root=path.resolve(), against=against)
+
+
 @app.command()
 def venues() -> None:
     """List available venue targets for --target option."""

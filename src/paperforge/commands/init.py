@@ -60,7 +60,7 @@ ran_at: null
 
 PAPERFORGE_GITIGNORE = """\
 # PaperForge data — commit everything
-# All claims, experiments, and paper.yaml should be version controlled
+# All claims, experiments, paper.yaml, and history should be version controlled
 !*
 """
 

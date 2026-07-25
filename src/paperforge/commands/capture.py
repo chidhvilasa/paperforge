@@ -12,6 +12,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
+from paperforge.history import record_snapshot
 from paperforge.models.claim import Claim
 from paperforge.models.experiment import Experiment
 
@@ -77,6 +78,16 @@ def run(results: Path, experiment_id: str, project_root: Path) -> None:
     claims_dir = project_root / ".paperforge" / "claims"
     claim_id = _next_claim_id(claims_dir)
     claim_path = claims_dir / f"{claim_id}.yaml"
+
+    if claim_path.exists():
+        current_data = yaml.safe_load(claim_path.read_text(encoding="utf-8"))
+        record_snapshot(
+            paperforge_dir=project_root / ".paperforge",
+            claim_id=claim_id,
+            claim_data=current_data,
+            recorded_by="paperforge capture",
+        )
+
     claim = Claim(id=claim_id, text="", experiment=experiment_id)
     claim_path.write_text(
         yaml.dump(claim.to_yaml(), default_flow_style=False, allow_unicode=True),
