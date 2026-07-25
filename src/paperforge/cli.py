@@ -144,6 +144,16 @@ def add_figure(
     run(project_root=path.resolve())
 
 
+@app.command(name="add-table")
+def add_table(
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+) -> None:
+    """Interactively create a new table YAML file."""
+    from paperforge.commands.add_table import run
+
+    run(project_root=path.resolve())
+
+
 @app.command(name="install-hooks")
 def install_hooks(
     path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),

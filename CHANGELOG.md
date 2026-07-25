@@ -2,6 +2,26 @@
 
 ## [Unreleased]
 
+### Added
+- Table as a first-class object: paperforge.models.table.Table
+  with id, caption, columns, rows, notes, first_mentioned_in,
+  source_experiment fields
+- .paperforge/tables/ directory created by paperforge init
+- PaperForgeProject loads all tbl_*.yaml files from tables/
+- ResearchGraph.add_table(), get_table(), table_count
+- paperforge add-table — interactive table YAML creation
+  with row-by-row data entry
+- LaTeX table generation: correct IEEE format with caption
+  ABOVE tabular, \label{tab:id}, \arraystretch{1.3},
+  no vertical lines, \hline at top/header/bottom only
+- 5 new doctor checks (37-41): TABLE_NO_CAPTION (ERROR),
+  TABLE_NO_COLUMNS, TABLE_REFERENCED_BUT_NO_YAML,
+  TABLE_YAML_BUT_NO_CLAIM, TABLE_ROW_COLUMN_MISMATCH
+- paperforge impact shows table metadata when YAML exists
+- docs/commands/add-table.md
+- 30 new tests across test_table_model.py, test_add_table.py,
+  test_doctor_tables.py, test_build_tables.py (269 total)
+
 ## [0.5.0] — 2026-07-25
 
 ### Added

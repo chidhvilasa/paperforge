@@ -548,6 +548,89 @@ def collect_issues(project: PaperForgeProject) -> list[Issue]:
             )
         )
 
+    # --- Checks 37-41: Table completeness ---
+
+    claimed_table_ids = {
+        tbl_id
+        for claim in project.claims
+        for tbl_id in claim.tables
+    }
+    existing_table_ids = {tbl.id for tbl in project.tables}
+
+    # Check 37 — TABLE_NO_CAPTION (ERROR)
+    for table in project.tables:
+        if not table.caption:
+            issues.append(
+                Issue(
+                    code="TABLE_NO_CAPTION",
+                    severity="ERROR",
+                    message=(
+                        f"{table.id} has no caption. "
+                        f"IEEE requires all tables to have captions "
+                        f"(placed ABOVE the table)."
+                    ),
+                )
+            )
+
+    # Check 38 — TABLE_NO_COLUMNS (WARNING)
+    for table in project.tables:
+        if not table.columns:
+            issues.append(
+                Issue(
+                    code="TABLE_NO_COLUMNS",
+                    severity="WARNING",
+                    message=f"{table.id} has no column headers defined.",
+                )
+            )
+
+    # Check 39 — TABLE_REFERENCED_BUT_NO_YAML (WARNING)
+    for tbl_id in claimed_table_ids:
+        if tbl_id not in existing_table_ids:
+            issues.append(
+                Issue(
+                    code="TABLE_REFERENCED_BUT_NO_YAML",
+                    severity="WARNING",
+                    message=(
+                        f"Claim references '{tbl_id}' but no "
+                        f".paperforge/tables/{tbl_id}.yaml exists. "
+                        f"Run `paperforge add-table` to create it."
+                    ),
+                )
+            )
+
+    # Check 40 — TABLE_YAML_BUT_NO_CLAIM (WARNING)
+    for table_id in existing_table_ids:
+        if table_id not in claimed_table_ids:
+            issues.append(
+                Issue(
+                    code="TABLE_YAML_BUT_NO_CLAIM",
+                    severity="WARNING",
+                    message=(
+                        f"{table_id} has a YAML file but is not "
+                        f"referenced in any claim."
+                    ),
+                )
+            )
+
+    # Check 41 — TABLE_ROW_COLUMN_MISMATCH (WARNING)
+    for table in project.tables:
+        if table.columns and table.rows:
+            expected_cols = len(table.columns)
+            for row in table.rows:
+                if len(row) != expected_cols:
+                    issues.append(
+                        Issue(
+                            code="TABLE_ROW_COLUMN_MISMATCH",
+                            severity="WARNING",
+                            message=(
+                                f"{table.id} has {expected_cols} columns but "
+                                f"row {table.rows.index(row)+1} has {len(row)} "
+                                f"cells."
+                            ),
+                        )
+                    )
+                    break
+
     return issues
 
 

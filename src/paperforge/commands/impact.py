@@ -84,8 +84,16 @@ def run(experiment_id: str, project_root: Path) -> None:
     console.print()
 
     console.print("Affected Tables:")
-    for table in sorted(affected.tables):
-        console.print(f"  {table}")
+    for tbl_id in sorted(affected.tables):
+        tbl = graph.get_table(tbl_id)
+        if tbl:
+            caption = tbl.caption or ""
+            truncated = caption[:60]
+            suffix = "..." if len(caption) > 60 else ""
+            display_caption = f"{truncated}{suffix}"
+            console.print(f"  {tbl_id}    \"{display_caption}\"")
+        else:
+            console.print(f"  {tbl_id}    (no table YAML)")
     console.print()
 
     console.print("─" * 55)

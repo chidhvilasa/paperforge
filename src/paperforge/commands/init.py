@@ -75,6 +75,7 @@ SUCCESS_PANEL_BODY = """\
 ├── experiments/
 │   └── exp_01.yaml     ← your first experiment (fill in metrics)
 ├── figures/            ← drop figure YAMLs here (paperforge add-figure)
+├── tables/             ← add table data (paperforge add-table)
 └── .gitignore
 
 Next steps:
@@ -94,9 +95,11 @@ def run(path: Path) -> None:
     claims_dir = pf_dir / "claims"
     experiments_dir = pf_dir / "experiments"
     figures_dir = pf_dir / "figures"
+    tables_dir = pf_dir / "tables"
     claims_dir.mkdir(parents=True)
     experiments_dir.mkdir(parents=True)
     figures_dir.mkdir(parents=True)
+    tables_dir.mkdir(parents=True)
 
     (pf_dir / "paper.yaml").write_text(PAPER_YAML, encoding="utf-8")
     (claims_dir / "claim_01.yaml").write_text(CLAIM_01_YAML, encoding="utf-8")

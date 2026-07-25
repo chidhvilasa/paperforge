@@ -14,6 +14,7 @@ from rich.text import Text
 from paperforge.commands.doctor import collect_issues
 from paperforge.core.project import Affiliation, PaperForgeProject
 from paperforge.models.claim import Claim
+from paperforge.models.table import Table
 from paperforge.venues.base import VenuePlugin
 from paperforge.venues.registry import get_plugin
 
@@ -59,6 +60,51 @@ def _generate_abstract(claims: list[Claim]) -> str:
     return " ".join(c.text for c in sorted(abstract_claims, key=lambda c: c.id))
 
 
+def _generate_table_latex(table: Table) -> str:
+    if not table.columns:
+        # No columns defined -- emit a comment placeholder
+        return (
+            f"% Table: {table.id} — {table.caption[:60]}\n"
+            f"% (no column data — fill in .paperforge/tables/{table.id}.yaml)\n"
+            f"% \\label{{tab:{table.id}}}"
+        )
+
+    col_spec = " ".join(["c"] * len(table.columns))
+    header_row = " & ".join(table.columns) + " \\\\"
+
+    data_rows = []
+    for row in table.rows:
+        # Pad or truncate to match column count
+        padded = row[: len(table.columns)]
+        while len(padded) < len(table.columns):
+            padded.append("")
+        data_rows.append(" & ".join(padded) + " \\\\")
+
+    notes_block = ""
+    if table.notes:
+        notes_block = f"\n\\footnotesize{{\\textit{{Note: {table.notes}}}}}"
+
+    lines = [
+        "\\begin{table}[!t]",
+        "\\renewcommand{\\arraystretch}{1.3}",
+        f"\\caption{{{table.caption}}}",
+        f"\\label{{tab:{table.id}}}",
+        "\\centering",
+        f"\\begin{{tabular}}{{{col_spec}}}",
+        "\\hline",
+        header_row,
+        "\\hline",
+    ]
+    lines.extend(data_rows)
+    lines.append("\\hline")
+    lines.append("\\end{tabular}")
+    if notes_block:
+        lines.append(notes_block)
+    lines.append("\\end{table}")
+
+    return "\n".join(lines)
+
+
 def _generate_sections(sections: list[str], project: PaperForgeProject) -> str:
     blocks: list[str] = []
     for section in sections:
@@ -98,6 +144,24 @@ def _generate_sections(sections: list[str], project: PaperForgeProject) -> str:
                         fig_envs.append(f"% Reference: {fig_id} (no figure YAML — run paperforge add-figure)")
                 if fig_envs:
                     text_par += "\n\n" + "\n\n".join(fig_envs)
+
+                tbl_envs = []
+                for tbl_id in c.tables:
+                    tbl_obj = next((t for t in project.tables if t.id == tbl_id), None)
+                    if tbl_obj:
+                        if tbl_obj.caption:
+                            tbl_envs.append(_generate_table_latex(tbl_obj))
+                        else:
+                            caption_text = (tbl_obj.caption or "")[:60]
+                            tbl_envs.append(
+                                f"% Table: {tbl_id} — {caption_text} (no caption set)\n"
+                                f"% \\label{{tab:{tbl_id}}}"
+                            )
+                    else:
+                        tbl_envs.append(f"% Table reference: {tbl_id} (no YAML — run paperforge add-table)")
+                if tbl_envs:
+                    text_par += "\n\n" + "\n\n".join(tbl_envs)
+
                 claim_blocks.append(text_par)
             block += "\n\n".join(claim_blocks)
         else:
@@ -136,7 +200,7 @@ def _generate_journal_sections(sections: list[str], project: PaperForgeProject) 
             )
             if section_claims:
                 first, *rest = section_claims
-                
+
                 first_text = _ieee_parstart(_claim_paragraph(first, project))
                 first_envs = []
                 for fig_id in first.figures:
@@ -163,9 +227,26 @@ def _generate_journal_sections(sections: list[str], project: PaperForgeProject) 
                         first_envs.append(f"% Reference: {fig_id} (no figure YAML — run paperforge add-figure)")
                 if first_envs:
                     first_text += "\n\n" + "\n\n".join(first_envs)
-                    
+
+                first_tbl_envs = []
+                for tbl_id in first.tables:
+                    tbl_obj = next((t for t in project.tables if t.id == tbl_id), None)
+                    if tbl_obj:
+                        if tbl_obj.caption:
+                            first_tbl_envs.append(_generate_table_latex(tbl_obj))
+                        else:
+                            caption_text = (tbl_obj.caption or "")[:60]
+                            first_tbl_envs.append(
+                                f"% Table: {tbl_id} — {caption_text} (no caption set)\n"
+                                f"% \\label{{tab:{tbl_id}}}"
+                            )
+                    else:
+                        first_tbl_envs.append(f"% Table reference: {tbl_id} (no YAML — run paperforge add-table)")
+                if first_tbl_envs:
+                    first_text += "\n\n" + "\n\n".join(first_tbl_envs)
+
                 paragraphs = [first_text]
-                
+
                 for c in rest:
                     text_par = _claim_paragraph(c, project)
                     fig_envs = []
@@ -193,6 +274,24 @@ def _generate_journal_sections(sections: list[str], project: PaperForgeProject) 
                             fig_envs.append(f"% Reference: {fig_id} (no figure YAML — run paperforge add-figure)")
                     if fig_envs:
                         text_par += "\n\n" + "\n\n".join(fig_envs)
+
+                    tbl_envs = []
+                    for tbl_id in c.tables:
+                        tbl_obj = next((t for t in project.tables if t.id == tbl_id), None)
+                        if tbl_obj:
+                            if tbl_obj.caption:
+                                tbl_envs.append(_generate_table_latex(tbl_obj))
+                            else:
+                                caption_text = (tbl_obj.caption or "")[:60]
+                                tbl_envs.append(
+                                    f"% Table: {tbl_id} — {caption_text} (no caption set)\n"
+                                    f"% \\label{{tab:{tbl_id}}}"
+                                )
+                        else:
+                            tbl_envs.append(f"% Table reference: {tbl_id} (no YAML — run paperforge add-table)")
+                    if tbl_envs:
+                        text_par += "\n\n" + "\n\n".join(tbl_envs)
+
                     paragraphs.append(text_par)
                 body = "\n\n".join(paragraphs)
             else:
@@ -230,6 +329,24 @@ def _generate_journal_sections(sections: list[str], project: PaperForgeProject) 
                         fig_envs.append(f"% Reference: {fig_id} (no figure YAML — run paperforge add-figure)")
                 if fig_envs:
                     text_par += "\n\n" + "\n\n".join(fig_envs)
+
+                tbl_envs = []
+                for tbl_id in c.tables:
+                    tbl_obj = next((t for t in project.tables if t.id == tbl_id), None)
+                    if tbl_obj:
+                        if tbl_obj.caption:
+                            tbl_envs.append(_generate_table_latex(tbl_obj))
+                        else:
+                            caption_text = (tbl_obj.caption or "")[:60]
+                            tbl_envs.append(
+                                f"% Table: {tbl_id} — {caption_text} (no caption set)\n"
+                                f"% \\label{{tab:{tbl_id}}}"
+                            )
+                    else:
+                        tbl_envs.append(f"% Table reference: {tbl_id} (no YAML — run paperforge add-table)")
+                if tbl_envs:
+                    text_par += "\n\n" + "\n\n".join(tbl_envs)
+
                 claim_blocks.append(text_par)
             block += "\n\n".join(claim_blocks)
         else:

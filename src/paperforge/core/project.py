@@ -12,6 +12,7 @@ from paperforge.graph.dependency import ResearchGraph
 from paperforge.models.claim import Claim
 from paperforge.models.experiment import Experiment
 from paperforge.models.figure import Figure
+from paperforge.models.table import Table
 
 
 @dataclass
@@ -75,12 +76,14 @@ class PaperForgeProject:
         claims: list[Claim],
         experiments: list[Experiment],
         figures: list[Figure],
+        tables: list[Table] | None = None,
     ) -> None:
         self.root = root
         self.config = config
         self.claims = claims
         self.experiments = experiments
         self.figures = figures
+        self.tables = tables if tables is not None else []
 
     @classmethod
     def load(cls, path: Path) -> PaperForgeProject:
@@ -118,7 +121,14 @@ class PaperForgeProject:
                 with open(fig_file) as f:
                     figures.append(Figure.from_yaml(yaml.safe_load(f)))
 
-        return cls(root=path, config=config, claims=claims, experiments=experiments, figures=figures)
+        tables: list[Table] = []
+        tables_dir = pf_dir / "tables"
+        if tables_dir.exists():
+            for tbl_file in sorted(tables_dir.glob("tbl_*.yaml")):
+                with open(tbl_file) as f:
+                    tables.append(Table.from_yaml(yaml.safe_load(f)))
+
+        return cls(root=path, config=config, claims=claims, experiments=experiments, figures=figures, tables=tables)
 
     def get_graph(self) -> ResearchGraph:
         graph = ResearchGraph()
@@ -128,11 +138,17 @@ class PaperForgeProject:
             graph.add_experiment(experiment)
         for figure in self.figures:
             graph.add_figure(figure)
+        for table in self.tables:
+            graph.add_table(table)
         return graph
 
     @property
     def figure_count(self) -> int:
         return len(self.figures)
+
+    @property
+    def table_count(self) -> int:
+        return len(self.tables)
 
     @property
     def paperforge_dir(self) -> Path:

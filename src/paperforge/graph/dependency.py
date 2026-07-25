@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from paperforge.models.claim import Claim
 from paperforge.models.experiment import Experiment
 from paperforge.models.figure import Figure
+from paperforge.models.table import Table
 
 
 @dataclass
@@ -23,6 +24,7 @@ class ResearchGraph:
         self._claims: dict[str, Claim] = {}
         self._experiments: dict[str, Experiment] = {}
         self._figures: dict[str, Figure] = {}
+        self._tables: dict[str, Table] = {}
 
     def add_claim(self, claim: Claim) -> None:
         self._claims[claim.id] = claim
@@ -35,6 +37,12 @@ class ResearchGraph:
 
     def get_figure(self, figure_id: str) -> Figure | None:
         return self._figures.get(figure_id)
+
+    def add_table(self, table: Table) -> None:
+        self._tables[table.id] = table
+
+    def get_table(self, table_id: str) -> Table | None:
+        return self._tables.get(table_id)
 
     def get_affected(self, experiment_id: str) -> AffectedNodes:
         affected = AffectedNodes()
@@ -64,3 +72,7 @@ class ResearchGraph:
     @property
     def figure_count(self) -> int:
         return len(self._figures)
+
+    @property
+    def table_count(self) -> int:
+        return len(self._tables)
