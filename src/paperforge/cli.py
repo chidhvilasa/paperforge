@@ -146,6 +146,54 @@ def install_hooks(
 
 
 @app.command()
+def export(
+    fmt: str = typer.Argument("json", help="Format: bibtex, json, markdown"),
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Output file path. Defaults to .paperforge/output/<format-file>.",
+    ),
+) -> None:
+    """Export research graph as BibTeX, JSON, or Markdown."""
+    from paperforge.commands.export import run
+
+    run(
+        project_root=path.resolve(),
+        fmt=fmt,
+        output=output.resolve() if output else None,
+    )
+
+
+@app.command()
+def status(
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+) -> None:
+    """Show project health dashboard."""
+    from paperforge.commands.status import run
+
+    run(project_root=path.resolve())
+
+
+@app.command()
+def find(
+    query: str = typer.Argument(..., help="Search term."),
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    field: str = typer.Option(
+        "all",
+        "--field",
+        "-f",
+        help="Search scope: claims, experiments, all",
+    ),
+) -> None:
+    """Search claims and experiments by keyword."""
+    from paperforge.commands.find import run
+
+    run(query=query, project_root=path.resolve(), field=field)
+
+
+@app.command()
 def venues() -> None:
     """List available venue targets for --target option."""
     from rich.console import Console
