@@ -8,7 +8,9 @@ from paperforge.venues.ieee import IEEEPlugin
 from paperforge.venues.neurips import NeurIPSPlugin
 
 _REGISTRY: dict[str, VenuePlugin] = {
-    "ieee": IEEEPlugin(),
+    "ieee": IEEEPlugin(mode="conference", name="ieee"),
+    "ieee-journal": IEEEPlugin(mode="journal", name="ieee-journal"),
+    "ieee-trans": IEEEPlugin(mode="journal", name="ieee-trans"),
     "acm": ACMPlugin(),
     "neurips": NeurIPSPlugin(),
 }

@@ -55,8 +55,14 @@ def _make_valid_project(tmp_path: Path, sections: list[str] | None = None) -> No
     _set_paper_title_and_authors(tmp_path)
 
 
-def test_registry_lists_three_plugins() -> None:
-    assert list_plugins() == ["acm", "ieee", "neurips"]
+def test_registry_lists_five_plugins() -> None:
+    assert list_plugins() == [
+        "acm",
+        "ieee",
+        "ieee-journal",
+        "ieee-trans",
+        "neurips",
+    ]
 
 
 def test_get_plugin_ieee() -> None:

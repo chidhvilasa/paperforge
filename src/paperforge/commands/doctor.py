@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -26,8 +27,17 @@ console = Console()
 @dataclass
 class Issue:
     code: str
-    severity: Literal["ERROR", "WARNING"]
+    severity: Literal["ERROR", "WARNING", "INFO"]
     message: str
+
+
+COMMON_ACRONYMS = {
+    "IEEE", "AI", "ML", "DL", "IoT", "API", "URL", "DOI",
+    "CPU", "GPU", "RAM", "SSD", "PDF", "TCP", "UDP", "IP",
+    "HTTP", "TLS", "SSL", "YAML", "JSON", "CLI",
+}
+
+ACRONYM_PATTERN = re.compile(r"\b([A-Z]{2,5})\b")
 
 
 def collect_issues(project: PaperForgeProject) -> list[Issue]:
@@ -297,6 +307,164 @@ def collect_issues(project: PaperForgeProject) -> list[Issue]:
                     )
                 )
 
+    # --- Checks 21-30: IEEE submission hardening ---
+
+    # Check 21 — UNDEFINED_ACRONYM (WARNING)
+    all_claim_text = [claim.text for claim in project.claims if claim.text]
+    found_acronyms: set[str] = set()
+    for text in all_claim_text:
+        found_acronyms.update(ACRONYM_PATTERN.findall(text))
+    for acronym in sorted(found_acronyms - COMMON_ACRONYMS):
+        defined = any(
+            f"({acronym})" in text or f"{acronym})" in text for text in all_claim_text
+        )
+        if not defined:
+            issues.append(
+                Issue(
+                    code="UNDEFINED_ACRONYM",
+                    severity="WARNING",
+                    message=(
+                        f"Acronym '{acronym}' used in claims but never "
+                        f"defined. Define on first use: 'Term ({acronym})'"
+                    ),
+                )
+            )
+
+    # Checks 22-23 — ABSTRACT_TOO_LONG / ABSTRACT_TOO_SHORT (WARNING)
+    abstract_claims = [c for c in project.claims if "abstract" in c.sections]
+    abstract_word_count = len(
+        " ".join(c.text for c in abstract_claims if c.text).split()
+    )
+    if abstract_word_count > 250:
+        issues.append(
+            Issue(
+                code="ABSTRACT_TOO_LONG",
+                severity="WARNING",
+                message=(
+                    f"Abstract content is {abstract_word_count} words. "
+                    f"IEEE recommends under 250 words."
+                ),
+            )
+        )
+    if 0 < abstract_word_count < 50:
+        issues.append(
+            Issue(
+                code="ABSTRACT_TOO_SHORT",
+                severity="WARNING",
+                message=(
+                    f"Abstract is only {abstract_word_count} words. "
+                    f"IEEE abstracts are typically 150-250 words."
+                ),
+            )
+        )
+
+    # Check 24 — NO_INTRODUCTION_CLAIMS (WARNING)
+    if not any("introduction" in c.sections for c in project.claims):
+        issues.append(
+            Issue(
+                code="NO_INTRODUCTION_CLAIMS",
+                severity="WARNING",
+                message="No claims are placed in the introduction section.",
+            )
+        )
+
+    # Check 25 — NO_CONCLUSION_CLAIMS (WARNING)
+    if not any("conclusion" in c.sections for c in project.claims):
+        issues.append(
+            Issue(
+                code="NO_CONCLUSION_CLAIMS",
+                severity="WARNING",
+                message="No claims are placed in the conclusion section.",
+            )
+        )
+
+    # Check 26 — EXPERIMENT_NO_RESULTS_FILE (WARNING)
+    for experiment in project.experiments:
+        if experiment.results_file is None:
+            issues.append(
+                Issue(
+                    code="EXPERIMENT_NO_RESULTS_FILE",
+                    severity="WARNING",
+                    message=(
+                        f"{experiment.id} has no results_file path recorded. "
+                        f"Link to your metrics JSON for full traceability."
+                    ),
+                )
+            )
+
+    # Check 27 — CLAIM_EXCESSIVE_LENGTH (WARNING)
+    for claim in project.claims:
+        word_count = len(claim.text.split())
+        if word_count > 80:
+            issues.append(
+                Issue(
+                    code="CLAIM_EXCESSIVE_LENGTH",
+                    severity="WARNING",
+                    message=(
+                        f"{claim.id} text is {word_count} words. "
+                        f"Claims should be single sentences. "
+                        f"Consider splitting into multiple claims."
+                    ),
+                )
+            )
+
+    # Check 28 — EXPERIMENT_OVERCROWDED (WARNING)
+    exp_claim_counts: dict[str, int] = {}
+    for claim in project.claims:
+        if claim.experiment:
+            exp_claim_counts[claim.experiment] = (
+                exp_claim_counts.get(claim.experiment, 0) + 1
+            )
+    for experiment_id, claim_count in exp_claim_counts.items():
+        if claim_count >= 5:
+            issues.append(
+                Issue(
+                    code="EXPERIMENT_OVERCROWDED",
+                    severity="WARNING",
+                    message=(
+                        f"{experiment_id} supports {claim_count} claims. "
+                        f"Consider running additional experiments to "
+                        f"diversify your evidence base."
+                    ),
+                )
+            )
+
+    # Check 29 — RESULTS_SECTION_EMPTY (ERROR)
+    if project.claims and not any("results" in c.sections for c in project.claims):
+        issues.append(
+            Issue(
+                code="RESULTS_SECTION_EMPTY",
+                severity="ERROR",
+                message=(
+                    "No claims are placed in the results section. "
+                    "A paper without results claims cannot be built."
+                ),
+            )
+        )
+
+    # Check 30 — EVIDENCE_COVERAGE (INFO)
+    total_claims = len(project.claims)
+    claims_with_experiment = sum(1 for c in project.claims if c.experiment)
+    coverage_pct = (
+        int(claims_with_experiment / total_claims * 100) if total_claims > 0 else 0
+    )
+    coverage_note = (
+        "Full coverage."
+        if coverage_pct == 100
+        else "Link remaining claims to experiments."
+    )
+    issues.append(
+        Issue(
+            code="EVIDENCE_COVERAGE",
+            severity="INFO",
+            message=(
+                f"Evidence coverage: {claims_with_experiment}/"
+                f"{total_claims} claims linked to experiments "
+                f"({coverage_pct}%). {coverage_note}"
+            ),
+        )
+    )
+
     return issues
 
 
@@ -342,7 +510,7 @@ def run(project_root: Path, fix: bool = False, target: str | None = None) -> Non
         venue_issues = [
             Issue(
                 code=vi.code,
-                severity=cast(Literal["ERROR", "WARNING"], vi.severity),
+                severity=cast(Literal["ERROR", "WARNING", "INFO"], vi.severity),
                 message=vi.message,
             )
             for vi in plugin.validate(project)
@@ -350,20 +518,26 @@ def run(project_root: Path, fix: bool = False, target: str | None = None) -> Non
 
     console.print(Text("PaperForge Doctor", style="bold"))
 
-    if not issues and not venue_issues:
+    errors = [issue for issue in issues if issue.severity == "ERROR"]
+    warnings = [issue for issue in issues if issue.severity == "WARNING"]
+    info_issues = [issue for issue in issues if issue.severity == "INFO"]
+    venue_errors = [issue for issue in venue_issues if issue.severity == "ERROR"]
+    venue_warnings = [issue for issue in venue_issues if issue.severity == "WARNING"]
+
+    if not errors and not warnings and not venue_issues:
         console.print(
             Panel("All checks passed. No issues found.", border_style="green")
         )
+        if info_issues:
+            console.print()
+            console.print(Text("INFO", style="dim"))
+            for issue in info_issues:
+                console.print(Text(f"  [{issue.code}] {issue.message}", style="dim"))
         return
 
     if fix:
         unverified_claims = [c for c in project.claims if c.status == "unverified"]
         _apply_fix(project_root, unverified_claims)
-
-    errors = [issue for issue in issues if issue.severity == "ERROR"]
-    warnings = [issue for issue in issues if issue.severity == "WARNING"]
-    venue_errors = [issue for issue in venue_issues if issue.severity == "ERROR"]
-    venue_warnings = [issue for issue in venue_issues if issue.severity == "WARNING"]
 
     if errors:
         console.print()
@@ -382,6 +556,12 @@ def run(project_root: Path, fix: bool = False, target: str | None = None) -> Non
         console.print(Text(f"VENUE ({plugin.display_name})", style="bold cyan"))
         for issue in venue_issues:
             console.print(Text(f"  [{issue.code}] {issue.message}"))
+
+    if info_issues:
+        console.print()
+        console.print(Text("INFO", style="dim"))
+        for issue in info_issues:
+            console.print(Text(f"  [{issue.code}] {issue.message}", style="dim"))
 
     total_errors = errors + venue_errors
     total_warnings = warnings + venue_warnings

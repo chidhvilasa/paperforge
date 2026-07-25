@@ -69,18 +69,107 @@ def _generate_sections(sections: list[str], claims: list[Claim]) -> str:
     return "\n\n".join(blocks)
 
 
-def _generate_latex(project: PaperForgeProject, plugin: VenuePlugin) -> str:
+def _ieee_parstart(text: str) -> str:
+    if not text:
+        return "\\IEEEPARstart{T}{his} section has no claims yet."
+    first_word, _, rest_text = text.partition(" ")
+    if len(first_word) < 2:
+        drop_cap, rest_of_word = first_word, ""
+    else:
+        drop_cap, rest_of_word = first_word[0], first_word[1:]
+    result = f"\\IEEEPARstart{{{drop_cap}}}{{{rest_of_word}}}"
+    return f"{result} {rest_text}" if rest_text else result
+
+
+def _generate_journal_sections(sections: list[str], claims: list[Claim]) -> str:
+    blocks: list[str] = []
+    for section in sections:
+        if section == "abstract":
+            continue
+
+        title = SECTION_TITLES.get(section, section.replace("_", " ").title())
+        section_claims = sorted(
+            (c for c in claims if section in c.sections), key=lambda c: c.id
+        )
+
+        if section == "introduction":
+            heading = (
+                f"\\IEEEraisesectionheading{{\\section{{{title}}}"
+                f"\\label{{sec:introduction}}}}"
+            )
+            if section_claims:
+                first, *rest = section_claims
+                paragraphs = [_ieee_parstart(_claim_paragraph(first))]
+                paragraphs.extend(_claim_paragraph(c) for c in rest)
+                body = "\n\n".join(paragraphs)
+            else:
+                body = "% TODO: No claims linked to this section yet."
+            blocks.append(f"{heading}\n{body}")
+            continue
+
+        block = f"\\section{{{title}}}\n"
+        if section_claims:
+            block += "\n\n".join(_claim_paragraph(c) for c in section_claims)
+        else:
+            block += "% TODO: No claims linked to this section yet."
+        blocks.append(block)
+    return "\n\n".join(blocks)
+
+
+def _generate_journal_author_block(authors: list[str]) -> str:
+    if not authors:
+        return "Author(s)~TBD,~\\IEEEmembership{Member,~IEEE}"
+    return "\\\\\n".join(
+        f"{author},~\\IEEEmembership{{Member,~IEEE}}" for author in authors
+    )
+
+
+def _generate_acknowledgment() -> str:
+    return (
+        "\\ifCLASSOPTIONcompsoc\n"
+        "\\section*{Acknowledgments}\n"
+        "\\else\n"
+        "\\section*{Acknowledgment}\n"
+        "\\fi\n"
+        "The authors would like to thank...\n"
+        "% TODO: Add acknowledgment text."
+    )
+
+
+def _generate_bibliography(project: PaperForgeProject) -> tuple[str, str | None]:
+    """Return (bibliography LaTeX block, stub .bib file content or None)."""
+    unique_citations = sorted(
+        {citation for claim in project.claims for citation in claim.citations}
+    )
+    if unique_citations:
+        entries = [
+            f"@article{{{key},\n"
+            f"  author = {{Author, A.}},\n"
+            f"  title  = {{TODO: Title for {key}}},\n"
+            f"  journal = {{TODO}},\n"
+            f"  year   = {{2024}},\n"
+            f"  note   = {{Auto-generated stub. Replace with real entry.}},\n"
+            f"}}"
+            for key in unique_citations
+        ]
+        bib_stub = "\n\n".join(entries) + "\n"
+        return "\\bibliographystyle{IEEEtran}\n\\bibliography{references}", bib_stub
+
+    stub_tex = (
+        "\\begin{thebibliography}{99}\n"
+        "\\bibitem{ref1} Placeholder reference. Replace with a real citation.\n"
+        "\\end{thebibliography}"
+    )
+    return stub_tex, None
+
+
+def _generate_latex_conference(project: PaperForgeProject, plugin: VenuePlugin) -> str:
+    """Generate LaTeX for a conference-style IEEE/ACM/NeurIPS paper."""
     title = project.config.title or "Untitled Paper"
     author_block = plugin.generate_author_block(project.config.authors)
     abstract_content = _generate_abstract(project.claims)
     sections = _generate_sections(project.config.sections, project.claims)
-
-    has_citations = any(claim.citations for claim in project.claims)
-    bibliography = (
-        "\\bibliographystyle{IEEEtran}\n\\bibliography{references}"
-        if has_citations
-        else ""
-    )
+    bibliography, _ = _generate_bibliography(project)
 
     return f"""{plugin.latex_documentclass}
 
@@ -99,6 +188,53 @@ def _generate_latex(project: PaperForgeProject, plugin: VenuePlugin) -> str:
 \\end{{abstract}}
 
 {sections}
+
+{bibliography}
+
+\\end{{document}}
+"""
+
+
+def _generate_latex_journal(project: PaperForgeProject, plugin: VenuePlugin) -> str:
+    """Generate LaTeX for an IEEE Transactions / journal paper."""
+    title = project.config.title or "Untitled Paper"
+    author_block = _generate_journal_author_block(project.config.authors)
+    abstract_content = _generate_abstract(project.claims)
+    keywords_source = project.config.keywords or project.config.sections[:6]
+    keywords = ", ".join(keywords_source)
+    sections = _generate_journal_sections(project.config.sections, project.claims)
+    bibliography, _ = _generate_bibliography(project)
+    acknowledgment = _generate_acknowledgment()
+
+    return f"""{plugin.latex_documentclass}
+
+{plugin.generate_preamble()}
+
+\\hyphenation{{op-tical net-works semi-conduc-tor}}
+
+\\begin{{document}}
+
+\\title{{{title}}}
+
+\\author{{{author_block}}}
+
+\\IEEEtitleabstractindextext{{%
+\\begin{{abstract}}
+{abstract_content}
+\\end{{abstract}}
+
+\\begin{{IEEEkeywords}}
+{keywords}
+\\end{{IEEEkeywords}}}}
+
+\\maketitle
+
+\\IEEEdisplaynontitleabstractindextext
+\\IEEEpeerreviewmaketitle
+
+{sections}
+
+{acknowledgment}
 
 {bibliography}
 
@@ -139,9 +275,16 @@ def run(project_root: Path, target: str = "ieee") -> None:
     output_dir = project_root / ".paperforge" / "output"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    latex = _generate_latex(project, plugin)
+    if project.config.paper_type == "journal":
+        latex = _generate_latex_journal(project, plugin)
+    else:
+        latex = _generate_latex_conference(project, plugin)
     tex_path = output_dir / "paper.tex"
     tex_path.write_text(latex, encoding="utf-8")
+
+    _, bib_stub = _generate_bibliography(project)
+    if bib_stub is not None:
+        (output_dir / "references.bib").write_text(bib_stub, encoding="utf-8")
 
     pdflatex = shutil.which("pdflatex")
     pdf_ok = False

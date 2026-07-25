@@ -142,6 +142,7 @@ def test_doctor_fix_records_snapshot(tmp_path: Path) -> None:
         id="claim_01",
         text="A claim awaiting verification.",
         experiment="exp_01",
+        sections=["results"],
         status="unverified",
     )
     claim_path.write_text(

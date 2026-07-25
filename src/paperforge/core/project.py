@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
@@ -22,6 +22,8 @@ class ProjectConfig:
     sections: list[str]
     build_output_dir: str
     latex_template: str
+    paper_type: str = "conference"
+    keywords: list[str] = field(default_factory=list)
 
     @classmethod
     def from_yaml(cls, data: dict) -> ProjectConfig:
@@ -35,6 +37,8 @@ class ProjectConfig:
             sections=data.get("sections", []),
             build_output_dir=build.get("output_dir", ".paperforge/output"),
             latex_template=build.get("latex_template", "ieee"),
+            paper_type=data.get("paper_type", "conference"),
+            keywords=data.get("keywords", []),
         )
 
 

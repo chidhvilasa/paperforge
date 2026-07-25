@@ -19,6 +19,8 @@ title: ""
 authors: []
 venue: ""
 status: "draft"
+paper_type: "conference"
+keywords: []
 
 sections:
   - abstract

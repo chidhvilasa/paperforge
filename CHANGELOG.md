@@ -2,6 +2,28 @@
 
 ## [Unreleased]
 
+### Added
+- IEEE Transactions / journal LaTeX template (--target ieee-journal,
+  ieee-trans): correct documentclass, abstract placement in
+  \IEEEtitleabstractindextext, \IEEEraisesectionheading,
+  \IEEEPARstart, \IEEEkeywords, acknowledgment block,
+  references.bib generation
+- paper_type field in paper.yaml ("conference" or "journal")
+- keywords field in paper.yaml
+- venue targets: ieee-journal and ieee-trans aliases added
+- 10 new doctor checks (21-30): UNDEFINED_ACRONYM,
+  ABSTRACT_TOO_LONG, ABSTRACT_TOO_SHORT, NO_INTRODUCTION_CLAIMS,
+  NO_CONCLUSION_CLAIMS, EXPERIMENT_NO_RESULTS_FILE,
+  CLAIM_EXCESSIVE_LENGTH, EXPERIMENT_OVERCROWDED,
+  RESULTS_SECTION_EMPTY (ERROR), EVIDENCE_COVERAGE (INFO)
+- INFO severity level in doctor (never blocks, informational only)
+- 22 new tests across test_build_ieee.py, test_doctor_hardened.py
+  (201 total)
+
+### Fixed
+- conference build: bibliography now generates references.bib stub
+  alongside paper.tex when citations exist
+
 ## [0.3.0] — 2026-07-25
 
 ### Added

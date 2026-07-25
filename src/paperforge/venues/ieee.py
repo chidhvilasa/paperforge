@@ -15,6 +15,14 @@ class IEEEPlugin(VenuePlugin):
     required_sections: ClassVar[list[str]] = ["abstract", "introduction", "conclusion"]
     max_pages = 8
 
+    def __init__(self, mode: str = "conference", name: str = "ieee") -> None:
+        self.mode = mode
+        self.name = name
+        if mode == "journal":
+            self.display_name = "IEEE Transactions / Journal"
+            self.latex_documentclass = "\\documentclass[10pt,journal,compsoc]{IEEEtran}"
+            self.max_pages = 14
+
     def validate(self, project: PaperForgeProject) -> list[VenueIssue]:
         issues = []
         section_names = {c for claim in project.claims for c in claim.sections}
@@ -45,9 +53,19 @@ class IEEEPlugin(VenuePlugin):
         return issues
 
     def generate_preamble(self) -> str:
+        if self.mode == "journal":
+            cite_block = (
+                "\\ifCLASSOPTIONcompsoc\n"
+                "  \\usepackage[nocompress]{cite}\n"
+                "\\else\n"
+                "  \\usepackage{cite}\n"
+                "\\fi"
+            )
+        else:
+            cite_block = "\\usepackage{cite}"
         return (
             "\\IEEEoverridecommandlockouts\n"
-            "\\usepackage{cite}\n"
+            f"{cite_block}\n"
             "\\usepackage{amsmath,amssymb,amsfonts}\n"
             "\\usepackage{graphicx}\n"
             "\\usepackage{textcomp}\n"

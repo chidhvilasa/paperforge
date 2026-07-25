@@ -48,6 +48,7 @@ def test_doctor_passes_clean_project(tmp_path: Path) -> None:
             id="claim_01",
             text="A verified claim.",
             experiment="exp_01",
+            sections=["results"],
             status="verified",
         ),
     )
@@ -111,6 +112,7 @@ def test_doctor_warning_unverified_does_not_block(tmp_path: Path) -> None:
     claim = Claim.from_yaml(yaml.safe_load(claim_path.read_text(encoding="utf-8")))
     claim.text = "A claim awaiting verification."
     claim.experiment = "exp_01"
+    claim.sections = ["results"]
     _write_claim(claim_path, claim)
     _set_paper_title_and_authors(tmp_path)
 
@@ -126,6 +128,7 @@ def test_doctor_warning_empty_metrics(tmp_path: Path) -> None:
             id="claim_01",
             text="A verified claim.",
             experiment="exp_01",
+            sections=["results"],
             status="verified",
         ),
     )
@@ -150,6 +153,7 @@ def test_doctor_warning_missing_title(tmp_path: Path) -> None:
             id="claim_01",
             text="A verified claim.",
             experiment="exp_01",
+            sections=["results"],
             status="verified",
         ),
     )
