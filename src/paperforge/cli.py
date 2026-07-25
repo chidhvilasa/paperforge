@@ -134,6 +134,16 @@ def add_claim(
     run(project_root=path.resolve())
 
 
+@app.command(name="add-figure")
+def add_figure(
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+) -> None:
+    """Interactively create a new figure YAML file."""
+    from paperforge.commands.add_figure import run
+
+    run(project_root=path.resolve())
+
+
 @app.command(name="install-hooks")
 def install_hooks(
     path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),

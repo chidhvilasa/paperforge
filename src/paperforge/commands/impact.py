@@ -69,8 +69,18 @@ def run(experiment_id: str, project_root: Path) -> None:
     console.print()
 
     console.print("Affected Figures:")
-    for figure in sorted(affected.figures):
-        console.print(f"  {figure}")
+    for fig_id in sorted(affected.figures):
+        fig = graph.get_figure(fig_id)
+        if fig:
+            caption = fig.caption or ""
+            truncated = caption[:60]
+            suffix = "..." if len(caption) > 60 else ""
+            display_caption = f"{truncated}{suffix}"
+            path_str = fig.path if fig.path else "(no path)"
+            console.print(f"  {fig_id}    \"{display_caption}\"")
+            console.print(f"               Path: {path_str}")
+        else:
+            console.print(f"  {fig_id}    (no figure YAML — run `paperforge add-figure`)")
     console.print()
 
     console.print("Affected Tables:")

@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+### Added
+- Figure as a first-class object: paperforge.models.figure.Figure
+  with id, caption, path, format, width_inches, resolution_dpi,
+  first_mentioned_in, notes fields
+- .paperforge/figures/ directory created by paperforge init
+- PaperForgeProject loads all fig_*.yaml files from figures/
+- ResearchGraph.add_figure(), get_figure(), figure_count
+- paperforge add-figure — interactive figure YAML creation
+- 5 new doctor checks (31-35): FIGURE_NO_CAPTION,
+  FIGURE_NO_FIRST_MENTION, FIGURE_REFERENCED_BUT_NO_YAML,
+  FIGURE_YAML_BUT_NO_CLAIM, LOW_RESOLUTION_FIGURE
+- paperforge impact shows figure metadata when YAML exists,
+  degrades gracefully when only bare string reference exists
+- docs/commands/add-figure.md
+- 24 new tests across test_figure_model.py, test_add_figure.py,
+  test_doctor_figures.py (225 total)
+
 ## [0.4.0] — 2026-07-25
 
 ### Added

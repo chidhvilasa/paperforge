@@ -1,0 +1,11 @@
+PaperForge v0.4.0
+
+IEEE Transactions journal template release.
+30 deterministic doctor checks (ERROR / WARNING / INFO).
+ieee-journal and ieee-trans venue targets.
+
+Commands (14): init, capture, add-claim, doctor, impact,
+build, review, venues, install-hooks, export, status, find,
+log, diff
+Tests: 201 passing
+Python: 3.11+

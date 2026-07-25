@@ -465,6 +465,75 @@ def collect_issues(project: PaperForgeProject) -> list[Issue]:
         )
     )
 
+    # --- Checks 31-35: Figure completeness ---
+
+    claimed_figure_ids = {
+        fig_id
+        for claim in project.claims
+        for fig_id in claim.figures
+    }
+    existing_figure_ids = {fig.id for fig in project.figures}
+
+    # Check 31 — FIGURE_NO_CAPTION (WARNING)
+    for figure in project.figures:
+        if not figure.caption:
+            issues.append(
+                Issue(
+                    code="FIGURE_NO_CAPTION",
+                    severity="WARNING",
+                    message=f"{figure.id} has no caption. IEEE requires all figures to have captions.",
+                )
+            )
+
+    # Check 32 — FIGURE_NO_FIRST_MENTION (WARNING)
+    for figure in project.figures:
+        if not figure.first_mentioned_in:
+            issues.append(
+                Issue(
+                    code="FIGURE_NO_FIRST_MENTION",
+                    severity="WARNING",
+                    message=f"{figure.id} has no first_mentioned_in section. IEEE requires figures to appear after first text reference.",
+                )
+            )
+
+    # Check 33 — FIGURE_REFERENCED_BUT_NO_YAML (WARNING)
+    for fig_id in claimed_figure_ids:
+        if fig_id not in existing_figure_ids:
+            issues.append(
+                Issue(
+                    code="FIGURE_REFERENCED_BUT_NO_YAML",
+                    severity="WARNING",
+                    message=f"Claim references '{fig_id}' but no .paperforge/figures/{fig_id}.yaml exists. Run `paperforge add-figure` to create it.",
+                )
+            )
+
+    # Check 34 — FIGURE_YAML_BUT_NO_CLAIM (WARNING)
+    for figure_id in existing_figure_ids:
+        if figure_id not in claimed_figure_ids:
+            issues.append(
+                Issue(
+                    code="FIGURE_YAML_BUT_NO_CLAIM",
+                    severity="WARNING",
+                    message=f"{figure_id} has a YAML file but is not referenced in any claim.",
+                )
+            )
+
+    # Check 35 — LOW_RESOLUTION_FIGURE (WARNING)
+    for figure in project.figures:
+        if (
+            figure.resolution_dpi is not None
+            and figure.format is not None
+            and figure.format.lower() in ("png", "jpg", "jpeg", "tiff", "tif")
+            and figure.resolution_dpi < 300
+        ):
+            issues.append(
+                Issue(
+                    code="LOW_RESOLUTION_FIGURE",
+                    severity="WARNING",
+                    message=f"{figure.id} has {figure.resolution_dpi} DPI. IEEE requires minimum 300 DPI for raster images, 600 DPI for line art.",
+                )
+            )
+
     return issues
 
 

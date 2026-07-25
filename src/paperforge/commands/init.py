@@ -62,7 +62,7 @@ ran_at: null
 
 PAPERFORGE_GITIGNORE = """\
 # PaperForge data — commit everything
-# All claims, experiments, paper.yaml, and history should be version controlled
+# All claims, experiments, figures, paper.yaml, and history should be version controlled
 !*
 """
 
@@ -73,6 +73,7 @@ SUCCESS_PANEL_BODY = """\
 │   └── claim_01.yaml   ← your first claim (fill in text)
 ├── experiments/
 │   └── exp_01.yaml     ← your first experiment (fill in metrics)
+├── figures/            ← drop figure YAMLs here (paperforge add-figure)
 └── .gitignore
 
 Next steps:
@@ -91,8 +92,10 @@ def run(path: Path) -> None:
 
     claims_dir = pf_dir / "claims"
     experiments_dir = pf_dir / "experiments"
+    figures_dir = pf_dir / "figures"
     claims_dir.mkdir(parents=True)
     experiments_dir.mkdir(parents=True)
+    figures_dir.mkdir(parents=True)
 
     (pf_dir / "paper.yaml").write_text(PAPER_YAML, encoding="utf-8")
     (claims_dir / "claim_01.yaml").write_text(CLAIM_01_YAML, encoding="utf-8")

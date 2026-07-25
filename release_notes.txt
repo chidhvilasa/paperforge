@@ -1,0 +1,42 @@
+## PaperForge v0.4.0
+
+### What's New
+
+**IEEE Transactions / Journal template.**
+
+```bash
+# Set in .paperforge/paper.yaml:
+paper_type: journal
+keywords: [security, IoT, post-quantum]
+
+# Build:
+paperforge build --target ieee-journal
+```
+
+Generates correct IEEEtran journal structure:
+- `\documentclass[10pt,journal,compsoc]{IEEEtran}`
+- Abstract in `\IEEEtitleabstractindextext`
+- `\IEEEraisesectionheading` for Introduction
+- `\IEEEPARstart` drop letter
+- `\IEEEkeywords` block
+- Acknowledgments with compsoc conditional
+- `references.bib` stub generated automatically
+
+**30 doctor checks with 3 severity levels.**
+
+New checks include: UNDEFINED_ACRONYM, ABSTRACT_TOO_LONG/SHORT,
+NO_INTRODUCTION/CONCLUSION_CLAIMS, RESULTS_SECTION_EMPTY (ERROR),
+EVIDENCE_COVERAGE (INFO).
+
+```
+paperforge doctor                       # 30 core checks
+paperforge doctor --target ieee-journal # + venue checks
+```
+
+### Install
+
+```bash
+pip install paperforge==0.4.0
+```
+
+See [CHANGELOG.md](CHANGELOG.md) for full history.

@@ -10,6 +10,7 @@ import yaml
 from paperforge.graph.dependency import ResearchGraph
 from paperforge.models.claim import Claim
 from paperforge.models.experiment import Experiment
+from paperforge.models.figure import Figure
 
 
 @dataclass
@@ -51,11 +52,13 @@ class PaperForgeProject:
         config: ProjectConfig,
         claims: list[Claim],
         experiments: list[Experiment],
+        figures: list[Figure],
     ) -> None:
         self.root = root
         self.config = config
         self.claims = claims
         self.experiments = experiments
+        self.figures = figures
 
     @classmethod
     def load(cls, path: Path) -> PaperForgeProject:
@@ -86,7 +89,14 @@ class PaperForgeProject:
                 with open(exp_file) as f:
                     experiments.append(Experiment.from_yaml(yaml.safe_load(f)))
 
-        return cls(root=path, config=config, claims=claims, experiments=experiments)
+        figures: list[Figure] = []
+        figures_dir = pf_dir / "figures"
+        if figures_dir.exists():
+            for fig_file in sorted(figures_dir.glob("fig_*.yaml")):
+                with open(fig_file) as f:
+                    figures.append(Figure.from_yaml(yaml.safe_load(f)))
+
+        return cls(root=path, config=config, claims=claims, experiments=experiments, figures=figures)
 
     def get_graph(self) -> ResearchGraph:
         graph = ResearchGraph()
@@ -94,7 +104,13 @@ class PaperForgeProject:
             graph.add_claim(claim)
         for experiment in self.experiments:
             graph.add_experiment(experiment)
+        for figure in self.figures:
+            graph.add_figure(figure)
         return graph
+
+    @property
+    def figure_count(self) -> int:
+        return len(self.figures)
 
     @property
     def paperforge_dir(self) -> Path:

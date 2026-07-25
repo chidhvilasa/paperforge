@@ -2,5 +2,7 @@
 
 from paperforge.models.claim import Claim, ClaimStatus
 from paperforge.models.experiment import Experiment
+from paperforge.models.figure import Figure
 
-__all__ = ["Claim", "ClaimStatus", "Experiment"]
+__all__ = ["Claim", "ClaimStatus", "Experiment", "Figure"]
+

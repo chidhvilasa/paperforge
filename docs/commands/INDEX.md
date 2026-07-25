@@ -12,6 +12,7 @@ Defaults to the current directory.
 | [init](init.md) | Initialize PaperForge in a project |
 | [capture](capture.md) | Capture experiment results, create draft claim |
 | [add-claim](add-claim.md) | Interactively create a new claim |
+| [add-figure](add-figure.md) | Interactively create a new figure YAML file |
 | [doctor](doctor.md) | Run deterministic consistency checks |
 | [impact](impact.md) | Show dependency graph for an experiment |
 | [build](build.md) | Compile research data to LaTeX paper |
