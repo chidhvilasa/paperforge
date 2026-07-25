@@ -2,16 +2,35 @@
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-07-25
+
 ### Added
-- paperforge export — exports research graph as BibTeX stubs,
-  JSON (full graph schema), or Markdown project summary
-- paperforge status — project health dashboard showing claim
-  counts, section coverage, doctor summary, and submission
-  readiness at a glance
-- paperforge find — case-insensitive full-text search across
-  claim text, experiment descriptions, metrics, and citations
-- 28 new tests across test_export.py, test_status.py,
-  test_find.py (153 total)
+- paperforge add-claim — interactive terminal claim creation
+  with guided prompts for all claim fields
+- paperforge install-hooks — installs git pre-commit hook that
+  runs paperforge doctor and blocks commits on ERRORs
+- 10 new deterministic doctor checks (checks 11-20):
+  METRIC_CLAIM_MISMATCH, DUPLICATE_CLAIM_TEXT,
+  CLAIM_IN_NO_SECTION, EXPERIMENT_NO_DESCRIPTION,
+  EXPERIMENT_NO_HARDWARE, EXPERIMENT_NO_DATASET,
+  EXPERIMENT_NO_SEED, UNCLAIMED_EXPERIMENT,
+  INVALID_FIGURE_ID, INVALID_TABLE_ID
+- paperforge.utils.numbers — number extraction and matching
+  utilities used by METRIC_CLAIM_MISMATCH check
+- 36 new tests across test_add_claim.py, test_install_hooks.py,
+  test_numbers.py, test_doctor_extended.py (125 total)
+- paperforge export — BibTeX stubs, JSON graph schema, Markdown summary
+- paperforge status — project health dashboard with section coverage
+  and submission readiness indicator
+- paperforge find — case-insensitive full-text search across claims
+  and experiments
+- Full command reference: docs/commands/ (12 files + INDEX.md)
+- docs/ROADMAP.md — planned versions v0.3.0 through v0.6.0
+- 28 new tests (153 total)
+
+### Changed
+- README.md updated for all 12 commands with new Quick Start guide
+- pyproject.toml version bumped to 0.2.0
 
 ## [0.1.0] — 2026-07-25
 

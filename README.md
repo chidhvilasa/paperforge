@@ -90,19 +90,28 @@ paperforge init
 # 2. Capture experiment results
 paperforge capture results/exp_01/metrics.json --experiment exp_01
 
-# 3. Edit .paperforge/claims/claim_02.yaml
-#    Fill in text, sections, figures, tables, citations
+# 3. Add a claim interactively
+paperforge add-claim
 
-# 4. Check consistency
+# 4. Check project health
+paperforge status
+
+# 5. Search your research
+paperforge find "accuracy"
+
+# 6. Check consistency
 paperforge doctor
 
-# 5. See impact of any experiment change
+# 7. See impact of any experiment change
 paperforge impact exp_01
 
-# 6. Build IEEE LaTeX paper
+# 8. Build IEEE LaTeX paper
 paperforge build
 
-# 7. Optional: AI-assisted review (requires llm)
+# 9. Export for reference managers
+paperforge export bibtex
+
+# 10. Optional: AI-assisted review (requires llm)
 paperforge review
 ```
 
@@ -112,11 +121,16 @@ paperforge review
 |---------|-------------|
 | `paperforge init` | Initialize PaperForge in a project directory |
 | `paperforge capture` | Capture experiment results, create draft claim |
-| `paperforge doctor` | Run deterministic consistency checks |
+| `paperforge add-claim` | Interactively create a new claim |
+| `paperforge doctor` | Run 20 deterministic consistency checks |
 | `paperforge impact` | Show everything affected by an experiment change |
-| `paperforge build` | Compile research data into IEEE LaTeX paper |
+| `paperforge build` | Compile research data into LaTeX paper |
 | `paperforge review` | AI-assisted review via llm (advisory only) |
 | `paperforge venues` | List available venue targets |
+| `paperforge install-hooks` | Install git pre-commit hook |
+| `paperforge export` | Export as BibTeX, JSON, or Markdown |
+| `paperforge status` | Project health dashboard |
+| `paperforge find` | Search claims and experiments by keyword |
 
 ## Venue Targets
 
@@ -125,6 +139,12 @@ paperforge build --target ieee      # IEEE (default)
 paperforge build --target acm       # ACM sigconf
 paperforge build --target neurips   # NeurIPS
 ```
+
+## Documentation
+
+Full command reference: [docs/commands/](docs/commands/INDEX.md)
+
+Roadmap: [docs/ROADMAP.md](docs/ROADMAP.md)
 
 ## Data Storage
 
