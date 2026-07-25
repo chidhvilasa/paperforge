@@ -106,7 +106,8 @@ paperforge doctor
 paperforge impact exp_01
 
 # 8. Build IEEE LaTeX paper
-paperforge build
+paperforge build                         # conference (default)
+paperforge build --target ieee-journal   # transactions/journal
 
 # 9. Export for reference managers
 paperforge export bibtex
@@ -143,10 +144,29 @@ paperforge review
 ## Venue Targets
 
 ```bash
-paperforge build --target ieee      # IEEE (default)
-paperforge build --target acm       # ACM sigconf
-paperforge build --target neurips   # NeurIPS
+paperforge build --target ieee          # IEEE Conference (default)
+paperforge build --target ieee-journal  # IEEE Transactions / Journal
+paperforge build --target ieee-trans    # IEEE Transactions (alias)
+paperforge build --target acm           # ACM sigconf
+paperforge build --target neurips       # NeurIPS
 ```
+For journal papers, set `paper_type: "journal"` in `.paperforge/paper.yaml`.
+
+## Doctor Checks
+
+`paperforge doctor` runs 30 deterministic checks with three severity levels:
+
+- **ERROR** — blocks `paperforge build` and git commits (if hook installed)
+- **WARNING** — reported but does not block
+- **INFO** — informational only, never blocks anything
+
+Key checks include: claim-experiment traceability, metric
+consistency, acronym definition, abstract length, section
+coverage, and IEEE reproducibility requirements (seed, dataset,
+hardware).
+
+Run `paperforge doctor --target ieee-journal` to add
+venue-specific checks on top of the core 30.
 
 ## Documentation
 

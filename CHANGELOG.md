@@ -2,27 +2,37 @@
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-07-25
+
 ### Added
 - IEEE Transactions / journal LaTeX template (--target ieee-journal,
-  ieee-trans): correct documentclass, abstract placement in
-  \IEEEtitleabstractindextext, \IEEEraisesectionheading,
-  \IEEEPARstart, \IEEEkeywords, acknowledgment block,
-  references.bib generation
+  ieee-trans): correct documentclass [10pt,journal,compsoc],
+  abstract placement in \IEEEtitleabstractindextext,
+  \IEEEraisesectionheading, \IEEEPARstart, \IEEEkeywords,
+  acknowledgment block with compsoc conditional,
+  references.bib stub generation
 - paper_type field in paper.yaml ("conference" or "journal")
 - keywords field in paper.yaml
-- venue targets: ieee-journal and ieee-trans aliases added
-- 10 new doctor checks (21-30): UNDEFINED_ACRONYM,
-  ABSTRACT_TOO_LONG, ABSTRACT_TOO_SHORT, NO_INTRODUCTION_CLAIMS,
-  NO_CONCLUSION_CLAIMS, EXPERIMENT_NO_RESULTS_FILE,
-  CLAIM_EXCESSIVE_LENGTH, EXPERIMENT_OVERCROWDED,
-  RESULTS_SECTION_EMPTY (ERROR), EVIDENCE_COVERAGE (INFO)
-- INFO severity level in doctor (never blocks, informational only)
-- 22 new tests across test_build_ieee.py, test_doctor_hardened.py
-  (201 total)
+- Venue targets: ieee-journal and ieee-trans registered
+- 10 new doctor checks (21-30):
+    21 UNDEFINED_ACRONYM (WARNING)
+    22 ABSTRACT_TOO_LONG (WARNING, >250 words)
+    23 ABSTRACT_TOO_SHORT (WARNING, <50 words)
+    24 NO_INTRODUCTION_CLAIMS (WARNING)
+    25 NO_CONCLUSION_CLAIMS (WARNING)
+    26 EXPERIMENT_NO_RESULTS_FILE (WARNING)
+    27 CLAIM_EXCESSIVE_LENGTH (WARNING, >80 words)
+    28 EXPERIMENT_OVERCROWDED (WARNING, >=5 claims)
+    29 RESULTS_SECTION_EMPTY (ERROR)
+    30 EVIDENCE_COVERAGE (INFO)
+- INFO severity level in doctor (never blocks build or commit)
+- 22 new tests (201 total)
 
 ### Fixed
-- conference build: bibliography now generates references.bib stub
-  alongside paper.tex when citations exist
+- Conference build: bibliography now generates references.bib stub
+  when citations exist
+- Existing test fixtures updated for RESULTS_SECTION_EMPTY check
+  and expanded venue registry (5 targets)
 
 ## [0.3.0] — 2026-07-25
 

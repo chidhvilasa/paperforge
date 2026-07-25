@@ -19,23 +19,23 @@ paperforge build [OPTIONS]
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--path`, `-p` | `.` | Project root directory |
-| `--target`, `-t` | `ieee` | Venue target: `ieee`, `acm`, `neurips` |
+| `--target`, `-t` | `ieee` | Venue target: `ieee`, `ieee-journal`, `ieee-trans`, `acm`, `neurips` |
 | `--help` | — | Show help and exit |
 
 ## Example
 
 ```bash
-# Build for IEEE (default)
+# Conference paper (default)
 paperforge build
 
-# Build for NeurIPS
-paperforge build --target neurips
+# IEEE Transactions journal paper
+paperforge build --target ieee-journal
 
-# Build for ACM
+# ACM conference
 paperforge build --target acm
 
-# Build from a specific project root
-paperforge build --path ~/papers/vanet-paper --target ieee
+# With custom output path
+paperforge build --target ieee-journal --path /path/to/project
 ```
 
 ## Output
@@ -74,7 +74,10 @@ panel under a `VENUE (<display name>)` heading.
 
 - **Runs doctor checks first.** Any ERROR-severity issue blocks the build. Fix issues with `paperforge doctor` before building.
 - WARNINGs do not block the build.
-- `--target` selects the venue plugin: `ieee` (default), `acm`, `neurips`. Each sets the correct LaTeX document class, preamble, and author block.
+- `--target` selects the venue plugin: `ieee` (default), `acm`, `neurips`, etc. Each sets the correct LaTeX document class, preamble, and author block.
+- `paper_type` in `paper.yaml` controls template selection ("conference" default, "journal" for transactions).
+- `keywords` field in `paper.yaml` used in `\IEEEkeywords` block.
+- `references.bib` generated in output directory when citations exist.
 - Attempts `pdflatex` compilation if `pdflatex` is on the system PATH.
 - Output goes to `.paperforge/output/` by default.
 - Use `paperforge venues` to see all available targets.

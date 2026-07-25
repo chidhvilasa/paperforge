@@ -1,6 +1,6 @@
 # paperforge doctor
 
-Run all deterministic consistency checks on a PaperForge research project and report errors and warnings.
+Run all deterministic consistency checks on a PaperForge research project and report errors, warnings, and info.
 
 ## Usage
 
@@ -63,7 +63,7 @@ On a project with issues, each issue is printed with its code and severity:
 
 ## Notes
 
-### All 20 checks
+### All 30 checks
 
 | # | Code | Severity | Description |
 |---|------|----------|-------------|
@@ -88,12 +88,24 @@ On a project with issues, each issue is printed with its code and severity:
 | 19 | `INVALID_FIGURE_ID` | WARNING | Figure ID does not start with `fig_` |
 | 20 | `INVALID_TABLE_ID` | WARNING | Table ID does not start with `tbl_` |
 
-These 20 checks are always run by `collect_issues()`, independent of `--target`.
+| 21 | `UNDEFINED_ACRONYM` | WARNING | An acronym is used without definition |
+| 22 | `ABSTRACT_TOO_LONG` | WARNING | Abstract exceeds 250 words |
+| 23 | `ABSTRACT_TOO_SHORT` | WARNING | Abstract is under 50 words |
+| 24 | `NO_INTRODUCTION_CLAIMS` | WARNING | No claims are mapped to the introduction section |
+| 25 | `NO_CONCLUSION_CLAIMS` | WARNING | No claims are mapped to the conclusion section |
+| 26 | `EXPERIMENT_NO_RESULTS_FILE` | WARNING | Experiment has no results file attached |
+| 27 | `CLAIM_EXCESSIVE_LENGTH` | WARNING | Claim text exceeds 80 words |
+| 28 | `EXPERIMENT_OVERCROWDED` | WARNING | Experiment is linked to 5 or more claims |
+| 29 | `RESULTS_SECTION_EMPTY` | ERROR | Results section contains no claims |
+| 30 | `EVIDENCE_COVERAGE` | INFO | Informational score of claim evidence coverage |
+
+These 30 checks are always run by `collect_issues()`, independent of `--target`.
 
 - **ERRORs block `paperforge build`** and `paperforge review`.
 - **WARNINGs do not block** any command.
+- **INFOs are informational only** and never block any command.
 - `--fix` only auto-resolves `UNVERIFIED_CLAIM` by setting those claims to `stale`.
-- `--target` runs the venue plugin's own `validate()` on top of these 20 checks and
+- `--target` runs the venue plugin's own `validate()` on top of these 30 checks and
   prints the results under a separate `VENUE (<display name>)` heading. Venue checks
   include things like `UNCITED_CLAIM` (IEEE), `MISSING_SEED`/`MISSING_DATASET` (NeurIPS),
   and `MISSING_RELATED_WORK` (ACM) — see `paperforge venues` and each plugin's source

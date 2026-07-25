@@ -59,6 +59,22 @@ paperforge build --target ieee
 paperforge export bibtex
 ```
 
+## What's New in v0.4.0
+
+IEEE Transactions journal support.
+
+Set `paper_type: "journal"` in `.paperforge/paper.yaml` and
+build with `--target ieee-journal` for a fully structured
+IEEEtran journal paper with abstract in title block,
+drop letter, raised section heading, and keywords.
+
+`paperforge doctor` now runs 30 checks across three levels:
+ERROR (blocks build), WARNING (advisory), and INFO
+(EVIDENCE_COVERAGE score, always shown).
+
+Run `paperforge doctor --target ieee-journal` for 30 core checks
+plus IEEE journal-specific venue rules in one pass.
+
 ## What's New in v0.3.0
 
 Claim versioning is now built into PaperForge.
