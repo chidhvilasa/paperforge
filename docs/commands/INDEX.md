@@ -63,6 +63,23 @@ paperforge build --target ieee
 paperforge export bibtex
 ```
 
+## What's New in v0.8.0
+
+Two major improvements for production use:
+
+**Build output in paper/.** Everything you submit goes to
+`paper/` at your project root -- visible, committable, and
+exactly where you expect it.
+
+**AI-assisted claim improvement.** `paperforge improve`
+uses your linked experiment data to suggest better claim
+phrasing, with explicit y/n confirmation before any change.
+
+**Critical fixes** from production testing on a real
+IEEE Access paper: Windows encoding, wrong compsoc mode for
+non-CS journals, nested JSON capture, multi-seed experiments,
+acronym plural detection.
+
 ## What's New in v0.7.0
 
 Traceability matrix export.

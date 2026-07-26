@@ -90,8 +90,10 @@ panel under a `VENUE (<display name>)` heading.
 - Table row/column data is embedded directly in the LaTeX output.
 - `affiliations` in `paper.yaml` improve author block for journals.
 - `hyperref` and `microtype` now included in all IEEE preambles.
+- `wide: true` on Figure or Table YAMLs generates `figure*` / `table*` environments for two-column spanning in IEEE layout.
 - Output goes to `paper/` at project root by default (configured in `paper.yaml`).
-- Automatically opens/selects the generated PDF in OS file explorer unless `--no-reveal` is passed.
+- Creates `paper/.gitignore` automatically to exclude auxiliary build files.
+- Automatically opens/selects the generated PDF in OS file explorer via `_reveal_output` behavior unless `--no-reveal` is passed.
 - Use `paperforge venues` to see all available targets.
 
 **Related commands:** `paperforge doctor`, `paperforge venues`, `paperforge review`, `paperforge add-table`

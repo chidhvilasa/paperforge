@@ -42,25 +42,30 @@ IEEE LaTeX table generation (caption above tabular, no vertical lines).
 TABLE_NO_COLUMNS, TABLE_REFERENCED_BUT_NO_YAML,
 TABLE_YAML_BUT_NO_CLAIM, TABLE_ROW_COLUMN_MISMATCH.
 
-### v0.7.0 (this release)
+### v0.7.0
 Traceability matrix export.
 paperforge export traceability: MD + CSV + LaTeX longtable
 generated simultaneously. Full claim-evidence linkage visible
 in one artifact.
 
+### v0.8.0 (this release)
+Critical fixes: Windows encoding, compsoc mode, capture
+nested JSON, acronym plurals, multi-seed support.
+New venue targets: ieee-access, ieee-compsoc, ieee-tdsc.
+Wide table/figure support (table*/figure*).
+acknowledgment field in paper.yaml.
+Build output now in paper/ at project root.
+paperforge improve: AI-assisted claim editing with y/n confirm.
+
 ## Planned
 
-### v0.8.0 — Citation Verification (was v0.7.0)
-- Integrate with Semantic Scholar API (opt-in, offline default)
-- Verify citation keys in claims exist in the literature
-- Flag citations that appear hallucinated
-- paperforge cite-check command
-
-### v0.9.0 — Claim Versioning Dashboard
-- paperforge status --history: show how claim statuses have
-  changed over time
-- Trend view: verified claims increasing over project lifetime
-- Export verification timeline
+### v0.9.0 — Citation Data Model
+- .paperforge/citations/*.yaml for real BibTeX metadata
+- paperforge add-citation interactive command
+- doctor validates: duplicate keys, uncited references,
+  cited-but-undefined keys
+- build generates references.bib from real data (no more stubs)
+- paperforge cite-check: verify citations against Semantic Scholar
 
 ## Non-Goals
 

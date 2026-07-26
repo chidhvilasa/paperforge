@@ -77,14 +77,10 @@ See [CONSTITUTION.md](CONSTITUTION.md).
 ## Install
 
 ```bash
-# PyPI name conflict: pip install paperforge gets a different tool.
-# Until this is resolved, install directly from source:
-git clone https://github.com/chidhvilasa/paperforge
-cd paperforge
-pip install -e .
-# or with uv:
-uv pip install -e .
+pip install paperforge-research
 ```
+
+> **Note:** The package is named `paperforge-research` on PyPI due to a name conflict with an inactive project.
 
 Requires Python 3.11+.
 
@@ -146,6 +142,9 @@ paperforge diff claim_01 --against experiment
 # 9c. Add a data table
 paperforge add-table
 
+# 10. AI-assisted claim improvement
+paperforge improve claim_01
+
 # 11. Optional: AI-assisted review (requires llm)
 paperforge review
 ```
@@ -159,10 +158,11 @@ paperforge review
 | `paperforge add-claim` | Interactively create a new claim |
 | `paperforge add-figure` | Interactively create a new figure YAML |
 | `paperforge add-table` | Interactively create a new table YAML |
-| `paperforge doctor` | Run 41 deterministic consistency checks |
+| `paperforge doctor` | Run 43 deterministic consistency checks |
 | `paperforge impact` | Show everything affected by an experiment change |
 | `paperforge build` | Compile research data into LaTeX paper |
 | `paperforge review` | AI-assisted review via llm (advisory only) |
+| `paperforge improve` | AI-assisted claim improvement via llm (advisory only) |
 | `paperforge venues` | List available venue targets |
 | `paperforge install-hooks` | Install git pre-commit hook |
 | `paperforge export` | Export as BibTeX, JSON, Markdown, or traceability matrix |
@@ -177,6 +177,9 @@ paperforge review
 paperforge build --target ieee          # IEEE Conference (default)
 paperforge build --target ieee-journal  # IEEE Transactions / Journal
 paperforge build --target ieee-trans    # IEEE Transactions (alias)
+paperforge build --target ieee-access   # IEEE Access
+paperforge build --target ieee-compsoc  # IEEE Computer Society Journals
+paperforge build --target ieee-tdsc     # IEEE TDSC
 paperforge build --target acm           # ACM sigconf
 paperforge build --target neurips       # NeurIPS
 ```
@@ -184,7 +187,7 @@ For journal papers, set `paper_type: "journal"` in `.paperforge/paper.yaml`.
 
 ## Doctor Checks
 
-`paperforge doctor` runs 41 deterministic checks with three severity levels:
+`paperforge doctor` runs 43 deterministic checks with three severity levels:
 
 - **ERROR** — blocks `paperforge build` and git commits (if hook installed)
 - **WARNING** — reported but does not block
@@ -196,7 +199,7 @@ coverage, and IEEE reproducibility requirements (seed, dataset,
 hardware).
 
 Run `paperforge doctor --target ieee-journal` to add
-venue-specific checks on top of the core 41.
+venue-specific checks on top of the core 43.
 
 ## Build Quality
 
@@ -211,6 +214,15 @@ Install TeX Live for full compilation support:
 
 Figure environments with `\label{}` and `\ref{}` are generated
 automatically when figures have YAML metadata.
+
+Build outputs go to `paper/` at your project root:
+- `paper.tex` (compiled LaTeX paper)
+- `paper.pdf` (compiled PDF)
+- `references.bib` (stub or preserved references)
+
+LaTeX auxiliary files (`*.aux`, `*.log`, etc.) are gitignored automatically.
+
+After a successful PDF compilation, PaperForge opens the `paper/` folder automatically. Use `--no-reveal` to suppress this.
 
 ## Data Objects
 
@@ -232,12 +244,28 @@ Use `paperforge log` and `paperforge diff` to inspect.
 
 All three are committed to git as part of your research record.
 
+## AI-Assisted Improvement
+
+`paperforge improve` suggests edits to claim text using
+your linked experiment data as ground truth:
+
+```bash
+paperforge improve claim_01              # single claim
+paperforge improve --all                 # all unverified claims
+paperforge improve --model gpt-4o --all  # specify model
+```
+
+Suggestions are shown with a y/n/s prompt.
+Nothing is applied without explicit confirmation.
+A history snapshot is recorded before any change.
+Requires `llm` on PATH: `uv add llm && llm keys set openai`
+
 ## Traceability Matrix
 
 `paperforge export traceability` generates three files at once:
 
 ```
-.paperforge/output/
+paper/ (or .paperforge/output/)
 ├── traceability.md ← human-readable, renders on GitHub
 ├── traceability.csv ← opens in Excel
 └── traceability.tex ← \input{} in paper appendix
