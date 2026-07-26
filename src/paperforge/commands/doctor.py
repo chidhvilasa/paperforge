@@ -40,6 +40,20 @@ COMMON_ACRONYMS = {
 ACRONYM_PATTERN = re.compile(r"\b([A-Z]{2,5})\b")
 
 
+def _is_acronym_defined(acronym: str, all_texts: list[str]) -> bool:
+    """
+    Returns True if the acronym (or its plural form) is defined
+    in any claim text via the pattern 'Expansion (ACRONYM)'
+    or 'Expansion (ACRONYMs)'.
+    """
+    singular = acronym
+    plural = acronym + "s"
+    for text in all_texts:
+        if f"({singular})" in text or f"({plural})" in text:
+            return True
+    return False
+
+
 def collect_issues(project: PaperForgeProject) -> list[Issue]:
     issues: list[Issue] = []
 
@@ -253,14 +267,15 @@ def collect_issues(project: PaperForgeProject) -> list[Issue]:
 
     # Check 17 — EXPERIMENT_NO_SEED (WARNING)
     for experiment in project.experiments:
-        if experiment.seed is None:
+        if experiment.seed is None and experiment.seeds is None:
             issues.append(
                 Issue(
                     code="EXPERIMENT_NO_SEED",
                     severity="WARNING",
                     message=(
-                        f"{experiment.id} has no random seed recorded "
-                        f"— required for reproducibility"
+                        f"{experiment.id} has no seed(s) recorded. "
+                        f"Set either 'seed: 42' (single) or "
+                        f"'seeds: [0,1,2,3,4]' (multi-seed experiment)."
                     ),
                 )
             )
@@ -313,12 +328,13 @@ def collect_issues(project: PaperForgeProject) -> list[Issue]:
     all_claim_text = [claim.text for claim in project.claims if claim.text]
     found_acronyms: set[str] = set()
     for text in all_claim_text:
-        found_acronyms.update(ACRONYM_PATTERN.findall(text))
+        for match in ACRONYM_PATTERN.findall(text):
+            base_acronym = (
+                match[:-1] if match.endswith("S") and len(match) > 2 else match
+            )
+            found_acronyms.add(base_acronym)
     for acronym in sorted(found_acronyms - COMMON_ACRONYMS):
-        defined = any(
-            f"({acronym})" in text or f"{acronym})" in text for text in all_claim_text
-        )
-        if not defined:
+        if not _is_acronym_defined(acronym, all_claim_text):
             issues.append(
                 Issue(
                     code="UNDEFINED_ACRONYM",
@@ -630,6 +646,35 @@ def collect_issues(project: PaperForgeProject) -> list[Issue]:
                         )
                     )
                     break
+
+    # Check 42 — MISSING_ACKNOWLEDGMENT (WARNING)
+    if not project.config.acknowledgment:
+        issues.append(
+            Issue(
+                code="MISSING_ACKNOWLEDGMENT",
+                severity="WARNING",
+                message=(
+                    "paper.yaml acknowledgment field is empty. "
+                    "IEEE submissions typically require an acknowledgment "
+                    "section crediting funding sources."
+                ),
+            )
+        )
+
+    # Check 43 — WIDE_TABLE_RECOMMENDED (WARNING)
+    for table in project.tables:
+        if len(table.columns) >= 6 and not table.wide:
+            issues.append(
+                Issue(
+                    code="WIDE_TABLE_RECOMMENDED",
+                    severity="WARNING",
+                    message=(
+                        f"{table.id} has {len(table.columns)} columns. "
+                        f"Consider setting wide: true for two-column "
+                        f"IEEE layout to prevent overflow."
+                    ),
+                )
+            )
 
     return issues
 

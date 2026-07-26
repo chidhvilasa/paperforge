@@ -64,6 +64,7 @@ def test_table_to_yaml_keys() -> None:
         "notes",
         "first_mentioned_in",
         "source_experiment",
+        "wide",
     }
 
 

@@ -18,6 +18,7 @@ def test_add_table_creates_yaml(tmp_path: Path) -> None:
         "done",          # Row end
         "results",       # Section
         "",              # Notes
+        "",              # Wide?
     ]
     with patch("typer.prompt", side_effect=prompts):
         add_table.run(tmp_path)
@@ -34,6 +35,7 @@ def test_add_table_parses_columns(tmp_path: Path) -> None:
         "Method,Accuracy,F1",
         "done",
         "results",
+        "",
         "",
     ]
     with patch("typer.prompt", side_effect=prompts):
@@ -54,6 +56,7 @@ def test_add_table_parses_rows(tmp_path: Path) -> None:
         "done",
         "results",
         "",
+        "",
     ]
     with patch("typer.prompt", side_effect=prompts):
         add_table.run(tmp_path)
@@ -72,6 +75,7 @@ def test_add_table_empty_columns_gives_empty_list(tmp_path: Path) -> None:
         "done",
         "results",
         "",
+        "",
     ]
     with patch("typer.prompt", side_effect=prompts):
         add_table.run(tmp_path)
@@ -88,7 +92,7 @@ def test_add_table_increments_id(tmp_path: Path) -> None:
     (tables_dir / "tbl_01.yaml").write_text(yaml.dump({"id": "tbl_01"}), encoding="utf-8")
     (tables_dir / "tbl_02.yaml").write_text(yaml.dump({"id": "tbl_02"}), encoding="utf-8")
 
-    prompts = ["Caption", "", "", "done", "", ""]
+    prompts = ["Caption", "", "", "done", "", "", ""]
     with patch("typer.prompt", side_effect=prompts):
         add_table.run(tmp_path)
 
@@ -98,7 +102,7 @@ def test_add_table_increments_id(tmp_path: Path) -> None:
 
 def test_add_table_first_table_is_tbl_01(tmp_path: Path) -> None:
     init.run(tmp_path)
-    prompts = ["Caption", "", "", "done", "", ""]
+    prompts = ["Caption", "", "", "done", "", "", ""]
     with patch("typer.prompt", side_effect=prompts):
         add_table.run(tmp_path)
 
@@ -108,7 +112,7 @@ def test_add_table_first_table_is_tbl_01(tmp_path: Path) -> None:
 
 def test_add_table_empty_source_experiment_gives_none(tmp_path: Path) -> None:
     init.run(tmp_path)
-    prompts = ["Caption", "", "", "done", "", ""]
+    prompts = ["Caption", "", "", "done", "", "", ""]
     with patch("typer.prompt", side_effect=prompts):
         add_table.run(tmp_path)
 

@@ -15,6 +15,7 @@ class Experiment:
     hardware: str | None = None
     dataset: str | None = None
     seed: int | None = None
+    seeds: list[int] | None = None
     ran_at: date | None = None
 
     @classmethod
@@ -22,6 +23,20 @@ class Experiment:
         ran_at = None
         if data.get("ran_at"):
             ran_at = date.fromisoformat(str(data["ran_at"]))
+
+        seeds_data = data.get("seeds")
+        seeds: list[int] | None
+        if isinstance(seeds_data, list):
+            seeds = [int(s) for s in seeds_data]
+        elif isinstance(seeds_data, str) and "-" in seeds_data:
+            parts = seeds_data.split("-")
+            try:
+                seeds = list(range(int(parts[0]), int(parts[1]) + 1))
+            except (ValueError, IndexError):
+                seeds = None
+        else:
+            seeds = None
+
         return cls(
             id=data["id"],
             description=data.get("description", ""),
@@ -30,6 +45,7 @@ class Experiment:
             hardware=data.get("hardware"),
             dataset=data.get("dataset"),
             seed=data.get("seed"),
+            seeds=seeds,
             ran_at=ran_at,
         )
 
@@ -42,5 +58,6 @@ class Experiment:
             "hardware": self.hardware,
             "dataset": self.dataset,
             "seed": self.seed,
+            "seeds": self.seeds,
             "ran_at": self.ran_at.isoformat() if self.ran_at else None,
         }

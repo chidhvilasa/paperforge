@@ -819,7 +819,7 @@ wheels = [
 ]
 
 [[package]]
-name = "paperforge"
+name = "paperforge-research"
 version = "0.7.0"
 source = { editable = "." }
 dependencies = [

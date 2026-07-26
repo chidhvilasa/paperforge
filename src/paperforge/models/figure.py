@@ -15,6 +15,7 @@ class Figure:
     first_mentioned_in: str | None = None  # section where fig is first referenced
                                             # e.g. "results"
     notes: str = ""             # any free-form notes about the figure
+    wide: bool = False           # spans both columns (figure*) in IEEE two-column layout
 
     @classmethod
     def from_yaml(cls, data: dict[str, Any]) -> Figure:
@@ -27,6 +28,7 @@ class Figure:
             resolution_dpi=data.get("resolution_dpi"),
             first_mentioned_in=data.get("first_mentioned_in"),
             notes=data.get("notes", ""),
+            wide=data.get("wide", False),
         )
 
     def to_yaml(self) -> dict[str, Any]:
@@ -39,4 +41,5 @@ class Figure:
             "resolution_dpi": self.resolution_dpi,
             "first_mentioned_in": self.first_mentioned_in,
             "notes": self.notes,
+            "wide": self.wide,
         }

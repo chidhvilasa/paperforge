@@ -68,7 +68,7 @@ def test_build_journal_documentclass(tmp_path: Path) -> None:
     write_journal_project(tmp_path)
     build.run(tmp_path, target="ieee-journal")
     content = _read_tex(tmp_path)
-    assert "journal,compsoc" in content
+    assert content.splitlines()[0] == "\\documentclass[journal]{IEEEtran}"
 
 
 def test_build_journal_abstract_in_titleabstractindextext(tmp_path: Path) -> None:
@@ -129,7 +129,7 @@ def test_build_ieee_journal_target_alias(tmp_path: Path) -> None:
     write_journal_project(tmp_path)
     build.run(tmp_path, target="ieee-trans")
     content = _read_tex(tmp_path)
-    assert "journal,compsoc" in content
+    assert content.splitlines()[0] == "\\documentclass[journal]{IEEEtran}"
 
 
 def test_build_conference_unchanged(tmp_path: Path) -> None:

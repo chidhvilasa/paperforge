@@ -10,9 +10,13 @@ You change one experiment result.
 PaperForge tells you exactly which claims, sections, figures,
 and tables need updating.
 
-[![PyPI](https://img.shields.io/pypi/v/paperforge)](https://pypi.org/project/paperforge/)
-[![Python](https://img.shields.io/pypi/pyversions/paperforge)](https://pypi.org/project/paperforge/)
+[![PyPI](https://img.shields.io/pypi/v/paperforge-research)](https://pypi.org/project/paperforge-research/)
+[![Python](https://img.shields.io/pypi/pyversions/paperforge-research)](https://pypi.org/project/paperforge-research/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+> **Install note:** There is currently a PyPI name conflict.
+> `pip install paperforge` installs an unrelated tool.
+> Install from source (see below) until this is resolved.
 
 ---
 
@@ -73,9 +77,13 @@ See [CONSTITUTION.md](CONSTITUTION.md).
 ## Install
 
 ```bash
-pip install paperforge
-# or
-uv add paperforge
+# PyPI name conflict: pip install paperforge gets a different tool.
+# Until this is resolved, install directly from source:
+git clone https://github.com/chidhvilasa/paperforge
+cd paperforge
+pip install -e .
+# or with uv:
+uv pip install -e .
 ```
 
 Requires Python 3.11+.

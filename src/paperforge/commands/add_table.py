@@ -85,6 +85,10 @@ def run(project_root: Path) -> None:
     console.print("[bold]Notes[/bold] — footnotes or table notes (optional)")
     notes = typer.prompt("Notes", default="")
 
+    console.print("[bold]Wide (spans both columns)[/bold] — for tables with many columns")
+    wide_val = typer.prompt("Wide? (y/n)", default="n")
+    wide = wide_val.strip().lower() in ("y", "yes")
+
     table = Table(
         id=tbl_id,
         caption=caption,
@@ -93,10 +97,11 @@ def run(project_root: Path) -> None:
         notes=notes,
         first_mentioned_in=first_mentioned_in,
         source_experiment=source_experiment,
+        wide=wide,
     )
 
     out_file = tables_dir / f"{tbl_id}.yaml"
-    with open(out_file, "w") as f:
+    with open(out_file, "w", encoding="utf-8") as f:
         yaml.dump(table.to_yaml(), f, sort_keys=False, default_flow_style=False)
 
     short_caption = caption[:80] + ("..." if len(caption) > 80 else "")

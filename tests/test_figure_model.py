@@ -53,6 +53,7 @@ def test_figure_to_yaml_keys():
         "resolution_dpi",
         "first_mentioned_in",
         "notes",
+        "wide",
     }
 
 

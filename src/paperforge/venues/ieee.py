@@ -10,16 +10,20 @@ from paperforge.venues.base import VenueIssue, VenuePlugin
 
 class IEEEPlugin(VenuePlugin):
     name = "ieee"
-    display_name = "IEEE (Generic)"
+    display_name = "IEEE Conference"
     latex_documentclass = "\\documentclass[conference]{IEEEtran}"
     required_sections: ClassVar[list[str]] = ["abstract", "introduction", "conclusion"]
-    max_pages = 8
+    max_pages: int | None = 8
 
     def __init__(self, mode: str = "conference", name: str = "ieee") -> None:
         self.mode = mode
         self.name = name
         if mode == "journal":
-            self.display_name = "IEEE Transactions / Journal"
+            self.display_name = "IEEE Journal"
+            self.latex_documentclass = "\\documentclass[journal]{IEEEtran}"
+            self.max_pages = None
+        elif mode == "journal-compsoc":
+            self.display_name = "IEEE Transactions (Computer Society)"
             self.latex_documentclass = "\\documentclass[10pt,journal,compsoc]{IEEEtran}"
             self.max_pages = 14
 
@@ -53,7 +57,7 @@ class IEEEPlugin(VenuePlugin):
         return issues
 
     def generate_preamble(self) -> str:
-        if self.mode == "journal":
+        if self.mode == "journal-compsoc":
             cite_block = (
                 "\\ifCLASSOPTIONcompsoc\n"
                 "  \\usepackage[nocompress]{cite}\n"

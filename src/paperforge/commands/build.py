@@ -63,16 +63,17 @@ def _generate_abstract(claims: list[Claim]) -> str:
 
 
 def _generate_figure_latex(fig_obj: Figure) -> str:
+    env = "figure*" if fig_obj.wide else "figure"
     if fig_obj.caption and fig_obj.path:
         width = f"{fig_obj.width_inches}in" if fig_obj.width_inches else "\\columnwidth"
         path = fig_obj.path if fig_obj.path else f"figures/{fig_obj.id}"
         return (
-            f"\\begin{{figure}}[!t]\n"
+            f"\\begin{{{env}}}[!t]\n"
             f"\\centering\n"
             f"\\includegraphics[width={width}]{{{path}}}\n"
             f"\\caption{{{fig_obj.caption}}}\n"
             f"\\label{{fig:{fig_obj.id}}}\n"
-            f"\\end{{figure}}"
+            f"\\end{{{env}}}"
         )
     caption_text = (fig_obj.caption or "")[:60]
     return (
@@ -82,6 +83,8 @@ def _generate_figure_latex(fig_obj: Figure) -> str:
 
 
 def _generate_table_latex(table: Table) -> str:
+    env = "table*" if table.wide else "table"
+
     if not table.columns:
         # No columns defined -- emit a comment placeholder
         return (
@@ -106,7 +109,7 @@ def _generate_table_latex(table: Table) -> str:
         notes_block = f"\n\\footnotesize{{\\textit{{Note: {table.notes}}}}}"
 
     lines = [
-        "\\begin{table}[!t]",
+        f"\\begin{{{env}}}[!t]",
         "\\renewcommand{\\arraystretch}{1.3}",
         f"\\caption{{{table.caption}}}",
         f"\\label{{tab:{table.id}}}",
@@ -121,7 +124,7 @@ def _generate_table_latex(table: Table) -> str:
     lines.append("\\end{tabular}")
     if notes_block:
         lines.append(notes_block)
-    lines.append("\\end{table}")
+    lines.append(f"\\end{{{env}}}")
 
     return "\n".join(lines)
 
@@ -345,10 +348,35 @@ def _generate_journal_sections(sections: list[str], project: PaperForgeProject) 
 def _generate_author_block_journal(
     authors: list[str],
     affiliations: list[Affiliation],
+    compsoc: bool = False,
 ) -> str:
     if not affiliations:
         return ", ".join(authors)
-    lines = []
+
+    if compsoc:
+        lines = []
+        for i, author in enumerate(authors):
+            if i < len(affiliations):
+                aff = affiliations[i]
+                aff_str = ", ".join(filter(None, [
+                    aff.department, aff.institution,
+                    aff.city, aff.country
+                ]))
+                lines.append(
+                    f"  {author},~\\IEEEmembership{{Member,~IEEE}}"
+                )
+                if aff_str:
+                    lines.append(
+                        f"  \\IEEEcompsocitemizethanks{{"
+                        f"\\IEEEcompsocthanksitem {author} is with "
+                        f"{aff_str}.}}"
+                    )
+            else:
+                lines.append(f"  {author}")
+        return "\n".join(lines)
+
+    # Non-compsoc journal mode: standard \thanks{} footnote form.
+    parts = []
     for i, author in enumerate(authors):
         if i < len(affiliations):
             aff = affiliations[i]
@@ -356,29 +384,29 @@ def _generate_author_block_journal(
                 aff.department, aff.institution,
                 aff.city, aff.country
             ]))
-            lines.append(
-                f"  {author},~\\IEEEmembership{{Member,~IEEE}}"
-            )
             if aff_str:
-                lines.append(
-                    f"  \\IEEEcompsocitemizethanks{{"
-                    f"\\IEEEcompsocthanksitem {author} is with "
-                    f"{aff_str}.}}"
+                parts.append(
+                    f"{author},~\\IEEEmembership{{Member,~IEEE}}"
+                    f"\\thanks{{{aff_str}}}"
                 )
+            else:
+                parts.append(f"{author},~\\IEEEmembership{{Member,~IEEE}}")
         else:
-            lines.append(f"  {author}")
-    return "\n".join(lines)
+            parts.append(author)
+    return " \\and\n".join(parts)
 
 
-def _generate_acknowledgment() -> str:
+def _generate_acknowledgment(project: PaperForgeProject) -> str:
+    ack_text = project.config.acknowledgment
+    if not ack_text:
+        ack_text = "% TODO: Add acknowledgment text."
     return (
         "\\ifCLASSOPTIONcompsoc\n"
-        "\\section*{Acknowledgments}\n"
+        "  \\section*{Acknowledgments}\n"
         "\\else\n"
-        "\\section*{Acknowledgment}\n"
-        "\\fi\n"
-        "The authors would like to thank...\n"
-        "% TODO: Add acknowledgment text."
+        "  \\section*{Acknowledgment}\n"
+        "\\fi\n\n"
+        f"{ack_text}"
     )
 
 
@@ -460,13 +488,16 @@ def _generate_latex_conference(project: PaperForgeProject, plugin: VenuePlugin) 
 def _generate_latex_journal(project: PaperForgeProject, plugin: VenuePlugin) -> str:
     """Generate LaTeX for an IEEE Transactions / journal paper."""
     title = project.config.title or "Untitled Paper"
-    author_block = _generate_author_block_journal(project.config.authors, project.config.affiliations)
+    compsoc = getattr(plugin, "mode", None) == "journal-compsoc"
+    author_block = _generate_author_block_journal(
+        project.config.authors, project.config.affiliations, compsoc=compsoc
+    )
     abstract_content = _generate_abstract(project.claims)
     keywords_source = project.config.keywords or project.config.sections[:6]
     keywords = ", ".join(keywords_source)
     sections = _generate_journal_sections(project.config.sections, project)
     bibliography, _ = _generate_bibliography(project)
-    acknowledgment = _generate_acknowledgment()
+    acknowledgment = _generate_acknowledgment(project)
 
     return f"""{plugin.latex_documentclass}
 

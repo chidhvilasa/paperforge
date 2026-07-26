@@ -5,12 +5,16 @@ from __future__ import annotations
 from paperforge.venues.acm import ACMPlugin
 from paperforge.venues.base import VenuePlugin
 from paperforge.venues.ieee import IEEEPlugin
+from paperforge.venues.ieee_access import IEEEAccessPlugin
 from paperforge.venues.neurips import NeurIPSPlugin
 
 _REGISTRY: dict[str, VenuePlugin] = {
     "ieee": IEEEPlugin(mode="conference", name="ieee"),
     "ieee-journal": IEEEPlugin(mode="journal", name="ieee-journal"),
     "ieee-trans": IEEEPlugin(mode="journal", name="ieee-trans"),
+    "ieee-compsoc": IEEEPlugin(mode="journal-compsoc", name="ieee-compsoc"),
+    "ieee-tdsc": IEEEPlugin(mode="journal-compsoc", name="ieee-tdsc"),
+    "ieee-access": IEEEAccessPlugin(),
     "acm": ACMPlugin(),
     "neurips": NeurIPSPlugin(),
 }

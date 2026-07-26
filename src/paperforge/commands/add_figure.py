@@ -88,6 +88,10 @@ def run(project_root: Path) -> None:
     console.print("[bold]Notes[/bold] — any additional notes (optional)")
     notes = typer.prompt("Notes", default="")
 
+    console.print("[bold]Wide (spans both columns)[/bold] — for full-width figures")
+    wide_val = typer.prompt("Wide? (y/n)", default="n")
+    wide = wide_val.strip().lower() in ("y", "yes")
+
     figure = Figure(
         id=fig_id,
         caption=caption,
@@ -97,10 +101,11 @@ def run(project_root: Path) -> None:
         resolution_dpi=resolution_dpi,
         first_mentioned_in=first_mentioned_in,
         notes=notes,
+        wide=wide,
     )
 
     out_file = figures_dir / f"{fig_id}.yaml"
-    with open(out_file, "w") as f:
+    with open(out_file, "w", encoding="utf-8") as f:
         yaml.dump(figure.to_yaml(), f, sort_keys=False, default_flow_style=False)
 
     short_caption = caption[:80] + ("..." if len(caption) > 80 else "")

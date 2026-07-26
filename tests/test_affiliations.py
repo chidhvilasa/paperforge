@@ -58,6 +58,18 @@ def test_journal_author_block_with_affiliations():
     ]
     block = _generate_author_block_journal(authors, affiliations)
     assert "Alice,~\\IEEEmembership{Member,~IEEE}" in block
+    assert "\\thanks{Inst A}" in block
+    assert "\\thanks{Inst B, US}" in block
+    assert "IEEEcompsocitemizethanks" not in block
+
+def test_journal_author_block_with_affiliations_compsoc():
+    authors = ["Alice", "Bob"]
+    affiliations = [
+        Affiliation(institution="Inst A"),
+        Affiliation(institution="Inst B", country="US")
+    ]
+    block = _generate_author_block_journal(authors, affiliations, compsoc=True)
+    assert "Alice,~\\IEEEmembership{Member,~IEEE}" in block
     assert "Alice is with Inst A" in block
     assert "Bob is with Inst B, US" in block
 

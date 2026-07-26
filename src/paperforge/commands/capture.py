@@ -22,9 +22,51 @@ if hasattr(sys.stdout, "reconfigure"):
 console = Console()
 
 
+def _flatten_metrics(
+    data: dict, prefix: str = "", max_depth: int = 3
+) -> dict[str, float]:
+    """
+    Recursively flatten nested dicts into dot-notation keys.
+    Only keeps float/int leaf values.
+    Stops at max_depth to prevent runaway recursion.
+    Example:
+      {"b2": {"meanLatencyMs": {"mean": 71.86}}}
+      -> {"b2.meanLatencyMs.mean": 71.86}
+    """
+    result: dict[str, float] = {}
+    if max_depth == 0:
+        return result
+    for key, value in data.items():
+        full_key = f"{prefix}.{key}" if prefix else key
+        if isinstance(value, dict):
+            result.update(_flatten_metrics(value, full_key, max_depth - 1))
+        elif type(value) in (int, float) and not isinstance(value, bool):
+            result[full_key] = float(value)
+    return result
+
+
 def _extract_metrics(data: dict) -> dict[str, float]:
-    raw = data["metrics"] if isinstance(data.get("metrics"), dict) else data
-    return {k: v for k, v in raw.items() if type(v) in (int, float)}
+    # Handle MLflow nested format
+    if "metrics" in data and isinstance(data["metrics"], dict):
+        flat = {
+            k: float(v)
+            for k, v in data["metrics"].items()
+            if type(v) in (int, float) and not isinstance(v, bool)
+        }
+        if flat:
+            return flat
+
+    # Try flat extraction
+    flat = {
+        k: float(v)
+        for k, v in data.items()
+        if type(v) in (int, float) and not isinstance(v, bool)
+    }
+    if flat:
+        return flat
+
+    # Fall back to recursive flattening
+    return _flatten_metrics(data)
 
 
 def _next_claim_id(claims_dir: Path) -> str:
@@ -56,6 +98,11 @@ def run(results: Path, experiment_id: str, project_root: Path) -> None:
         sys.exit(1)
 
     new_metrics = _extract_metrics(data)
+    if not new_metrics:
+        console.print(
+            "[yellow]Warning: no numeric metrics found in "
+            f"{results}. Experiment will have empty metrics.[/yellow]"
+        )
 
     experiments_dir = project_root / ".paperforge" / "experiments"
     experiment_path = experiments_dir / f"{experiment_id}.yaml"

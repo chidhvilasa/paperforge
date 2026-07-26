@@ -47,6 +47,7 @@ class ProjectConfig:
     paper_type: str = "conference"
     keywords: list[str] = field(default_factory=list)
     affiliations: list[Affiliation] = field(default_factory=list)
+    acknowledgment: str = ""
 
     @classmethod
     def from_yaml(cls, data: dict) -> ProjectConfig:
@@ -63,6 +64,7 @@ class ProjectConfig:
             paper_type=data.get("paper_type", "conference"),
             keywords=data.get("keywords", []),
             affiliations=[Affiliation.from_dict(a) for a in data.get("affiliations", [])],
+            acknowledgment=data.get("acknowledgment", ""),
         )
 
 
@@ -96,7 +98,7 @@ class PaperForgeProject:
         paper_yaml = pf_dir / "paper.yaml"
         if not paper_yaml.exists():
             raise FileNotFoundError(f"paper.yaml not found in {pf_dir}.")
-        with open(paper_yaml) as f:
+        with open(paper_yaml, encoding="utf-8") as f:
             config_data = yaml.safe_load(f)
         config = ProjectConfig.from_yaml(config_data)
 
@@ -104,28 +106,28 @@ class PaperForgeProject:
         claims_dir = pf_dir / "claims"
         if claims_dir.exists():
             for claim_file in sorted(claims_dir.glob("*.yaml")):
-                with open(claim_file) as f:
+                with open(claim_file, encoding="utf-8") as f:
                     claims.append(Claim.from_yaml(yaml.safe_load(f)))
 
         experiments: list[Experiment] = []
         experiments_dir = pf_dir / "experiments"
         if experiments_dir.exists():
             for exp_file in sorted(experiments_dir.glob("*.yaml")):
-                with open(exp_file) as f:
+                with open(exp_file, encoding="utf-8") as f:
                     experiments.append(Experiment.from_yaml(yaml.safe_load(f)))
 
         figures: list[Figure] = []
         figures_dir = pf_dir / "figures"
         if figures_dir.exists():
             for fig_file in sorted(figures_dir.glob("fig_*.yaml")):
-                with open(fig_file) as f:
+                with open(fig_file, encoding="utf-8") as f:
                     figures.append(Figure.from_yaml(yaml.safe_load(f)))
 
         tables: list[Table] = []
         tables_dir = pf_dir / "tables"
         if tables_dir.exists():
             for tbl_file in sorted(tables_dir.glob("tbl_*.yaml")):
-                with open(tbl_file) as f:
+                with open(tbl_file, encoding="utf-8") as f:
                     tables.append(Table.from_yaml(yaml.safe_load(f)))
 
         return cls(root=path, config=config, claims=claims, experiments=experiments, figures=figures, tables=tables)

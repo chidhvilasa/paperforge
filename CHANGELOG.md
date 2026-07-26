@@ -6,6 +6,38 @@
 - paperforge build no longer overwrites references.bib when
   real BibTeX entries exist. File is preserved if any @-block
   lacks "TODO". Stubs are only generated for new or stub-only files.
+- Windows encoding: all open() calls in project.py and other
+  commands now use encoding="utf-8" explicitly — em-dashes
+  and non-ASCII content no longer corrupt on Windows cp1252
+- compsoc hardcoded for all journal mode: IEEEPlugin now
+  distinguishes "journal" (standard, non-compsoc) from
+  "journal-compsoc" (CS Society journals only); ieee-journal
+  and ieee-trans now correctly use \documentclass[journal]{IEEEtran}
+- author block: non-compsoc journal mode uses \thanks{} form
+  instead of \IEEEcompsocitemizethanks (compsoc-only macros)
+- capture: nested JSON metrics now flattened recursively with
+  dot-notation keys; silently-empty metrics replaced with
+  warning message
+- UNDEFINED_ACRONYM: plural forms (VANETs, RSUs) now handled;
+  defining "(VANETs)" satisfies later bare "VANET" usage
+- EXPERIMENT_NO_SEED: now accepts seeds: list[int] for
+  multi-seed experiments; warning only fires if both
+  seed and seeds are null
+
+### Added
+- acknowledgment: field in paper.yaml — build uses this
+  instead of hardcoded TODO text; survives rebuilds
+- Doctor check 42: MISSING_ACKNOWLEDGMENT (WARNING)
+- ieee-access venue target: \documentclass[journal]{IEEEtran},
+  no page limit, correct preamble for IEEE Access
+- ieee-compsoc and ieee-tdsc venue targets for CS Society journals
+- wide: bool field on Table and Figure — use table*/figure*
+  for two-column spanning in IEEE layout
+- Doctor check 43: WIDE_TABLE_RECOMMENDED (WARNING) when
+  table has 6+ columns without wide: true
+- seeds: list[int] field on Experiment for multi-seed support
+- PyPI name conflict documented in README; package renamed
+  "paperforge-research" in pyproject.toml
 
 ## [0.7.0] — 2026-07-26
 
