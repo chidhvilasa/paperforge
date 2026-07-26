@@ -48,7 +48,7 @@ paperforge export traceability: MD + CSV + LaTeX longtable
 generated simultaneously. Full claim-evidence linkage visible
 in one artifact.
 
-### v0.8.0 (this release)
+### v0.8.0
 Critical fixes: Windows encoding, compsoc mode, capture
 nested JSON, acronym plurals, multi-seed support.
 New venue targets: ieee-access, ieee-compsoc, ieee-tdsc.
@@ -57,15 +57,26 @@ acknowledgment field in paper.yaml.
 Build output now in paper/ at project root.
 paperforge improve: AI-assisted claim editing with y/n confirm.
 
+### v0.9.0 (this release)
+Citation data model.
+paperforge add-citation with full BibTeX metadata.
+Build generates references.bib from YAML source of truth.
+5 new doctor checks (48 total).
+No more TODO stubs for defined citations.
+
 ## Planned
 
-### v0.9.0 — Citation Data Model
-- .paperforge/citations/*.yaml for real BibTeX metadata
-- paperforge add-citation interactive command
-- doctor validates: duplicate keys, uncited references,
-  cited-but-undefined keys
-- build generates references.bib from real data (no more stubs)
-- paperforge cite-check: verify citations against Semantic Scholar
+### v1.0.0 — Production Release
+- Full audit and hardening pass
+- PyPI publish under verified name
+- Complete IEEE Access paper workflow tested end-to-end
+- paperforge cite-check: verify citation keys against
+  Semantic Scholar API (opt-in, offline default)
+- Non-interactive flags for add-claim/add-figure/add-table
+  (--text, --experiment, --from-yaml)
+- Multi-experiment claim support (experiments: list[str])
+- Author biography block (IEEEbiography/IEEEbiographynophoto)
+- Zip/Overleaf export (paper/ + figures/ bundled for upload)
 
 ## Non-Goals
 

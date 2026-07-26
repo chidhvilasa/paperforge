@@ -64,6 +64,23 @@ paperforge build --target ieee
 paperforge export bibtex
 ```
 
+## What's New in v0.9.0
+
+Citation data model eliminates TODO stubs permanently.
+
+Add real BibTeX metadata once:
+```bash
+paperforge add-citation wani2024
+```
+
+Every `paperforge build` generates `paper/references.bib`
+from your citation YAMLs automatically. The YAML is the
+source of truth — updating it updates the bibliography.
+
+`paperforge doctor` now checks for undefined citation keys,
+unused citation files, and missing required fields (48 checks
+total, 8 ERROR severity).
+
 ## What's New in v0.8.0
 
 Two major improvements for production use:

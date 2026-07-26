@@ -110,18 +110,23 @@ On a project with issues, each issue is printed with its code and severity:
 | 41 | `TABLE_ROW_COLUMN_MISMATCH` | WARNING | Table row cell count does not match column count |
 | 42 | `MISSING_ACKNOWLEDGMENT` | WARNING | paper.yaml acknowledgment field is empty |
 | 43 | `WIDE_TABLE_RECOMMENDED` | WARNING | Table has 6+ columns without wide: true |
+| 44 | `CITED_KEY_NO_YAML` | WARNING | Citation key used in claims but has no YAML file |
+| 45 | `CITATION_YAML_NO_CLAIM` | WARNING | Citation YAML file exists but is not referenced in any claim |
+| 46 | `CITATION_NO_TITLE` | ERROR | Citation has no title field defined |
+| 47 | `CITATION_NO_YEAR` | WARNING | Citation has no year field defined |
+| 48 | `CITATION_NO_AUTHORS` | WARNING | Citation has no authors list defined |
 
-These 43 checks are always run by `collect_issues()`, independent of `--target`.
+These 48 checks are always run by `collect_issues()`, independent of `--target`.
 
-### Severity Breakdown (43 Checks Total)
-- **7 ERRORs**: `ORPHAN_CLAIM`, `MISSING_EXPERIMENT`, `STALE_CLAIM`, `EMPTY_CLAIM_TEXT`, `METRIC_CLAIM_MISMATCH`, `RESULTS_SECTION_EMPTY`, `TABLE_NO_CAPTION` (blocks build and git hook).
-- **35 WARNINGs**: advisory issues that report potential problems but do not block commands.
+### Severity Breakdown (48 Checks Total)
+- **8 ERRORs**: `ORPHAN_CLAIM`, `MISSING_EXPERIMENT`, `STALE_CLAIM`, `EMPTY_CLAIM_TEXT`, `METRIC_CLAIM_MISMATCH`, `RESULTS_SECTION_EMPTY`, `TABLE_NO_CAPTION`, `CITATION_NO_TITLE` (blocks build and git hook).
+- **39 WARNINGs**: advisory issues that report potential problems but do not block commands.
 - **1 INFO**: `EVIDENCE_COVERAGE` score, informational only.
 
 Note on `TABLE_NO_CAPTION` vs `FIGURE_NO_CAPTION`: `TABLE_NO_CAPTION` is an **ERROR** (unlike `FIGURE_NO_CAPTION` which is a WARNING) because a table without a caption cannot appear in any IEEE submission, whereas figures may occasionally be used inline or in draft contexts without captions.
 
 - `--fix` only auto-resolves `UNVERIFIED_CLAIM` by setting those claims to `stale`.
-- `--target` runs the venue plugin's own `validate()` on top of these 43 checks and
+- `--target` runs the venue plugin's own `validate()` on top of these 48 checks and
   prints the results under a separate `VENUE (<display name>)` heading. Venue checks
   include things like `UNCITED_CLAIM` (IEEE), `MISSING_SEED`/`MISSING_DATASET` (NeurIPS),
   and `MISSING_RELATED_WORK` (ACM) — see `paperforge venues` and each plugin's source

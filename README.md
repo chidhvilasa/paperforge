@@ -142,6 +142,9 @@ paperforge diff claim_01 --against experiment
 # 9c. Add a data table
 paperforge add-table
 
+# 9d. Add real citation metadata (no more TODO stubs)
+paperforge add-citation smith2024
+
 # 10. AI-assisted claim improvement
 paperforge improve claim_01
 
@@ -158,7 +161,8 @@ paperforge review
 | `paperforge add-claim` | Interactively create a new claim |
 | `paperforge add-figure` | Interactively create a new figure YAML |
 | `paperforge add-table` | Interactively create a new table YAML |
-| `paperforge doctor` | Run 43 deterministic consistency checks |
+| `paperforge add-citation` | Add real BibTeX metadata for a citation key |
+| `paperforge doctor` | Run 48 deterministic consistency checks |
 | `paperforge impact` | Show everything affected by an experiment change |
 | `paperforge build` | Compile research data into LaTeX paper |
 | `paperforge review` | AI-assisted review via llm (advisory only) |
@@ -280,6 +284,39 @@ Include in your paper appendix:
 \usepackage{longtable}  % in preamble
 \input{traceability}    % in appendix
 ```
+
+## Citations
+
+`paperforge add-citation` stores real BibTeX metadata in
+`.paperforge/citations/{key}.yaml`. Every subsequent build
+generates `paper/references.bib` from these files instead
+of TODO stubs.
+
+```bash
+paperforge add-citation smith2024
+# Key:     smith2024
+# Type:    article
+# Authors: Smith, Alice; Jones, Bob
+# Title:   Adaptive Authentication in VANETs
+# Venue:   IEEE Access
+# Year:    2024
+# DOI:     10.1109/ACCESS.2024.123456
+```
+
+Generated BibTeX:
+
+```bibtex
+@article{smith2024,
+  author    = {Smith, Alice and Jones, Bob},
+  title     = {Adaptive Authentication in VANETs},
+  journal   = {IEEE Access},
+  year      = {2024},
+  doi       = {10.1109/ACCESS.2024.123456},
+}
+```
+
+Citation YAML is the **source of truth** — rebuild any time
+without losing real bibliography entries.
 
 ## Documentation
 

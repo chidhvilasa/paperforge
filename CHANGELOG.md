@@ -2,16 +2,18 @@
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-07-26
+
 ### Added
-- Citation as a first-class object: Citation dataclass with key, type, authors, title, year, venue, volume, number, pages, doi, url, publisher, institution, notes fields
-- Citation.to_bibtex() generates valid BibTeX entries with type-correct field names (journal/booktitle/school/etc.)
+- Citation as a first-class object: Citation dataclass (key, type, authors, title, year, venue, volume, number, pages, doi, url, publisher, institution, notes)
+- Citation.to_bibtex() with type-correct BibTeX field names (journal/booktitle/school/institution/howpublished/url) and empty-field omission
 - .paperforge/citations/ directory created by paperforge init
-- PaperForgeProject loads all *.yaml files from citations/ and exposes citation_map property for lookup
-- paperforge add-citation — interactive citation metadata entry
-- build generates references.bib from real citation YAMLs when they exist; citation YAML is source of truth (rebuilt on every build, not preserved). Falls back to stubs for keys without YAMLs.
-- 5 new doctor checks (44-48): CITED_KEY_NO_YAML, CITATION_YAML_NO_CLAIM, CITATION_NO_TITLE (ERROR), CITATION_NO_YEAR, CITATION_NO_AUTHORS
+- PaperForgeProject loads all *.yaml from citations/; citation_map property for O(1) key lookup
+- paperforge add-citation — interactive citation entry; semicolon-separated authors; year validation
+- paperforge build generates references.bib from real citation YAMLs (source of truth, rebuilt every build); stubs generated only for keys without YAMLs; mixed real+stub supported in same file
+- 5 new doctor checks (44-48): 44 CITED_KEY_NO_YAML (WARNING), 45 CITATION_YAML_NO_CLAIM (WARNING), 46 CITATION_NO_TITLE (ERROR), 47 CITATION_NO_YEAR (WARNING), 48 CITATION_NO_AUTHORS (WARNING)
 - docs/commands/add-citation.md
-- 22 new tests across test_citation_model.py, test_add_citation.py, test_citation_build.py (345 total)
+- 22 new tests (345 total)
 
 ## [0.8.0] — 2026-07-26
 

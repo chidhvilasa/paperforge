@@ -82,7 +82,7 @@ panel under a `VENUE (<display name>)` heading.
 - `--target` selects the venue plugin: `ieee` (default), `acm`, `neurips`, etc. Each sets the correct LaTeX document class, preamble, and author block.
 - `paper_type` in `paper.yaml` controls template selection ("conference" default, "journal" for transactions).
 - `keywords` field in `paper.yaml` used in `\IEEEkeywords` block.
-- `references.bib` generated in output directory when citations exist.
+- `references.bib` behavior: when citation YAMLs exist in `.paperforge/citations/`, real BibTeX entries are generated using the YAML files as source of truth (rebuilt on every build). When no YAMLs exist, TODO stubs are generated (preserved if manual entries exist). Mixed projects generate real entries where YAMLs exist and stubs where not.
 - `latexmk` is used when available, `pdflatex` as fallback.
 - Figure environments with `\label` and `\ref` generated automatically.
 - Tables with YAML data generate full `\begin{table}` environments with IEEE-compliant formatting (caption above tabular).
