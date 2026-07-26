@@ -159,31 +159,85 @@ def improve(
 @app.command(name="add-claim")
 def add_claim(
     path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    text: str | None = typer.Option(None, "--text", "-t", help="Claim text (non-interactive)"),
+    experiment: str | None = typer.Option(None, "--experiment", "-e", help="Experiment ID"),
+    sections: str | None = typer.Option(None, "--sections", "-s", help="Comma-separated section list, e.g. results,abstract"),
+    figures: str | None = typer.Option(None, "--figures", help="Comma-separated figure IDs, e.g. fig_01,fig_02"),
+    tables: str | None = typer.Option(None, "--tables", help="Comma-separated table IDs, e.g. tbl_01"),
+    citations: str | None = typer.Option(None, "--citations", "-c", help="Comma-separated BibTeX keys, e.g. smith2024,jones2023"),
+    status: str | None = typer.Option(None, "--status", help="Claim status: verified, unverified, stale"),
+    from_yaml: Path | None = typer.Option(None, "--from-yaml", help="Path to YAML file to import claim from"),
 ) -> None:
-    """Interactively create a new claim linked to an experiment."""
+    """Interactively create or script a new claim linked to an experiment."""
     from paperforge.commands.add_claim import run
 
-    run(project_root=path.resolve())
+    run(
+        project_root=path.resolve(),
+        text=text,
+        experiment=experiment,
+        sections=sections,
+        figures=figures,
+        tables=tables,
+        citations=citations,
+        status=status,
+        from_yaml=from_yaml,
+    )
 
 
 @app.command(name="add-figure")
 def add_figure(
     path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    caption: str | None = typer.Option(None, "--caption", help="Figure caption"),
+    fig_path: str | None = typer.Option(None, "--path-file", help="Relative path to image file, e.g. figures/fig_01.png"),
+    format: str | None = typer.Option(None, "--format", help="Image format: png, pdf, eps, svg"),
+    width: float | None = typer.Option(None, "--width", help="Intended LaTeX width in inches, e.g. 3.5"),
+    dpi: int | None = typer.Option(None, "--dpi", help="Resolution DPI, e.g. 300"),
+    section: str | None = typer.Option(None, "--section", help="First mentioned in section"),
+    notes: str | None = typer.Option(None, "--notes", help="Optional notes"),
+    wide: bool = typer.Option(False, "--wide", help="Spans both columns in IEEE layout"),
+    from_yaml: Path | None = typer.Option(None, "--from-yaml", help="Path to YAML file to import figure from"),
 ) -> None:
-    """Interactively create a new figure YAML file."""
+    """Interactively create or script a new figure YAML file."""
     from paperforge.commands.add_figure import run
 
-    run(project_root=path.resolve())
+    run(
+        project_root=path.resolve(),
+        caption=caption,
+        path=fig_path,
+        format=format,
+        width=width,
+        dpi=dpi,
+        section=section,
+        notes=notes,
+        wide=wide,
+        from_yaml=from_yaml,
+    )
 
 
 @app.command(name="add-table")
 def add_table(
     path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    caption: str | None = typer.Option(None, "--caption", help="Table caption"),
+    experiment: str | None = typer.Option(None, "--experiment", "-e", help="Source experiment ID"),
+    columns: str | None = typer.Option(None, "--columns", help="Comma-separated column headers"),
+    section: str | None = typer.Option(None, "--section", help="First mentioned in section"),
+    notes: str | None = typer.Option(None, "--notes", help="Optional notes"),
+    wide: bool = typer.Option(False, "--wide", help="Spans both columns in IEEE layout"),
+    from_yaml: Path | None = typer.Option(None, "--from-yaml", help="Path to YAML file to import table from"),
 ) -> None:
-    """Interactively create a new table YAML file."""
+    """Interactively create or script a new table YAML file."""
     from paperforge.commands.add_table import run
 
-    run(project_root=path.resolve())
+    run(
+        project_root=path.resolve(),
+        caption=caption,
+        experiment=experiment,
+        columns=columns,
+        section=section,
+        notes=notes,
+        wide=wide,
+        from_yaml=from_yaml,
+    )
 
 
 @app.command(name="add-citation")
@@ -195,11 +249,36 @@ def add_citation(
     path: Path = typer.Option(
         Path("."), "--path", "-p", help="Project root."
     ),
+    type_str: str | None = typer.Option(None, "--type", help="Citation type: article, inproceedings, book, etc."),
+    authors: str | None = typer.Option(None, "--authors", help="Semicolon-separated author list, e.g. Smith, A.; Jones, B."),
+    title: str | None = typer.Option(None, "--title", help="Publication title"),
+    year: int | None = typer.Option(None, "--year", help="Publication year"),
+    venue: str | None = typer.Option(None, "--venue", help="Venue or journal name"),
+    volume: str | None = typer.Option(None, "--volume", help="Volume number"),
+    number: str | None = typer.Option(None, "--number", help="Issue or number"),
+    pages: str | None = typer.Option(None, "--pages", help="Page range, e.g. 123--135"),
+    doi: str | None = typer.Option(None, "--doi", help="DOI without https://doi.org/ prefix"),
+    notes: str | None = typer.Option(None, "--notes", help="Optional notes"),
+    from_yaml: Path | None = typer.Option(None, "--from-yaml", help="Path to YAML file to import citation from"),
 ) -> None:
-    """Interactively add citation metadata for a BibTeX key."""
+    """Interactively add or script citation metadata for a BibTeX key."""
     from paperforge.commands.add_citation import run
 
-    run(project_root=path.resolve(), key=key)
+    run(
+        project_root=path.resolve(),
+        key=key,
+        type_str=type_str,
+        authors=authors,
+        title=title,
+        year=year,
+        venue=venue,
+        volume=volume,
+        number=number,
+        pages=pages,
+        doi=doi,
+        notes=notes,
+        from_yaml=from_yaml,
+    )
 
 
 @app.command(name="install-hooks")
@@ -215,7 +294,7 @@ def install_hooks(
 
 @app.command()
 def export(
-    fmt: str = typer.Argument("json", help="Format: bibtex, json, markdown, traceability"),
+    fmt: str = typer.Argument("json", help="Format: bibtex, json, markdown, traceability, overleaf"),
     path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
     output: Path | None = typer.Option(
         None,
@@ -224,7 +303,7 @@ def export(
         help="Output file path or directory. Defaults to .paperforge/output/.",
     ),
 ) -> None:
-    """Export research graph as BibTeX, JSON, Markdown, or Traceability Matrix."""
+    """Export research graph as BibTeX, JSON, Markdown, Traceability Matrix, or Overleaf zip."""
     from paperforge.commands.export import run
 
     run(

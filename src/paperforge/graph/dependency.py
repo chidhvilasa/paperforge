@@ -47,7 +47,11 @@ class ResearchGraph:
     def get_affected(self, experiment_id: str) -> AffectedNodes:
         affected = AffectedNodes()
         for claim in self._claims.values():
-            if claim.experiment != experiment_id:
+            linked = (
+                claim.experiment == experiment_id
+                or experiment_id in claim.experiments
+            )
+            if not linked:
                 continue
             affected.claims.append(claim.id)
             for section in claim.sections:

@@ -749,6 +749,21 @@ def collect_issues(project: PaperForgeProject) -> list[Issue]:
                 )
             )
 
+    # Check 49 — MULTI_EXPERIMENT_CLAIM (INFO)
+    for claim in project.claims:
+        if claim.experiments:
+            issues.append(
+                Issue(
+                    code="MULTI_EXPERIMENT_CLAIM",
+                    severity="INFO",
+                    message=(
+                        f"{claim.id} draws from {1 + len(claim.experiments)} "
+                        f"experiments: [{claim.experiment}] + "
+                        f"{claim.experiments}. Verify all are cited."
+                    ),
+                )
+            )
+
     return issues
 
 

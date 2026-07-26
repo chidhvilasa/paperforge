@@ -6,6 +6,7 @@ import csv
 import io
 import json
 import sys
+import zipfile as _zipfile
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -21,7 +22,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 console = Console()
 
-_VALID_FORMATS = ("bibtex", "json", "markdown", "traceability")
+_VALID_FORMATS = ("bibtex", "json", "markdown", "traceability", "overleaf")
 
 _DEFAULT_OUTPUTS = {
     "bibtex": "references.bib",
@@ -83,6 +84,7 @@ def _generate_json(project: PaperForgeProject) -> str:
                 "id": c.id,
                 "text": c.text,
                 "experiment": c.experiment,
+                "experiments": c.experiments,
                 "figures": c.figures,
                 "tables": c.tables,
                 "citations": c.citations,
@@ -133,7 +135,6 @@ def _generate_markdown(project: PaperForgeProject) -> str:
 
     lines: list[str] = []
 
-    # Header
     lines.append(f"# {title}")
     lines.append("")
     lines.append(f"**Authors:** {authors}")
@@ -144,7 +145,6 @@ def _generate_markdown(project: PaperForgeProject) -> str:
     lines.append("---")
     lines.append("")
 
-    # Summary table
     lines.append("## Project Summary")
     lines.append("")
     lines.append("| Metric | Count |")
@@ -158,7 +158,6 @@ def _generate_markdown(project: PaperForgeProject) -> str:
     lines.append("---")
     lines.append("")
 
-    # Claims by section
     lines.append("## Claims by Section")
     lines.append("")
     for section in project.config.sections:
@@ -168,11 +167,13 @@ def _generate_markdown(project: PaperForgeProject) -> str:
             for claim in section_claims:
                 figs = ", ".join(claim.figures) if claim.figures else "none"
                 tbls = ", ".join(claim.tables) if claim.tables else "none"
+                all_exps = [claim.experiment] + [e for e in claim.experiments if e != claim.experiment]
+                exps_str = ", ".join([e for e in all_exps if e]) or "none"
                 lines.append(
                     f"- **{claim.id}** ({claim.status}): {claim.text}"
                 )
                 lines.append(
-                    f"  *Evidence:* {claim.experiment or 'none'} | "
+                    f"  *Evidence:* {exps_str} | "
                     f"*Figures:* {figs} | "
                     f"*Tables:* {tbls}"
                 )
@@ -183,7 +184,6 @@ def _generate_markdown(project: PaperForgeProject) -> str:
     lines.append("---")
     lines.append("")
 
-    # Experiments
     lines.append("## Experiments")
     lines.append("")
     for exp in project.experiments:
@@ -202,7 +202,6 @@ def _generate_markdown(project: PaperForgeProject) -> str:
     lines.append("---")
     lines.append("")
 
-    # Citation keys
     lines.append("## Citation Keys")
     lines.append("")
     all_keys = sorted({key for claim in project.claims for key in claim.citations})
@@ -271,7 +270,9 @@ def _generate_traceability_md(project: PaperForgeProject) -> str:
         else:
             status_disp = claim.status
 
-        exp_id = claim.experiment or "none"
+        all_exps = [claim.experiment] + [e for e in claim.experiments if e != claim.experiment]
+        exp_id = ", ".join([e for e in all_exps if e]) or "none"
+
         key_metric = "none"
         if claim.experiment and claim.experiment in exp_map:
             exp_obj = exp_map[claim.experiment]
@@ -316,7 +317,8 @@ def _generate_traceability_csv(project: PaperForgeProject) -> str:
     exp_map = {exp.id: exp for exp in project.experiments}
 
     for claim in sorted(project.claims, key=lambda c: c.id):
-        exp_id = claim.experiment or ""
+        all_exps = [claim.experiment] + [e for e in claim.experiments if e != claim.experiment]
+        exp_id = ", ".join([e for e in all_exps if e])
         key_metric = ""
         if claim.experiment and claim.experiment in exp_map:
             exp_obj = exp_map[claim.experiment]
@@ -370,7 +372,8 @@ def _generate_traceability_tex(project: PaperForgeProject) -> str:
         cid = _escape_latex(claim.id)
         ctext = _escape_latex(claim.text)
         cstatus = _escape_latex(claim.status)
-        cexp = _escape_latex(claim.experiment or "none")
+        all_exps = [claim.experiment] + [e for e in claim.experiments if e != claim.experiment]
+        cexp = _escape_latex(", ".join([e for e in all_exps if e]) or "none")
 
         evidence_items = []
         if claim.figures:
@@ -393,13 +396,64 @@ def _generate_traceability_tex(project: PaperForgeProject) -> str:
     return "\n".join(lines)
 
 
+# --- Overleaf Zip Export ---
+
+def _generate_overleaf_zip(
+    project: PaperForgeProject,
+    output_path: Path,
+) -> Path:
+    zip_path = output_path / "paper_overleaf.zip" if output_path.is_dir() else output_path
+
+    paper_dir = project.root / "paper"
+    figures_dir = project.root / "figures"
+
+    tex_path = paper_dir / "paper.tex"
+    if not tex_path.exists():
+        raise FileNotFoundError(
+            "paper.tex not found. Run `paperforge build` first."
+        )
+
+    with _zipfile.ZipFile(zip_path, "w", compression=_zipfile.ZIP_DEFLATED) as zf:
+        zf.write(tex_path, "paper.tex")
+
+        bib_path = paper_dir / "references.bib"
+        if bib_path.exists():
+            zf.write(bib_path, "references.bib")
+
+        trac_path = paper_dir / "traceability.tex"
+        if trac_path.exists():
+            zf.write(trac_path, "traceability.tex")
+
+        if figures_dir.exists():
+            for fig_file in figures_dir.rglob("*"):
+                if fig_file.is_file():
+                    arcname = "figures/" + str(
+                        fig_file.relative_to(figures_dir)
+                    ).replace("\\", "/")
+                    zf.write(fig_file, arcname)
+
+        readme_content = (
+            "PaperForge — Overleaf Upload Package\n"
+            "=====================================\n"
+            "1. Create a new Overleaf project (blank)\n"
+            "2. Upload all files from this zip\n"
+            "3. Set the main file to paper.tex\n"
+            "4. Overleaf includes IEEEtran.cls built-in\n"
+            "5. Compile with pdflatex\n\n"
+            "If IEEEtran.cls is missing: Settings > Compiler > pdflatex\n"
+        )
+        zf.writestr("README.txt", readme_content)
+
+    return zip_path
+
+
 # --- Main run ---
 
 def run(project_root: Path, fmt: str, output: Path | None) -> None:
-    """Export research graph as BibTeX, JSON, Markdown, or Traceability Matrix."""
+    """Export research graph as BibTeX, JSON, Markdown, Traceability Matrix, or Overleaf zip."""
     if fmt not in _VALID_FORMATS:
         console.print(
-            f"[red]Unknown format '{fmt}'. Choose: bibtex, json, markdown, traceability[/red]"
+            f"[red]Unknown format '{fmt}'. Choose: bibtex, json, markdown, traceability, overleaf[/red]"
         )
         sys.exit(1)
 
@@ -411,6 +465,38 @@ def run(project_root: Path, fmt: str, output: Path | None) -> None:
         sys.exit(1)
 
     project = PaperForgeProject.load(project_root)
+
+    if fmt == "overleaf":
+        output_dir = output if output is not None else project_root
+        if output_dir.is_file():
+            output_dir = output_dir.parent
+        output_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            zip_path = _generate_overleaf_zip(project, output_dir)
+        except FileNotFoundError as err:
+            console.print(f"[red]{err}[/red]")
+            sys.exit(1)
+
+        fig_dir = project_root / "figures"
+        fig_count = sum(1 for f in fig_dir.rglob("*") if f.is_file()) if fig_dir.exists() else 0
+
+        body = Text()
+        body.append(f"{zip_path.name}\n")
+        body.append("Contents:\n")
+        body.append("  paper.tex\n")
+        body.append("  references.bib\n")
+        if (project_root / "paper" / "traceability.tex").exists():
+            body.append("  traceability.tex\n")
+        body.append(f"  figures/ ({fig_count} files)\n")
+        body.append("  README.txt\n\n")
+        body.append("Upload to Overleaf:\n")
+        body.append("  1. overleaf.com -> New Project -> Blank Project\n")
+        body.append("  2. Upload -> Select All -> paper_overleaf.zip\n")
+        body.append("  3. Set main file: paper.tex\n")
+        body.append("  4. Compile")
+
+        console.print(Panel(body, title="Overleaf Export Complete", border_style="green"))
+        return
 
     if fmt == "traceability":
         output_dir = output if output is not None else project_root / ".paperforge" / "output"
@@ -458,4 +544,3 @@ def run(project_root: Path, fmt: str, output: Path | None) -> None:
     body.append(f"Claims:      {len(project.claims)}\n")
     body.append(f"Experiments: {len(project.experiments)}")
     console.print(Panel(body, title="Export Complete", border_style="green"))
-

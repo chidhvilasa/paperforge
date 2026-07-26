@@ -57,26 +57,27 @@ acknowledgment field in paper.yaml.
 Build output now in paper/ at project root.
 paperforge improve: AI-assisted claim editing with y/n confirm.
 
-### v0.9.0 (this release)
+### v0.9.0
 Citation data model.
 paperforge add-citation with full BibTeX metadata.
 Build generates references.bib from YAML source of truth.
 5 new doctor checks (48 total).
 No more TODO stubs for defined citations.
 
+### v1.0.0 (this release)
+Non-interactive CLI flags for all add-* commands (--text, --caption, etc.).
+--from-yaml bulk object creation.
+Multi-experiment claim support (experiments: list[str]).
+paperforge export overleaf zip export.
+Doctor check 49 (MULTI_EXPERIMENT_CLAIM).
+Production/Stable status on PyPI.
+
 ## Planned
 
-### v1.0.0 — Production Release
-- Full audit and hardening pass
-- PyPI publish under verified name
-- Complete IEEE Access paper workflow tested end-to-end
+### v1.1.0 — Citation & Author Extensions
 - paperforge cite-check: verify citation keys against
   Semantic Scholar API (opt-in, offline default)
-- Non-interactive flags for add-claim/add-figure/add-table
-  (--text, --experiment, --from-yaml)
-- Multi-experiment claim support (experiments: list[str])
 - Author biography block (IEEEbiography/IEEEbiographynophoto)
-- Zip/Overleaf export (paper/ + figures/ bundled for upload)
 
 ## Non-Goals
 

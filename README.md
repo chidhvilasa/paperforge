@@ -162,14 +162,14 @@ paperforge review
 | `paperforge add-figure` | Interactively create a new figure YAML |
 | `paperforge add-table` | Interactively create a new table YAML |
 | `paperforge add-citation` | Add real BibTeX metadata for a citation key |
-| `paperforge doctor` | Run 48 deterministic consistency checks |
+| `paperforge doctor` | Run 49 deterministic consistency checks |
 | `paperforge impact` | Show everything affected by an experiment change |
 | `paperforge build` | Compile research data into LaTeX paper |
 | `paperforge review` | AI-assisted review via llm (advisory only) |
 | `paperforge improve` | AI-assisted claim improvement via llm (advisory only) |
 | `paperforge venues` | List available venue targets |
 | `paperforge install-hooks` | Install git pre-commit hook |
-| `paperforge export` | Export as BibTeX, JSON, Markdown, or traceability matrix |
+| `paperforge export` | Export as BibTeX, JSON, Markdown, traceability matrix, or Overleaf zip |
 | `paperforge status` | Project health dashboard |
 | `paperforge find` | Search claims and experiments by keyword |
 | `paperforge log` | Show change history for a claim |
@@ -317,6 +317,18 @@ Generated BibTeX:
 
 Citation YAML is the **source of truth** — rebuild any time
 without losing real bibliography entries.
+
+## Overleaf Export
+
+No local LaTeX? Export directly to Overleaf:
+
+```bash
+paperforge build --target ieee-access   # generate paper.tex first
+paperforge export overleaf              # creates paper_overleaf.zip
+```
+
+Upload `paper_overleaf.zip` to Overleaf. IEEEtran is built
+into Overleaf -- no extra setup needed.
 
 ## Documentation
 

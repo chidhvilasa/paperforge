@@ -14,6 +14,7 @@ class Claim:
     id: str
     text: str
     experiment: str
+    experiments: list[str] = field(default_factory=list)
     figures: list[str] = field(default_factory=list)
     tables: list[str] = field(default_factory=list)
     citations: list[str] = field(default_factory=list)
@@ -30,6 +31,7 @@ class Claim:
             id=data["id"],
             text=data.get("text", ""),
             experiment=data.get("experiment", ""),
+            experiments=data.get("experiments", []),
             figures=data.get("figures", []),
             tables=data.get("tables", []),
             citations=data.get("citations", []),
@@ -43,6 +45,7 @@ class Claim:
             "id": self.id,
             "text": self.text,
             "experiment": self.experiment,
+            "experiments": self.experiments,
             "figures": self.figures,
             "tables": self.tables,
             "citations": self.citations,

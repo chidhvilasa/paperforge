@@ -1,6 +1,6 @@
 [project]
 name = "paperforge-research"
-version = "0.9.0"
+version = "1.0.0"
 description = "A research dependency engine that tracks the graph between experiments and scientific claims so your paper is always internally consistent."
 readme = "README.md"
 license = { text = "MIT" }
@@ -14,7 +14,7 @@ keywords = [
     "dependency-graph",
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",

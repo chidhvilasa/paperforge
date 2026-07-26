@@ -19,13 +19,90 @@ if hasattr(sys.stdout, "reconfigure"):
 console = Console()
 
 
-def run(project_root: Path) -> None:
+def _next_tbl_id(tables_dir: Path) -> str:
+    next_id = 1
+    if tables_dir.exists():
+        for tbl_file in tables_dir.glob("tbl_*.yaml"):
+            try:
+                num = int(tbl_file.stem.split("_")[1])
+                if num >= next_id:
+                    next_id = num + 1
+            except (IndexError, ValueError):
+                continue
+    return f"tbl_{next_id:02d}"
+
+
+def run(
+    project_root: Path,
+    caption: str | None = None,
+    experiment: str | None = None,
+    columns: str | None = None,
+    section: str | None = None,
+    notes: str | None = None,
+    wide: bool = False,
+    from_yaml: Path | None = None,
+) -> None:
     if not (project_root / ".paperforge").exists():
         console.print("[red]Not a PaperForge project. Run `paperforge init` first.[/red]")
         sys.exit(1)
 
-    project = PaperForgeProject.load(project_root)
+    tables_dir = project_root / ".paperforge" / "tables"
+    tables_dir.mkdir(parents=True, exist_ok=True)
 
+    # Handle --from-yaml
+    if from_yaml is not None:
+        yaml_file = from_yaml if from_yaml.is_absolute() else project_root / from_yaml
+        if not yaml_file.exists():
+            console.print(f"[red]YAML file not found: {from_yaml}[/red]")
+            sys.exit(1)
+        data = yaml.safe_load(yaml_file.read_text(encoding="utf-8")) or {}
+        tbl_id = _next_tbl_id(tables_dir)
+        table = Table(
+            id=tbl_id,
+            caption=data.get("caption", ""),
+            columns=list(data.get("columns", [])),
+            rows=list(data.get("rows", [])),
+            notes=data.get("notes", ""),
+            first_mentioned_in=data.get("first_mentioned_in"),
+            source_experiment=data.get("source_experiment"),
+            wide=bool(data.get("wide", False)),
+        )
+        out_file = tables_dir / f"{tbl_id}.yaml"
+        with open(out_file, "w", encoding="utf-8") as f:
+            yaml.dump(table.to_yaml(), f, sort_keys=False, default_flow_style=False)
+        console.print(f"Created {tbl_id} from {from_yaml}")
+        return
+
+    # Handle Non-interactive flags
+    non_interactive = (
+        any(v is not None for v in [caption, experiment, columns, section, notes])
+        or wide
+    )
+    if non_interactive:
+        tbl_id = _next_tbl_id(tables_dir)
+        cols_list = (
+            [c.strip() for c in columns.split(",") if c.strip()]
+            if columns
+            else []
+        )
+        table = Table(
+            id=tbl_id,
+            caption=caption or "",
+            columns=cols_list,
+            rows=[],
+            notes=notes or "",
+            first_mentioned_in=section,
+            source_experiment=experiment,
+            wide=wide,
+        )
+        out_file = tables_dir / f"{tbl_id}.yaml"
+        with open(out_file, "w", encoding="utf-8") as f:
+            yaml.dump(table.to_yaml(), f, sort_keys=False, default_flow_style=False)
+        console.print(f"Created {tbl_id}")
+        return
+
+    # Interactive mode
+    project = PaperForgeProject.load(project_root)
     tbl_ids = [tbl.id for tbl in project.tables]
     existing_tables = ", ".join(sorted(tbl_ids)) if tbl_ids else "none"
     exp_ids = [exp.id for exp in project.experiments]
@@ -41,21 +118,10 @@ def run(project_root: Path) -> None:
         )
     )
 
-    next_id = 1
-    tables_dir = project.paperforge_dir / "tables"
-    tables_dir.mkdir(parents=True, exist_ok=True)
-    if tables_dir.exists():
-        for tbl_file in tables_dir.glob("tbl_*.yaml"):
-            try:
-                num = int(tbl_file.stem.split("_")[1])
-                if num >= next_id:
-                    next_id = num + 1
-            except (IndexError, ValueError):
-                continue
-    tbl_id = f"tbl_{next_id:02d}"
+    tbl_id = _next_tbl_id(tables_dir)
 
     console.print("[bold]Caption[/bold] — table title (appears ABOVE table in IEEE)")
-    caption = typer.prompt("Caption", default="")
+    caption_inp = typer.prompt("Caption", default="")
 
     console.print("[bold]Source experiment[/bold] — which experiment generated this data")
     console.print(f"  Available: {existing_exps}")
@@ -64,7 +130,7 @@ def run(project_root: Path) -> None:
 
     console.print("[bold]Column headers[/bold] — comma-separated, e.g. Method,Accuracy,F1")
     cols_val = typer.prompt("Columns", default="")
-    columns = [c.strip() for c in cols_val.split(",") if c.strip()] if cols_val else []
+    columns_inp = [c.strip() for c in cols_val.split(",") if c.strip()] if cols_val else []
 
     console.print("[bold]Data rows[/bold] — one row per line, values comma-separated.")
     console.print("  Enter each row and press Enter. Type 'done' when finished.")
@@ -83,33 +149,33 @@ def run(project_root: Path) -> None:
     first_mentioned_in = section_val if section_val else None
 
     console.print("[bold]Notes[/bold] — footnotes or table notes (optional)")
-    notes = typer.prompt("Notes", default="")
+    notes_inp = typer.prompt("Notes", default="")
 
     console.print("[bold]Wide (spans both columns)[/bold] — for tables with many columns")
     wide_val = typer.prompt("Wide? (y/n)", default="n")
-    wide = wide_val.strip().lower() in ("y", "yes")
+    wide_inp = wide_val.strip().lower() in ("y", "yes")
 
     table = Table(
         id=tbl_id,
-        caption=caption,
-        columns=columns,
+        caption=caption_inp,
+        columns=columns_inp,
         rows=rows,
-        notes=notes,
+        notes=notes_inp,
         first_mentioned_in=first_mentioned_in,
         source_experiment=source_experiment,
-        wide=wide,
+        wide=wide_inp,
     )
 
     out_file = tables_dir / f"{tbl_id}.yaml"
     with open(out_file, "w", encoding="utf-8") as f:
         yaml.dump(table.to_yaml(), f, sort_keys=False, default_flow_style=False)
 
-    short_caption = caption[:80] + ("..." if len(caption) > 80 else "")
+    short_caption = caption_inp[:80] + ("..." if len(caption_inp) > 80 else "")
     console.print(
         Panel(
             f"Created: .paperforge/tables/{tbl_id}.yaml\n\n"
             f"{tbl_id}: \"{short_caption}\"\n"
-            f"Columns: {len(columns)} columns\n"
+            f"Columns: {len(columns_inp)} columns\n"
             f"Rows:    {len(rows)} data rows\n"
             f"Experiment: {source_experiment or '(not linked)'}\n\n"
             f"Next steps:\n"

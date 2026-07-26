@@ -12,7 +12,7 @@ paperforge export [FORMAT] [OPTIONS]
 
 | Argument | Description | Required |
 |----------|-------------|----------|
-| `FORMAT` | Output format: `bibtex`, `json`, `markdown`, or `traceability`. Defaults to `json`. | No |
+| `FORMAT` | Output format: `bibtex`, `json`, `markdown`, `traceability`, or `overleaf`. Defaults to `json`. | No |
 
 ## Options
 
@@ -30,6 +30,7 @@ paperforge export [FORMAT] [OPTIONS]
 | `bibtex` | `references.bib` | BibTeX stubs for all citation keys |
 | `markdown` | `summary.md` | Human-readable project summary |
 | `traceability` | `traceability.md` + `.csv` + `.tex` | Claim-evidence matrix |
+| `overleaf` | `paper_overleaf.zip` | Complete Overleaf upload package |
 
 ## Example
 
@@ -114,5 +115,10 @@ Generates a human-readable project summary with:
 - Claims listed by section
 - Experiment details (description, dataset, hardware, seed, metrics)
 - Alphabetical citation key list
+
+### Overleaf format
+- Creates `paper_overleaf.zip` containing `paper.tex`, `references.bib`, `traceability.tex` (if exists), `figures/*` (all project figures), and `README.txt`.
+- Requires `paperforge build` to have been run first (raises an error if `paper.tex` does not exist).
+- Ready to upload directly to Overleaf (Overleaf includes `IEEEtran.cls` built-in).
 
 **Related commands:** `paperforge status`, `paperforge find`, `paperforge build`

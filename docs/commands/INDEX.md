@@ -64,6 +64,21 @@ paperforge build --target ieee
 paperforge export bibtex
 ```
 
+## What's New in v1.0.0
+
+PaperForge v1.0.0 is the production release of the research dependency engine.
+
+**Non-interactive CLI flags.** Script object creation in CI or agent workflows without interactive prompts:
+```bash
+paperforge add-claim --text "98.4% accuracy." --experiment exp_01 --sections results
+```
+
+**--from-yaml import.** Import objects in bulk from YAML files.
+
+**Multi-experiment claims.** Synthesize evidence from multiple experiments (`experiments: [exp_02, exp_03]`).
+
+**Overleaf export.** `paperforge export overleaf` packages `paper.tex`, `references.bib`, `traceability.tex`, and `figures/` into `paper_overleaf.zip` for instant Overleaf upload.
+
 ## What's New in v0.9.0
 
 Citation data model eliminates TODO stubs permanently.

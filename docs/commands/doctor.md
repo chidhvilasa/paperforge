@@ -115,18 +115,19 @@ On a project with issues, each issue is printed with its code and severity:
 | 46 | `CITATION_NO_TITLE` | ERROR | Citation has no title field defined |
 | 47 | `CITATION_NO_YEAR` | WARNING | Citation has no year field defined |
 | 48 | `CITATION_NO_AUTHORS` | WARNING | Citation has no authors list defined |
+| 49 | `MULTI_EXPERIMENT_CLAIM` | INFO | Claim links to additional experiments beyond primary |
 
-These 48 checks are always run by `collect_issues()`, independent of `--target`.
+These 49 checks are always run by `collect_issues()`, independent of `--target`.
 
-### Severity Breakdown (48 Checks Total)
+### Severity Breakdown (49 Checks Total)
 - **8 ERRORs**: `ORPHAN_CLAIM`, `MISSING_EXPERIMENT`, `STALE_CLAIM`, `EMPTY_CLAIM_TEXT`, `METRIC_CLAIM_MISMATCH`, `RESULTS_SECTION_EMPTY`, `TABLE_NO_CAPTION`, `CITATION_NO_TITLE` (blocks build and git hook).
 - **39 WARNINGs**: advisory issues that report potential problems but do not block commands.
-- **1 INFO**: `EVIDENCE_COVERAGE` score, informational only.
+- **2 INFOs**: `EVIDENCE_COVERAGE` score, `MULTI_EXPERIMENT_CLAIM` notice, informational only.
 
 Note on `TABLE_NO_CAPTION` vs `FIGURE_NO_CAPTION`: `TABLE_NO_CAPTION` is an **ERROR** (unlike `FIGURE_NO_CAPTION` which is a WARNING) because a table without a caption cannot appear in any IEEE submission, whereas figures may occasionally be used inline or in draft contexts without captions.
 
 - `--fix` only auto-resolves `UNVERIFIED_CLAIM` by setting those claims to `stale`.
-- `--target` runs the venue plugin's own `validate()` on top of these 48 checks and
+- `--target` runs the venue plugin's own `validate()` on top of these 49 checks and
   prints the results under a separate `VENUE (<display name>)` heading. Venue checks
   include things like `UNCITED_CLAIM` (IEEE), `MISSING_SEED`/`MISSING_DATASET` (NeurIPS),
   and `MISSING_RELATED_WORK` (ACM) — see `paperforge venues` and each plugin's source

@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [1.0.0] — 2026-07-26
+
+### Added
+- Non-interactive flags for add-claim (--text, --experiment, --sections, --figures, --tables, --citations, --status), add-figure (--caption, --path-file, --format, --width, --dpi, --section, --notes, --wide), add-table (--caption, --experiment, --columns, --section, --notes, --wide), add-citation (--type, --authors, --title, --year, --venue, --volume, --number, --pages, --doi, --notes)
+- --from-yaml flag on all add-* commands for bulk object creation from YAML files
+- Multi-experiment claim support: experiments: list[str] field on Claim alongside primary experiment field; get_affected() traverses both primary and additional experiments
+- Doctor check 49: MULTI_EXPERIMENT_CLAIM (INFO)
+- paperforge export overleaf: bundles paper.tex + references.bib + traceability.tex + figures/ into paper_overleaf.zip for Overleaf upload
+- 15 new tests in test_noninteractive.py (360 total)
+
 ## [0.9.0] — 2026-07-26
 
 ### Added
