@@ -9,6 +9,7 @@ from typing import Any
 import yaml
 
 from paperforge.graph.dependency import ResearchGraph
+from paperforge.models.citation import Citation
 from paperforge.models.claim import Claim
 from paperforge.models.experiment import Experiment
 from paperforge.models.figure import Figure
@@ -79,6 +80,7 @@ class PaperForgeProject:
         experiments: list[Experiment],
         figures: list[Figure],
         tables: list[Table] | None = None,
+        citations: list[Citation] | None = None,
     ) -> None:
         self.root = root
         self.config = config
@@ -86,6 +88,7 @@ class PaperForgeProject:
         self.experiments = experiments
         self.figures = figures
         self.tables = tables if tables is not None else []
+        self.citations = citations if citations is not None else []
 
     @classmethod
     def load(cls, path: Path) -> PaperForgeProject:
@@ -130,7 +133,22 @@ class PaperForgeProject:
                 with open(tbl_file, encoding="utf-8") as f:
                     tables.append(Table.from_yaml(yaml.safe_load(f)))
 
-        return cls(root=path, config=config, claims=claims, experiments=experiments, figures=figures, tables=tables)
+        citations: list[Citation] = []
+        citations_dir = pf_dir / "citations"
+        if citations_dir.exists():
+            for cit_file in sorted(citations_dir.glob("*.yaml")):
+                with open(cit_file, encoding="utf-8") as f:
+                    citations.append(Citation.from_yaml(yaml.safe_load(f)))
+
+        return cls(
+            root=path,
+            config=config,
+            claims=claims,
+            experiments=experiments,
+            figures=figures,
+            tables=tables,
+            citations=citations,
+        )
 
     def get_graph(self) -> ResearchGraph:
         graph = ResearchGraph()
@@ -151,6 +169,14 @@ class PaperForgeProject:
     @property
     def table_count(self) -> int:
         return len(self.tables)
+
+    @property
+    def citation_count(self) -> int:
+        return len(self.citations)
+
+    @property
+    def citation_map(self) -> dict[str, Citation]:
+        return {c.key: c for c in self.citations}
 
     @property
     def paperforge_dir(self) -> Path:

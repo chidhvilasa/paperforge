@@ -14,6 +14,7 @@ Defaults to the current directory.
 | [add-claim](add-claim.md) | Interactively create a new claim |
 | [add-figure](add-figure.md) | Interactively create a new figure YAML file |
 | [add-table](add-table.md) | Interactively create a new table YAML file |
+| [add-citation](add-citation.md) | Interactively create a new citation YAML file |
 | [doctor](doctor.md) | Run deterministic consistency checks |
 | [impact](impact.md) | Show dependency graph for an experiment |
 | [build](build.md) | Compile research data to LaTeX paper |

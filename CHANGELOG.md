@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Added
+- Citation as a first-class object: Citation dataclass with key, type, authors, title, year, venue, volume, number, pages, doi, url, publisher, institution, notes fields
+- Citation.to_bibtex() generates valid BibTeX entries with type-correct field names (journal/booktitle/school/etc.)
+- .paperforge/citations/ directory created by paperforge init
+- PaperForgeProject loads all *.yaml files from citations/ and exposes citation_map property for lookup
+- paperforge add-citation — interactive citation metadata entry
+- build generates references.bib from real citation YAMLs when they exist; citation YAML is source of truth (rebuilt on every build, not preserved). Falls back to stubs for keys without YAMLs.
+- 5 new doctor checks (44-48): CITED_KEY_NO_YAML, CITATION_YAML_NO_CLAIM, CITATION_NO_TITLE (ERROR), CITATION_NO_YEAR, CITATION_NO_AUTHORS
+- docs/commands/add-citation.md
+- 22 new tests across test_citation_model.py, test_add_citation.py, test_citation_build.py (345 total)
+
 ## [0.8.0] — 2026-07-26
 
 ### Added

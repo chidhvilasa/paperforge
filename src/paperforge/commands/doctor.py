@@ -676,6 +676,79 @@ def collect_issues(project: PaperForgeProject) -> list[Issue]:
                 )
             )
 
+    # Citation Checks 44-48
+    citation_map = {c.key: c for c in project.citations}
+    all_claimed_keys = {
+        key for claim in project.claims for key in claim.citations
+    }
+    all_defined_keys = set(citation_map.keys())
+
+    # Check 44 — CITED_KEY_NO_YAML (WARNING)
+    for key in sorted(all_claimed_keys):
+        if key not in all_defined_keys:
+            issues.append(
+                Issue(
+                    code="CITED_KEY_NO_YAML",
+                    severity="WARNING",
+                    message=(
+                        f"Citation key '{key}' used in claims but has no "
+                        f".paperforge/citations/{key}.yaml. "
+                        f"Run `paperforge add-citation {key}`."
+                    ),
+                )
+            )
+
+    # Check 45 — CITATION_YAML_NO_CLAIM (WARNING)
+    for key in sorted(all_defined_keys):
+        if key not in all_claimed_keys:
+            issues.append(
+                Issue(
+                    code="CITATION_YAML_NO_CLAIM",
+                    severity="WARNING",
+                    message=(
+                        f"Citation '{key}' has a YAML file but is not "
+                        f"used in any claim."
+                    ),
+                )
+            )
+
+    # Check 46 — CITATION_NO_TITLE (ERROR)
+    for citation in project.citations:
+        if not citation.title:
+            issues.append(
+                Issue(
+                    code="CITATION_NO_TITLE",
+                    severity="ERROR",
+                    message=(
+                        f"Citation '{citation.key}' has no title. "
+                        f"A reference without a title cannot appear in "
+                        f"an IEEE bibliography."
+                    ),
+                )
+            )
+
+    # Check 47 — CITATION_NO_YEAR (WARNING)
+    for citation in project.citations:
+        if citation.year is None:
+            issues.append(
+                Issue(
+                    code="CITATION_NO_YEAR",
+                    severity="WARNING",
+                    message=f"Citation '{citation.key}' has no year.",
+                )
+            )
+
+    # Check 48 — CITATION_NO_AUTHORS (WARNING)
+    for citation in project.citations:
+        if not citation.authors:
+            issues.append(
+                Issue(
+                    code="CITATION_NO_AUTHORS",
+                    severity="WARNING",
+                    message=f"Citation '{citation.key}' has no authors.",
+                )
+            )
+
     return issues
 
 

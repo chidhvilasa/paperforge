@@ -186,6 +186,22 @@ def add_table(
     run(project_root=path.resolve())
 
 
+@app.command(name="add-citation")
+def add_citation(
+    key: str | None = typer.Argument(
+        None,
+        help="BibTeX key, e.g. smith2024. Prompted if omitted.",
+    ),
+    path: Path = typer.Option(
+        Path("."), "--path", "-p", help="Project root."
+    ),
+) -> None:
+    """Interactively add citation metadata for a BibTeX key."""
+    from paperforge.commands.add_citation import run
+
+    run(project_root=path.resolve(), key=key)
+
+
 @app.command(name="install-hooks")
 def install_hooks(
     path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),

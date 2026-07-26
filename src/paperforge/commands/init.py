@@ -98,6 +98,7 @@ SUCCESS_PANEL_BODY = """\
 │   └── exp_01.yaml     ← your first experiment (fill in metrics)
 ├── figures/            ← drop figure YAMLs here (paperforge add-figure)
 ├── tables/             ← add table data (paperforge add-table)
+├── citations/          ← add citation metadata (paperforge add-citation)
 └── .gitignore
 paper/
 └── .gitignore          ← paper.tex, paper.pdf committed, aux files ignored
@@ -120,11 +121,13 @@ def run(path: Path) -> None:
     experiments_dir = pf_dir / "experiments"
     figures_dir = pf_dir / "figures"
     tables_dir = pf_dir / "tables"
+    citations_dir = pf_dir / "citations"
     paper_dir = path / "paper"
     claims_dir.mkdir(parents=True)
     experiments_dir.mkdir(parents=True)
     figures_dir.mkdir(parents=True)
     tables_dir.mkdir(parents=True)
+    citations_dir.mkdir(parents=True)
     paper_dir.mkdir(parents=True, exist_ok=True)
 
     (pf_dir / "paper.yaml").write_text(PAPER_YAML, encoding="utf-8")
