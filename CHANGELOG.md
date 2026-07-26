@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Fixed
+- paperforge build no longer overwrites references.bib when
+  real BibTeX entries exist. File is preserved if any @-block
+  lacks "TODO". Stubs are only generated for new or stub-only files.
+
 ## [0.7.0] — 2026-07-26
 
 ### Added

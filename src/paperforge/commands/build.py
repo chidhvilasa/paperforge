@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 import sys
@@ -408,6 +409,22 @@ def _generate_bibliography(project: PaperForgeProject) -> tuple[str, str | None]
     return stub_tex, None
 
 
+def _bib_has_real_entries(bib_path: Path) -> bool:
+    """
+    Returns True if the .bib file contains at least one
+    real entry (an @-block that does not contain 'TODO').
+    Returns False if file doesn't exist or only has stubs.
+    """
+    if not bib_path.exists():
+        return False
+    content = bib_path.read_text(encoding="utf-8")
+    entries = re.findall(r"@\w+\{[^}]+\}", content, re.DOTALL)
+    for entry in entries:
+        if "TODO" not in entry:
+            return True
+    return False
+
+
 def _generate_latex_conference(project: PaperForgeProject, plugin: VenuePlugin) -> str:
     """Generate LaTeX for a conference-style IEEE/ACM/NeurIPS paper."""
     title = project.config.title or "Untitled Paper"
@@ -552,8 +569,22 @@ def run(project_root: Path, target: str = "ieee") -> None:
     tex_path.write_text(latex, encoding="utf-8")
 
     _, bib_stub = _generate_bibliography(project)
+    bib_path = output_dir / "references.bib"
+    bib_status = ""
     if bib_stub is not None:
-        (output_dir / "references.bib").write_text(bib_stub, encoding="utf-8")
+        if _bib_has_real_entries(bib_path):
+            console.print(
+                "[dim]references.bib already contains real entries "
+                "— preserving existing file.[/dim]"
+            )
+            bib_status = "references.bib    (preserved — real entries detected)"
+        else:
+            bib_path.write_text(bib_stub, encoding="utf-8")
+            console.print(
+                "[dim]references.bib: generated stubs. "
+                "Replace with real BibTeX entries.[/dim]"
+            )
+            bib_status = "references.bib    (stubs generated — fill in real entries)"
 
     pdf_ok, method = _compile_pdf(tex_path, output_dir)
     unique_citations = {c for claim in project.claims for c in claim.citations}
@@ -570,14 +601,19 @@ def run(project_root: Path, target: str = "ieee") -> None:
     else:
         pdf_line = f"paper.pdf          {compiler_msg}" if method == "none" else "paper.pdf          compilation failed — see .paperforge/output/paper.log"
 
-    body = Group(
+    body_lines = [
         Text("Output: .paperforge/output/"),
         Text(""),
         Text("Files:"),
         Text("  paper.tex          \u2713"),
         Text(f"  {pdf_line}"),
         Text(f"  ({compiler_msg})"),
-        Text(""),
+    ]
+    if bib_status:
+        body_lines.append(Text(f"  {bib_status}"))
+    body_lines.append(Text(""))
+    body = Group(
+        *body_lines,
         Text(f"Claims compiled:    {len(project.claims)}"),
         Text(f"Sections:           {len(project.config.sections)}"),
         Text(f"Citations:          {len(unique_citations)}"),

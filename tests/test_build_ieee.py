@@ -321,3 +321,37 @@ def test_build_conference_author_not_double_wrapped(tmp_path: Path) -> None:
     assert author_count == 1
     assert "\\author{\\author" not in content
 
+
+def test_build_preserves_real_references_bib(tmp_path: Path) -> None:
+    write_journal_project(tmp_path)
+
+    build.run(tmp_path, target="ieee-journal")
+
+    bib_path = tmp_path / ".paperforge" / "output" / "references.bib"
+    bib_path.write_text(
+        "@article{smith2024,\n"
+        "  author = {Smith, A.},\n"
+        "  title = {Real Title},\n"
+        "  journal = {IEEE Access},\n"
+        "  year = {2024}\n"
+        "}\n",
+        encoding="utf-8",
+    )
+
+    build.run(tmp_path, target="ieee-journal")
+
+    content = bib_path.read_text(encoding="utf-8")
+    assert "Real Title" in content
+    assert "TODO" not in content
+
+
+def test_build_overwrites_stub_references_bib(tmp_path: Path) -> None:
+    write_journal_project(tmp_path)
+
+    build.run(tmp_path, target="ieee-journal")
+    build.run(tmp_path, target="ieee-journal")
+
+    bib_path = tmp_path / ".paperforge" / "output" / "references.bib"
+    content = bib_path.read_text(encoding="utf-8")
+    assert "@article" in content
+
