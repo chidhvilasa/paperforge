@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import platform
 import re
 import shutil
 import subprocess
@@ -559,7 +560,34 @@ def _compile_pdf(tex_path: Path, output_dir: Path) -> tuple[bool, str]:
 
     return False, "none"
 
-def run(project_root: Path, target: str = "ieee") -> None:
+def _reveal_output(path: Path) -> None:
+    """Open the containing folder of the output file."""
+    try:
+        system = platform.system()
+        if system == "Windows":
+            subprocess.run(
+                ["explorer", "/select,", str(path)],
+                check=False
+            )
+        elif system == "Darwin":
+            subprocess.run(
+                ["open", "-R", str(path)],
+                check=False
+            )
+        elif system == "Linux":
+            subprocess.run(
+                ["xdg-open", str(path.parent)],
+                check=False
+            )
+    except (OSError, subprocess.SubprocessError):
+        pass  # Never crash the build over a reveal failure
+
+
+def run(
+    project_root: Path,
+    target: str = "ieee",
+    no_reveal: bool = False,
+) -> None:
     if not (project_root / ".paperforge").exists():
         console.print("[red]Not a PaperForge project. Run `paperforge init` first.[/red]")
         sys.exit(1)
@@ -589,7 +617,8 @@ def run(project_root: Path, target: str = "ieee") -> None:
 
     venue_warnings = [issue for issue in venue_issues if issue.severity == "WARNING"]
 
-    output_dir = project_root / ".paperforge" / "output"
+    rel_output = project.config.build_output_dir or "paper"
+    output_dir = project_root / rel_output
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if project.config.paper_type == "journal":
@@ -618,6 +647,10 @@ def run(project_root: Path, target: str = "ieee") -> None:
             bib_status = "references.bib    (stubs generated — fill in real entries)"
 
     pdf_ok, method = _compile_pdf(tex_path, output_dir)
+    pdf_path = output_dir / "paper.pdf"
+    if pdf_ok and not no_reveal:
+        _reveal_output(pdf_path)
+
     unique_citations = {c for claim in project.claims for c in claim.citations}
 
     if method == "latexmk":
@@ -630,10 +663,14 @@ def run(project_root: Path, target: str = "ieee") -> None:
     if pdf_ok:
         pdf_line = "paper.pdf          \u2713"
     else:
-        pdf_line = f"paper.pdf          {compiler_msg}" if method == "none" else "paper.pdf          compilation failed — see .paperforge/output/paper.log"
+        pdf_line = (
+            f"paper.pdf          {compiler_msg}"
+            if method == "none"
+            else f"paper.pdf          compilation failed — see {rel_output}/paper.log"
+        )
 
     body_lines = [
-        Text("Output: .paperforge/output/"),
+        Text(f"Output: {rel_output}/"),
         Text(""),
         Text("Files:"),
         Text("  paper.tex          \u2713"),
@@ -650,7 +687,7 @@ def run(project_root: Path, target: str = "ieee") -> None:
         Text(f"Citations:          {len(unique_citations)}"),
         Text(""),
         Text("To compile PDF manually:"),
-        Text("  cd .paperforge/output"),
+        Text(f"  cd {rel_output}"),
         Text("  pdflatex paper.tex"),
         Text(""),
         Text(

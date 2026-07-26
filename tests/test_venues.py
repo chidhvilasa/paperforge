@@ -147,7 +147,7 @@ def test_build_uses_venue_documentclass(tmp_path: Path) -> None:
 
     build.run(tmp_path, target="acm")
 
-    content = (tmp_path / ".paperforge" / "output" / "paper.tex").read_text(
+    content = (tmp_path / "paper" / "paper.tex").read_text(
         encoding="utf-8"
     )
     assert "acmart" in content

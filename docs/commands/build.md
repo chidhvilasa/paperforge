@@ -19,7 +19,8 @@ paperforge build [OPTIONS]
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--path`, `-p` | `.` | Project root directory |
-| `--target`, `-t` | `ieee` | Venue target: `ieee`, `ieee-journal`, `ieee-trans`, `acm`, `neurips` |
+| `--target`, `-t` | `ieee` | Venue target: `ieee`, `ieee-journal`, `ieee-trans`, `ieee-access`, `acm`, `neurips` |
+| `--no-reveal` | `false` | Do not open output folder after successful PDF build |
 | `--help` | — | Show help and exit |
 
 ## Example
@@ -38,10 +39,8 @@ paperforge build --target acm
 # After custom output path or target selection
 paperforge build --target ieee-journal --path /path/to/project
 
-# After adding figures and tables, build generates full LaTeX:
-# - \begin{figure} environments for linked figures
-# - \begin{table} environments for linked tables
-# - \bibliographystyle{IEEEtran} + references.bib stubs
+# Suppress automatic folder opening
+paperforge build --no-reveal
 ```
 
 ## Output
@@ -51,7 +50,7 @@ file checklist, and summary counts:
 
 ```
 ╭─ Build Complete ──────────────────────────────────╮
-│ Output: .paperforge/output/                       │
+│ Output: paper/                                    │
 │                                                    │
 │ Files:                                             │
 │   paper.tex          ✓                             │
@@ -91,7 +90,8 @@ panel under a `VENUE (<display name>)` heading.
 - Table row/column data is embedded directly in the LaTeX output.
 - `affiliations` in `paper.yaml` improve author block for journals.
 - `hyperref` and `microtype` now included in all IEEE preambles.
-- Output goes to `.paperforge/output/` by default.
+- Output goes to `paper/` at project root by default (configured in `paper.yaml`).
+- Automatically opens/selects the generated PDF in OS file explorer unless `--no-reveal` is passed.
 - Use `paperforge venues` to see all available targets.
 
 **Related commands:** `paperforge doctor`, `paperforge venues`, `paperforge review`, `paperforge add-table`

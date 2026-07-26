@@ -101,11 +101,14 @@ def build(
     target: str = typer.Option(
         "ieee", "--target", "-t", help="Venue target: ieee, acm, neurips"
     ),
+    no_reveal: bool = typer.Option(
+        False, "--no-reveal", help="Do not open output folder after build."
+    ),
 ) -> None:
     """Compile research data into an IEEE LaTeX paper."""
     from paperforge.commands.build import run
 
-    run(project_root=path.resolve(), target=target)
+    run(project_root=path.resolve(), target=target, no_reveal=no_reveal)
 
 
 @app.command()
@@ -122,6 +125,35 @@ def review(
     from paperforge.commands.review import run
 
     run(project_root=path.resolve(), model=model)
+
+
+@app.command()
+def improve(
+    claim_id: str | None = typer.Argument(
+        None,
+        help="Specific claim ID to improve, e.g. claim_01",
+    ),
+    path: Path = typer.Option(
+        Path("."), "--path", "-p", help="Project root."
+    ),
+    model: str | None = typer.Option(
+        None, "--model", "-m",
+        help="llm model to use. Uses llm default if omitted.",
+    ),
+    all_claims: bool = typer.Option(
+        False, "--all", "-a",
+        help="Improve all unverified claims.",
+    ),
+) -> None:
+    """AI-assisted claim improvement. Suggests edits, never auto-applies."""
+    from paperforge.commands.improve import run
+
+    run(
+        project_root=path.resolve(),
+        claim_id=claim_id,
+        model=model,
+        all_claims=all_claims,
+    )
 
 
 @app.command(name="add-claim")

@@ -35,7 +35,7 @@ sections:
   - conclusion
 
 build:
-  output_dir: ".paperforge/output"
+  output_dir: "paper"
   latex_template: "ieee"
 """
 
@@ -68,6 +68,27 @@ PAPERFORGE_GITIGNORE = """\
 !*
 """
 
+PAPER_GITIGNORE = """\
+# Auto-generated LaTeX auxiliary files
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.bbl
+*.blg
+
+# Keep these:
+!paper.tex
+!paper.pdf
+!references.bib
+!traceability.tex
+"""
+
 SUCCESS_PANEL_BODY = """\
 .paperforge/
 ├── paper.yaml          ← project metadata
@@ -78,6 +99,8 @@ SUCCESS_PANEL_BODY = """\
 ├── figures/            ← drop figure YAMLs here (paperforge add-figure)
 ├── tables/             ← add table data (paperforge add-table)
 └── .gitignore
+paper/
+└── .gitignore          ← paper.tex, paper.pdf committed, aux files ignored
 
 Next steps:
   1. Edit .paperforge/paper.yaml — add title and authors
@@ -97,15 +120,18 @@ def run(path: Path) -> None:
     experiments_dir = pf_dir / "experiments"
     figures_dir = pf_dir / "figures"
     tables_dir = pf_dir / "tables"
+    paper_dir = path / "paper"
     claims_dir.mkdir(parents=True)
     experiments_dir.mkdir(parents=True)
     figures_dir.mkdir(parents=True)
     tables_dir.mkdir(parents=True)
+    paper_dir.mkdir(parents=True, exist_ok=True)
 
     (pf_dir / "paper.yaml").write_text(PAPER_YAML, encoding="utf-8")
     (claims_dir / "claim_01.yaml").write_text(CLAIM_01_YAML, encoding="utf-8")
     (experiments_dir / "exp_01.yaml").write_text(EXP_01_YAML, encoding="utf-8")
     (pf_dir / ".gitignore").write_text(PAPERFORGE_GITIGNORE, encoding="utf-8")
+    (paper_dir / ".gitignore").write_text(PAPER_GITIGNORE, encoding="utf-8")
 
     console.print(
         Panel(

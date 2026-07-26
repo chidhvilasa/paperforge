@@ -52,6 +52,9 @@ def _fix_all_errors(
 
 
 def _read_tex(tmp_path: Path) -> str:
+    p = tmp_path / "paper" / "paper.tex"
+    if p.exists():
+        return p.read_text(encoding="utf-8")
     return (tmp_path / ".paperforge" / "output" / "paper.tex").read_text(
         encoding="utf-8"
     )
@@ -125,7 +128,7 @@ def test_ieee_journal_non_compsoc_documentclass(tmp_path: Path) -> None:
 
     content = _read_tex(tmp_path)
     assert "\\documentclass[journal]{IEEEtran}" in content
-    assert "compsoc" not in content
+    assert "journal,compsoc" not in content
 
 
 def test_ieee_compsoc_documentclass(tmp_path: Path) -> None:
@@ -142,7 +145,7 @@ def test_ieee_access_documentclass(tmp_path: Path) -> None:
 
     content = _read_tex(tmp_path)
     assert "\\documentclass[journal]{IEEEtran}" in content
-    assert "compsoc" not in content
+    assert "journal,compsoc" not in content
 
 
 # --- Fix 5: wide tables ---

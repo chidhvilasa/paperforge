@@ -424,6 +424,10 @@ def run(project_root: Path, fmt: str, output: Path | None) -> None:
         (output_dir / "traceability.csv").write_text(csv_content, encoding="utf-8")
         (output_dir / "traceability.tex").write_text(tex_content, encoding="utf-8")
 
+        paper_dir = project_root / "paper"
+        if paper_dir.exists() and output_dir != paper_dir:
+            (paper_dir / "traceability.tex").write_text(tex_content, encoding="utf-8")
+
         body = Text()
         body.append(f"Format:      {fmt}\n")
         body.append(f"Output:      {output_dir}\n")

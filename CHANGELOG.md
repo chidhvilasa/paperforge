@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Added
+- Default build output directory changed from `.paperforge/output/` to `paper/` at project root
+- `paperforge init` creates `paper/` directory with `paper/.gitignore` for LaTeX auxiliary file exclusions
+- Automatic folder reveal in OS file explorer upon successful PDF compilation (`--no-reveal` CLI flag added to `paperforge build`)
+- `paperforge improve` command for interactive AI-assisted claim text improvement via `llm` CLI with history snapshot recording
+- `paperforge export traceability` copies `traceability.tex` to `paper/` when `paper/` directory exists
+
 ### Fixed
 - paperforge build no longer overwrites references.bib when
   real BibTeX entries exist. File is preserved if any @-block

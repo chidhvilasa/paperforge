@@ -18,6 +18,7 @@ Defaults to the current directory.
 | [impact](impact.md) | Show dependency graph for an experiment |
 | [build](build.md) | Compile research data to LaTeX paper |
 | [review](review.md) | AI-assisted review via llm (advisory only) |
+| [improve](improve.md) | AI-assisted claim improvement (advisory only) |
 | [venues](venues.md) | List venue targets for --target flag |
 | [install-hooks](install-hooks.md) | Install git pre-commit hook |
 | [export](export.md) | Export as BibTeX, JSON, or Markdown |

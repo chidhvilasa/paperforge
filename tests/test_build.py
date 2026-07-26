@@ -65,19 +65,19 @@ def test_build_blocked_by_errors(tmp_path: Path) -> None:
 def test_build_creates_output_directory(tmp_path: Path) -> None:
     _make_valid_project(tmp_path)
     build.run(tmp_path)
-    assert (tmp_path / ".paperforge" / "output").is_dir()
+    assert (tmp_path / "paper").is_dir()
 
 
 def test_build_creates_tex_file(tmp_path: Path) -> None:
     _make_valid_project(tmp_path)
     build.run(tmp_path)
-    assert (tmp_path / ".paperforge" / "output" / "paper.tex").exists()
+    assert (tmp_path / "paper" / "paper.tex").exists()
 
 
 def test_build_tex_contains_title(tmp_path: Path) -> None:
     _make_valid_project(tmp_path, title="Test Paper Title")
     build.run(tmp_path)
-    content = (tmp_path / ".paperforge" / "output" / "paper.tex").read_text(
+    content = (tmp_path / "paper" / "paper.tex").read_text(
         encoding="utf-8"
     )
     assert "Test Paper Title" in content
@@ -86,7 +86,7 @@ def test_build_tex_contains_title(tmp_path: Path) -> None:
 def test_build_tex_contains_author(tmp_path: Path) -> None:
     _make_valid_project(tmp_path, authors=["Alice Smith"])
     build.run(tmp_path)
-    content = (tmp_path / ".paperforge" / "output" / "paper.tex").read_text(
+    content = (tmp_path / "paper" / "paper.tex").read_text(
         encoding="utf-8"
     )
     assert "Alice Smith" in content
@@ -95,7 +95,7 @@ def test_build_tex_contains_author(tmp_path: Path) -> None:
 def test_build_tex_contains_claim_text(tmp_path: Path) -> None:
     _make_valid_project(tmp_path, text="This model achieves 98.4% accuracy.")
     build.run(tmp_path)
-    content = (tmp_path / ".paperforge" / "output" / "paper.tex").read_text(
+    content = (tmp_path / "paper" / "paper.tex").read_text(
         encoding="utf-8"
     )
     assert "This model achieves 98.4% accuracy." in content
@@ -104,7 +104,7 @@ def test_build_tex_contains_claim_text(tmp_path: Path) -> None:
 def test_build_tex_contains_documentclass(tmp_path: Path) -> None:
     _make_valid_project(tmp_path)
     build.run(tmp_path)
-    content = (tmp_path / ".paperforge" / "output" / "paper.tex").read_text(
+    content = (tmp_path / "paper" / "paper.tex").read_text(
         encoding="utf-8"
     )
     assert "\\documentclass[conference]{IEEEtran}" in content
@@ -113,7 +113,7 @@ def test_build_tex_contains_documentclass(tmp_path: Path) -> None:
 def test_build_tex_contains_section_headings(tmp_path: Path) -> None:
     _make_valid_project(tmp_path)
     build.run(tmp_path)
-    content = (tmp_path / ".paperforge" / "output" / "paper.tex").read_text(
+    content = (tmp_path / "paper" / "paper.tex").read_text(
         encoding="utf-8"
     )
     assert "\\section{" in content
@@ -126,7 +126,7 @@ def test_build_abstract_from_claims(tmp_path: Path) -> None:
         sections=["abstract", "results"],
     )
     build.run(tmp_path)
-    content = (tmp_path / ".paperforge" / "output" / "paper.tex").read_text(
+    content = (tmp_path / "paper" / "paper.tex").read_text(
         encoding="utf-8"
     )
     abstract_block = content.split("\\begin{abstract}")[1].split("\\end{abstract}")[0]
@@ -136,7 +136,7 @@ def test_build_abstract_from_claims(tmp_path: Path) -> None:
 def test_build_no_claims_in_section_emits_todo(tmp_path: Path) -> None:
     _make_valid_project(tmp_path, sections=["results"])
     build.run(tmp_path)
-    content = (tmp_path / ".paperforge" / "output" / "paper.tex").read_text(
+    content = (tmp_path / "paper" / "paper.tex").read_text(
         encoding="utf-8"
     )
     assert "% TODO" in content
