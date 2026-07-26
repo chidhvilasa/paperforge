@@ -65,6 +65,7 @@ def test_table_to_yaml_keys() -> None:
         "first_mentioned_in",
         "source_experiment",
         "wide",
+        "auto_rows_from_experiment",
     }
 
 

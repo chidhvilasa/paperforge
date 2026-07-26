@@ -1150,6 +1150,35 @@ def collect_issues(project: PaperForgeProject) -> list[Issue]:
                 )
             )
 
+    # Check 72 — NO_CONTRIBUTION_CLAIMS (WARNING)
+    intro_claims = [c for c in project.claims if "introduction" in c.sections]
+    if intro_claims and not any(c.is_contribution for c in intro_claims):
+        issues.append(
+            Issue(
+                code="NO_CONTRIBUTION_CLAIMS",
+                severity="WARNING",
+                message=(
+                    "Introduction has no contribution claims. "
+                    "IEEE papers list explicit contributions. "
+                    "Set is_contribution: true on contribution claims."
+                ),
+            )
+        )
+
+    # Check 73 — MISSING_SECTIONS_OVERVIEW (WARNING)
+    if not project.config.sections_overview:
+        issues.append(
+            Issue(
+                code="MISSING_SECTIONS_OVERVIEW",
+                severity="WARNING",
+                message=(
+                    "No sections_overview set. IEEE introductions "
+                    "typically end with paper organization. "
+                    "Set 'sections_overview:' in paper.yaml."
+                ),
+            )
+        )
+
     return issues
 
 

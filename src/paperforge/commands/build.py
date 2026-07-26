@@ -66,14 +66,26 @@ def _generate_abstract(claims: list[Claim]) -> str:
     )
 
 
-def _generate_figure_latex(fig_obj: Figure) -> str:
+def _generate_figure_latex(fig_obj: Figure, project_root: Path | None = None) -> str:
     env = "figure*" if fig_obj.wide else "figure"
     escaped_caption = escape_latex(fig_obj.caption or "")
-    if fig_obj.caption and fig_obj.path:
-        width = (
-            f"{fig_obj.width_inches}in" if fig_obj.width_inches else "\\columnwidth"
-        )
-        path = fig_obj.path if fig_obj.path else f"figures/{fig_obj.id}"
+
+    file_exists = False
+    if fig_obj.path:
+        if project_root:
+            image_file = project_root / fig_obj.path
+        else:
+            image_file = Path(fig_obj.path)
+        file_exists = image_file.exists()
+
+    if file_exists and fig_obj.path:
+        if fig_obj.width_inches:
+            width = f"{fig_obj.width_inches}in"
+        elif fig_obj.wide:
+            width = "\\textwidth"
+        else:
+            width = "\\columnwidth"
+        path = fig_obj.path.replace("\\", "/")
         return (
             f"\\begin{{{env}}}[!t]\n"
             f"\\centering\n"
@@ -82,18 +94,43 @@ def _generate_figure_latex(fig_obj: Figure) -> str:
             f"\\label{{fig:{fig_obj.id}}}\n"
             f"\\end{{{env}}}"
         )
-    caption_text = escaped_caption[:60]
+
+    # Missing figure placeholder box
+    path_display = escape_latex(fig_obj.path or "not set")
     return (
-        f"% Figure: {fig_obj.id} — {caption_text} (path not set)\n"
-        f"% \\label{{fig:{fig_obj.id}}}"
+        f"\\begin{{{env}}}[!t]\n"
+        f"\\centering\n"
+        f"\\fbox{{\\parbox{{0.9\\columnwidth}}{{\\centering\n"
+        f"\\textbf{{Figure placeholder}}\\\\\n"
+        f"{escaped_caption}\\\\\n"
+        f"Path: {path_display}\n"
+        f"}}}}\n"
+        f"\\caption{{{escaped_caption}}}\n"
+        f"\\label{{fig:{fig_obj.id}}}\n"
+        f"\\end{{{env}}}"
     )
 
 
-def _generate_table_latex(table: Table) -> str:
+def _generate_table_latex(
+    table: Table, project: PaperForgeProject | None = None
+) -> str:
     env = "table*" if table.wide else "table"
     escaped_caption = escape_latex(table.caption or "")
 
-    if not table.columns:
+    columns = list(table.columns)
+    rows = list(table.rows)
+
+    if not rows and table.auto_rows_from_experiment and project:
+        exp_obj = next(
+            (e for e in project.experiments if e.id == table.auto_rows_from_experiment),
+            None,
+        )
+        if exp_obj and exp_obj.metrics:
+            if not columns:
+                columns = ["Metric", "Value"]
+            rows = [[m_name, str(m_val)] for m_name, m_val in exp_obj.metrics.items()]
+
+    if not columns:
         # No columns defined -- emit a comment placeholder
         return (
             f"% Table: {table.id} — {escaped_caption[:60]}\n"
@@ -101,14 +138,13 @@ def _generate_table_latex(table: Table) -> str:
             f"% \\label{{tab:{table.id}}}"
         )
 
-    col_spec = " ".join(["c"] * len(table.columns))
-    header_row = " & ".join(escape_latex(c) for c in table.columns) + " \\\\"
+    col_spec = " ".join(["c"] * len(columns))
+    header_row = " & ".join(escape_latex(c) for c in columns) + " \\\\"
 
     data_rows = []
-    for row in table.rows:
-        # Pad or truncate to match column count
-        padded = row[: len(table.columns)]
-        while len(padded) < len(table.columns):
+    for row in rows:
+        padded = row[: len(columns)]
+        while len(padded) < len(columns):
             padded.append("")
         escaped_row = [escape_latex(cell) for cell in padded]
         data_rows.append(" & ".join(escaped_row) + " \\\\")
@@ -142,6 +178,7 @@ def _generate_sections(sections: list[str], project: PaperForgeProject) -> str:
     blocks: list[str] = []
     emitted_figures: set[str] = set()
     emitted_tables: set[str] = set()
+    emitted_algorithms: set[str] = set()
     emitted_claims: set[str] = set()
 
     for section in sections:
@@ -152,9 +189,15 @@ def _generate_sections(sections: list[str], project: PaperForgeProject) -> str:
             (c for c in project.claims if section in c.sections), key=lambda c: c.id
         )
         block = f"\\section{{{title}}}\n"
+        current_subsection = ""
+
         if section_claims:
             claim_blocks = []
-            for c in section_claims:
+            non_contrib = [c for c in section_claims if not c.is_contribution]
+            contrib = [c for c in section_claims if c.is_contribution]
+            target_claims = non_contrib if (section == "introduction" and contrib) else section_claims
+
+            for c in target_claims:
                 if c.id in emitted_claims:
                     first_sec = c.sections[0] if c.sections else "above"
                     claim_blocks.append(
@@ -163,13 +206,22 @@ def _generate_sections(sections: list[str], project: PaperForgeProject) -> str:
                     continue
                 emitted_claims.add(c.id)
 
-                text_par = _claim_paragraph(c, project)
+                prefix = ""
+                if c.subsection and c.subsection != current_subsection:
+                    prefix = f"\\subsection{{{escape_latex(c.subsection)}}}\n"
+                    current_subsection = c.subsection
+
+                if section == "related_work" and c.compared_work:
+                    prefix += f"% --- {escape_latex(c.compared_work)} ---\n"
+
+                text_par = prefix + _claim_paragraph(c, project)
+
                 fig_envs = []
                 for fig_id in c.figures:
                     fig_obj = next((f for f in project.figures if f.id == fig_id), None)
                     if fig_obj and fig_id not in emitted_figures:
                         emitted_figures.add(fig_id)
-                        fig_envs.append(_generate_figure_latex(fig_obj))
+                        fig_envs.append(_generate_figure_latex(fig_obj, project.root))
                     elif fig_obj and fig_id in emitted_figures:
                         fig_envs.append(
                             f"% Figure~\\ref{{fig:{fig_id}}} already defined above."
@@ -186,8 +238,8 @@ def _generate_sections(sections: list[str], project: PaperForgeProject) -> str:
                     tbl_obj = next((t for t in project.tables if t.id == tbl_id), None)
                     if tbl_obj and tbl_id not in emitted_tables:
                         emitted_tables.add(tbl_id)
-                        if tbl_obj.caption:
-                            tbl_envs.append(_generate_table_latex(tbl_obj))
+                        if tbl_obj.caption or tbl_obj.auto_rows_from_experiment:
+                            tbl_envs.append(_generate_table_latex(tbl_obj, project))
                         else:
                             caption_text = escape_latex((tbl_obj.caption or "")[:60])
                             tbl_envs.append(
@@ -205,7 +257,45 @@ def _generate_sections(sections: list[str], project: PaperForgeProject) -> str:
                 if tbl_envs:
                     text_par += "\n\n" + "\n\n".join(tbl_envs)
 
+                alg_envs = []
+                for alg_id in c.algorithms:
+                    alg_obj = project.algorithm_map.get(alg_id)
+                    if alg_obj and alg_id not in emitted_algorithms:
+                        emitted_algorithms.add(alg_id)
+                        alg_envs.append(alg_obj.to_latex())
+                    elif alg_obj and alg_id in emitted_algorithms:
+                        alg_envs.append(
+                            f"% Algorithm~\\ref{{alg:{alg_id}}} already defined above."
+                        )
+                    else:
+                        alg_envs.append(
+                            f"% Algorithm reference: {alg_id} (no algorithm YAML)"
+                        )
+                if alg_envs:
+                    text_par += "\n\n" + "\n\n".join(alg_envs)
+
                 claim_blocks.append(text_par)
+
+            if section == "introduction":
+                if contrib:
+                    items = []
+                    for c in contrib:
+                        emitted_claims.add(c.id)
+                        items.append(f"  \\item {_claim_paragraph(c, project)}")
+                    item_block = (
+                        "\\noindent The main contributions of this work are:\n"
+                        "\\begin{itemize}\n"
+                        + "\n".join(items)
+                        + "\n\\end{itemize}"
+                    )
+                    claim_blocks.append(item_block)
+
+                if project.config.sections_overview:
+                    sec_overview = escape_latex(project.config.sections_overview)
+                    claim_blocks.append(
+                        f"The rest of this paper is organized as follows: Section II presents {sec_overview}."
+                    )
+
             block += "\n\n".join(claim_blocks)
         else:
             block += "% TODO: No claims linked to this section yet."
@@ -231,6 +321,7 @@ def _generate_journal_sections(
     blocks: list[str] = []
     emitted_figures: set[str] = set()
     emitted_tables: set[str] = set()
+    emitted_algorithms: set[str] = set()
     emitted_claims: set[str] = set()
 
     for section in sections:
@@ -241,6 +332,7 @@ def _generate_journal_sections(
         section_claims = sorted(
             (c for c in project.claims if section in c.sections), key=lambda c: c.id
         )
+        current_subsection = ""
 
         if section == "introduction":
             heading = (
@@ -249,7 +341,11 @@ def _generate_journal_sections(
             )
             if section_claims:
                 paragraphs: list[str] = []
-                for idx, c in enumerate(section_claims):
+                non_contrib = [c for c in section_claims if not c.is_contribution]
+                contrib = [c for c in section_claims if c.is_contribution]
+                target_claims = non_contrib if contrib else section_claims
+
+                for idx, c in enumerate(target_claims):
                     if c.id in emitted_claims:
                         first_sec = c.sections[0] if c.sections else "above"
                         paragraphs.append(
@@ -258,11 +354,16 @@ def _generate_journal_sections(
                         continue
                     emitted_claims.add(c.id)
 
-                    text_p = _claim_paragraph(c, project)
+                    prefix = ""
+                    if c.subsection and c.subsection != current_subsection:
+                        prefix = f"\\subsection{{{escape_latex(c.subsection)}}}\n"
+                        current_subsection = c.subsection
+
+                    claim_text = _claim_paragraph(c, project)
                     if idx == 0 or not any(not p.startswith("%") for p in paragraphs):
-                        first_text = _ieee_parstart(text_p)
+                        first_text = prefix + _ieee_parstart(claim_text)
                     else:
-                        first_text = text_p
+                        first_text = prefix + claim_text
 
                     first_envs = []
                     for fig_id in c.figures:
@@ -271,7 +372,7 @@ def _generate_journal_sections(
                         )
                         if fig_obj and fig_id not in emitted_figures:
                             emitted_figures.add(fig_id)
-                            first_envs.append(_generate_figure_latex(fig_obj))
+                            first_envs.append(_generate_figure_latex(fig_obj, project.root))
                         elif fig_obj and fig_id in emitted_figures:
                             first_envs.append(
                                 f"% Figure~\\ref{{fig:{fig_id}}} already defined above."
@@ -290,8 +391,8 @@ def _generate_journal_sections(
                         )
                         if tbl_obj and tbl_id not in emitted_tables:
                             emitted_tables.add(tbl_id)
-                            if tbl_obj.caption:
-                                first_tbl_envs.append(_generate_table_latex(tbl_obj))
+                            if tbl_obj.caption or tbl_obj.auto_rows_from_experiment:
+                                first_tbl_envs.append(_generate_table_latex(tbl_obj, project))
                             else:
                                 caption_text = escape_latex((tbl_obj.caption or "")[:60])
                                 first_tbl_envs.append(
@@ -300,7 +401,7 @@ def _generate_journal_sections(
                                 )
                         elif tbl_obj and tbl_id in emitted_tables:
                             first_tbl_envs.append(
-                                f"% Table~\\ref{{tbl:{tbl_id}}} already defined above."
+                                f"% Table~\\ref{{tab:{tbl_id}}} already defined above."
                             )
                         else:
                             first_tbl_envs.append(
@@ -309,7 +410,44 @@ def _generate_journal_sections(
                     if first_tbl_envs:
                         first_text += "\n\n" + "\n\n".join(first_tbl_envs)
 
+                    alg_envs = []
+                    for alg_id in c.algorithms:
+                        alg_obj = project.algorithm_map.get(alg_id)
+                        if alg_obj and alg_id not in emitted_algorithms:
+                            emitted_algorithms.add(alg_id)
+                            alg_envs.append(alg_obj.to_latex())
+                        elif alg_obj and alg_id in emitted_algorithms:
+                            alg_envs.append(
+                                f"% Algorithm~\\ref{{alg:{alg_id}}} already defined above."
+                            )
+                        else:
+                            alg_envs.append(
+                                f"% Algorithm reference: {alg_id} (no algorithm YAML)"
+                            )
+                    if alg_envs:
+                        first_text += "\n\n" + "\n\n".join(alg_envs)
+
                     paragraphs.append(first_text)
+
+                if contrib:
+                    items = []
+                    for c in contrib:
+                        emitted_claims.add(c.id)
+                        items.append(f"  \\item {_claim_paragraph(c, project)}")
+                    item_block = (
+                        "\\noindent The main contributions of this work are:\n"
+                        "\\begin{itemize}\n"
+                        + "\n".join(items)
+                        + "\n\\end{itemize}"
+                    )
+                    paragraphs.append(item_block)
+
+                if project.config.sections_overview:
+                    sec_overview = escape_latex(project.config.sections_overview)
+                    paragraphs.append(
+                        f"The rest of this paper is organized as follows: Section II presents {sec_overview}."
+                    )
+
                 body = "\n\n".join(paragraphs)
             else:
                 body = "% TODO: No claims linked to this section yet."
@@ -328,13 +466,22 @@ def _generate_journal_sections(
                     continue
                 emitted_claims.add(c.id)
 
-                text_par = _claim_paragraph(c, project)
+                prefix = ""
+                if c.subsection and c.subsection != current_subsection:
+                    prefix = f"\\subsection{{{escape_latex(c.subsection)}}}\n"
+                    current_subsection = c.subsection
+
+                if section == "related_work" and c.compared_work:
+                    prefix += f"% --- {escape_latex(c.compared_work)} ---\n"
+
+                text_par = prefix + _claim_paragraph(c, project)
+
                 fig_envs = []
                 for fig_id in c.figures:
                     fig_obj = next((f for f in project.figures if f.id == fig_id), None)
                     if fig_obj and fig_id not in emitted_figures:
                         emitted_figures.add(fig_id)
-                        fig_envs.append(_generate_figure_latex(fig_obj))
+                        fig_envs.append(_generate_figure_latex(fig_obj, project.root))
                     elif fig_obj and fig_id in emitted_figures:
                         fig_envs.append(
                             f"% Figure~\\ref{{fig:{fig_id}}} already defined above."
@@ -351,8 +498,8 @@ def _generate_journal_sections(
                     tbl_obj = next((t for t in project.tables if t.id == tbl_id), None)
                     if tbl_obj and tbl_id not in emitted_tables:
                         emitted_tables.add(tbl_id)
-                        if tbl_obj.caption:
-                            tbl_envs.append(_generate_table_latex(tbl_obj))
+                        if tbl_obj.caption or tbl_obj.auto_rows_from_experiment:
+                            tbl_envs.append(_generate_table_latex(tbl_obj, project))
                         else:
                             caption_text = escape_latex((tbl_obj.caption or "")[:60])
                             tbl_envs.append(
@@ -369,6 +516,23 @@ def _generate_journal_sections(
                         )
                 if tbl_envs:
                     text_par += "\n\n" + "\n\n".join(tbl_envs)
+
+                alg_envs = []
+                for alg_id in c.algorithms:
+                    alg_obj = project.algorithm_map.get(alg_id)
+                    if alg_obj and alg_id not in emitted_algorithms:
+                        emitted_algorithms.add(alg_id)
+                        alg_envs.append(alg_obj.to_latex())
+                    elif alg_obj and alg_id in emitted_algorithms:
+                        alg_envs.append(
+                            f"% Algorithm~\\ref{{alg:{alg_id}}} already defined above."
+                        )
+                    else:
+                        alg_envs.append(
+                            f"% Algorithm reference: {alg_id} (no algorithm YAML)"
+                        )
+                if alg_envs:
+                    text_par += "\n\n" + "\n\n".join(alg_envs)
 
                 claim_blocks.append(text_par)
             block += "\n\n".join(claim_blocks)
@@ -631,6 +795,8 @@ def _generate_latex_conference(
     bibliography = _generate_bibliography(project)
 
     preamble = plugin.generate_preamble()
+    if "\\usepackage{algorithmic}" not in preamble:
+        preamble += "\n\\usepackage{algorithm}\n\\usepackage{algorithmic}"
     if project.config.orcid and "\\usepackage{orcidlink}" not in preamble:
         preamble += "\n\\usepackage{orcidlink}"
 
@@ -695,6 +861,8 @@ def _generate_latex_journal(
     acknowledgment = _generate_acknowledgment(project)
 
     preamble = plugin.generate_preamble()
+    if "\\usepackage{algorithmic}" not in preamble:
+        preamble += "\n\\usepackage{algorithm}\n\\usepackage{algorithmic}"
     if project.config.orcid and "\\usepackage{orcidlink}" not in preamble:
         preamble += "\n\\usepackage{orcidlink}"
 

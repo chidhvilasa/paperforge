@@ -222,6 +222,19 @@ def add_figure(
     )
 
 
+@app.command(name="generate-figures")
+def generate_figures(
+    figure_id: str | None = typer.Argument(
+        None, help="Specific figure ID, or all if omitted"
+    ),
+    path: Path = typer.Option(Path("."), "--path", "-p"),
+) -> None:
+    """Generate matplotlib figures from experiment data."""
+    from paperforge.commands.generate_figures import run
+
+    run(project_root=path.resolve(), figure_id=figure_id)
+
+
 @app.command(name="add-table")
 def add_table(
     path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),

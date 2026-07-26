@@ -12,10 +12,14 @@ def mock_project(figures=None, claims=None):
     project = PaperForgeProject(root=Path("."), config=config, claims=claims or [], experiments=[], figures=figures or [])
     return project
 
-def test_figure_with_path_and_caption_emits_environment():
+def test_figure_with_path_and_caption_emits_environment(tmp_path):
+    fig_path = tmp_path / "figures" / "map.png"
+    fig_path.parent.mkdir(parents=True, exist_ok=True)
+    fig_path.write_text("fake image")
     fig = Figure(id="fig_01", caption="A map", path="figures/map.png")
     claim = Claim(id="claim_01", text="Text", sections=["introduction"], figures=["fig_01"], experiment="")
     project = mock_project(figures=[fig], claims=[claim])
+    project.root = tmp_path
     latex = _generate_sections(["introduction"], project)
     assert "\\begin{figure}[!t]" in latex
     assert "\\includegraphics[width=\\columnwidth]{figures/map.png}" in latex
@@ -28,9 +32,10 @@ def test_figure_missing_path_emits_comment_only():
     claim = Claim(id="claim_01", text="Text", sections=["introduction"], figures=["fig_01"], experiment="")
     project = mock_project(figures=[fig], claims=[claim])
     latex = _generate_sections(["introduction"], project)
-    assert "\\begin{figure}" not in latex
-    assert "% Figure: fig_01 — A map (path not set)" in latex
-    assert "% \\label{fig:fig_01}" in latex
+    assert "\\begin{figure}[!t]" in latex
+    assert "Figure placeholder" in latex
+    assert "\\caption{A map}" in latex
+    assert "\\label{fig:fig_01}" in latex
 
 def test_bare_string_figure_emits_run_add_figure_comment():
     claim = Claim(id="claim_01", text="Text", sections=["introduction"], figures=["fig_99"], experiment="")
@@ -45,17 +50,25 @@ def test_inline_ref_added_to_claim_paragraph():
     para = _claim_paragraph(claim, project)
     assert "This is it. (see Fig.~\\ref{fig:fig_01})" in para
 
-def test_width_inches_converted_correctly():
+def test_width_inches_converted_correctly(tmp_path):
+    fig_path = tmp_path / "figures" / "x.png"
+    fig_path.parent.mkdir(parents=True, exist_ok=True)
+    fig_path.write_text("fake image")
     fig = Figure(id="fig_01", caption="Cap", path="figures/x.png", width_inches=3.5)
     claim = Claim(id="claim_01", text="Text", sections=["introduction"], figures=["fig_01"], experiment="")
     project = mock_project(figures=[fig], claims=[claim])
+    project.root = tmp_path
     latex = _generate_sections(["introduction"], project)
     assert "\\includegraphics[width=3.5in]{figures/x.png}" in latex
 
-def test_fallback_to_columnwidth_if_no_width_inches():
+def test_fallback_to_columnwidth_if_no_width_inches(tmp_path):
+    fig_path = tmp_path / "figures" / "x.png"
+    fig_path.parent.mkdir(parents=True, exist_ok=True)
+    fig_path.write_text("fake image")
     fig = Figure(id="fig_01", caption="Cap", path="figures/x.png", width_inches=None)
     claim = Claim(id="claim_01", text="Text", sections=["introduction"], figures=["fig_01"], experiment="")
     project = mock_project(figures=[fig], claims=[claim])
+    project.root = tmp_path
     latex = _generate_sections(["introduction"], project)
     assert "\\includegraphics[width=\\columnwidth]{figures/x.png}" in latex
 

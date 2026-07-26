@@ -149,12 +149,14 @@ def run(path: Path) -> None:
     figures_dir = pf_dir / "figures"
     tables_dir = pf_dir / "tables"
     citations_dir = pf_dir / "citations"
+    algorithms_dir = pf_dir / "algorithms"
     paper_dir = path / "paper"
     claims_dir.mkdir(parents=True)
     experiments_dir.mkdir(parents=True)
     figures_dir.mkdir(parents=True)
     tables_dir.mkdir(parents=True)
     citations_dir.mkdir(parents=True)
+    algorithms_dir.mkdir(parents=True)
     paper_dir.mkdir(parents=True, exist_ok=True)
 
     (pf_dir / "paper.yaml").write_text(PAPER_YAML, encoding="utf-8")

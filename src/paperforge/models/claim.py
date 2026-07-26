@@ -21,6 +21,10 @@ class Claim:
     sections: list[str] = field(default_factory=list)
     status: ClaimStatus = "unverified"
     last_verified: date | None = None
+    subsection: str = ""
+    algorithms: list[str] = field(default_factory=list)
+    is_contribution: bool = False
+    compared_work: str = ""
 
     @classmethod
     def from_yaml(cls, data: dict) -> Claim:
@@ -38,6 +42,10 @@ class Claim:
             sections=data.get("sections", []),
             status=data.get("status", "unverified"),
             last_verified=last_verified,
+            subsection=data.get("subsection", ""),
+            algorithms=data.get("algorithms", []),
+            is_contribution=bool(data.get("is_contribution", False)),
+            compared_work=data.get("compared_work", ""),
         )
 
     def to_yaml(self) -> dict:
@@ -54,4 +62,8 @@ class Claim:
             "last_verified": (
                 self.last_verified.isoformat() if self.last_verified else None
             ),
+            "subsection": self.subsection,
+            "algorithms": self.algorithms,
+            "is_contribution": self.is_contribution,
+            "compared_work": self.compared_work,
         }

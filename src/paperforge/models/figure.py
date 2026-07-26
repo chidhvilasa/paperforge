@@ -16,6 +16,11 @@ class Figure:
                                             # e.g. "results"
     notes: str = ""             # any free-form notes about the figure
     wide: bool = False           # spans both columns (figure*) in IEEE two-column layout
+    source_experiment: str | None = None  # experiment to plot
+    chart_type: str = "auto"              # bar, line, scatter, auto
+    x_label: str = ""                     # x-axis label
+    y_label: str = ""                     # y-axis label
+    chart_title: str = ""                 # chart title (optional)
 
     @classmethod
     def from_yaml(cls, data: dict[str, Any]) -> Figure:
@@ -29,6 +34,11 @@ class Figure:
             first_mentioned_in=data.get("first_mentioned_in"),
             notes=data.get("notes", ""),
             wide=data.get("wide", False),
+            source_experiment=data.get("source_experiment"),
+            chart_type=data.get("chart_type", "auto"),
+            x_label=data.get("x_label", ""),
+            y_label=data.get("y_label", ""),
+            chart_title=data.get("chart_title", ""),
         )
 
     def to_yaml(self) -> dict[str, Any]:
@@ -42,4 +52,9 @@ class Figure:
             "first_mentioned_in": self.first_mentioned_in,
             "notes": self.notes,
             "wide": self.wide,
+            "source_experiment": self.source_experiment,
+            "chart_type": self.chart_type,
+            "x_label": self.x_label,
+            "y_label": self.y_label,
+            "chart_title": self.chart_title,
         }

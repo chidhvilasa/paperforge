@@ -54,6 +54,11 @@ def test_figure_to_yaml_keys():
         "first_mentioned_in",
         "notes",
         "wide",
+        "source_experiment",
+        "chart_type",
+        "x_label",
+        "y_label",
+        "chart_title",
     }
 
 

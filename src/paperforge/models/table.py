@@ -18,6 +18,7 @@ class Table:
     source_experiment: str | None = None
                                 # experiment id that generated this table's data
     wide: bool = False         # spans both columns (table*) in IEEE two-column layout
+    auto_rows_from_experiment: str | None = None
 
     @classmethod
     def from_yaml(cls, data: dict[str, Any]) -> Table:
@@ -30,6 +31,7 @@ class Table:
             first_mentioned_in=data.get("first_mentioned_in"),
             source_experiment=data.get("source_experiment"),
             wide=data.get("wide", False),
+            auto_rows_from_experiment=data.get("auto_rows_from_experiment"),
         )
 
     def to_yaml(self) -> dict[str, Any]:
@@ -42,4 +44,5 @@ class Table:
             "first_mentioned_in": self.first_mentioned_in,
             "source_experiment": self.source_experiment,
             "wide": self.wide,
+            "auto_rows_from_experiment": self.auto_rows_from_experiment,
         }

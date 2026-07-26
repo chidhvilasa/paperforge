@@ -9,6 +9,7 @@ from typing import Any
 import yaml
 
 from paperforge.graph.dependency import ResearchGraph
+from paperforge.models.algorithm import Algorithm
 from paperforge.models.citation import Citation
 from paperforge.models.claim import Claim
 from paperforge.models.experiment import Experiment
@@ -59,6 +60,7 @@ class ProjectConfig:
     conflict_of_interest: str = ""
     manuscript_received: str = ""
     publisher_id: str = ""
+    sections_overview: str = ""
 
     @classmethod
     def from_yaml(cls, data: dict) -> ProjectConfig:
@@ -84,6 +86,7 @@ class ProjectConfig:
             conflict_of_interest=data.get("conflict_of_interest", ""),
             manuscript_received=data.get("manuscript_received", ""),
             publisher_id=data.get("publisher_id", ""),
+            sections_overview=data.get("sections_overview", ""),
         )
 
 
@@ -99,6 +102,7 @@ class PaperForgeProject:
         figures: list[Figure],
         tables: list[Table] | None = None,
         citations: list[Citation] | None = None,
+        algorithms: list[Algorithm] | None = None,
     ) -> None:
         self.root = root
         self.config = config
@@ -107,6 +111,7 @@ class PaperForgeProject:
         self.figures = figures
         self.tables = tables if tables is not None else []
         self.citations = citations if citations is not None else []
+        self.algorithms = algorithms if algorithms is not None else []
 
     @classmethod
     def load(cls, path: Path) -> PaperForgeProject:
@@ -158,6 +163,13 @@ class PaperForgeProject:
                 with open(cit_file, encoding="utf-8") as f:
                     citations.append(Citation.from_yaml(yaml.safe_load(f)))
 
+        algorithms: list[Algorithm] = []
+        algorithms_dir = pf_dir / "algorithms"
+        if algorithms_dir.exists():
+            for alg_file in sorted(algorithms_dir.glob("*.yaml")):
+                with open(alg_file, encoding="utf-8") as f:
+                    algorithms.append(Algorithm.from_yaml(yaml.safe_load(f)))
+
         return cls(
             root=path,
             config=config,
@@ -166,6 +178,7 @@ class PaperForgeProject:
             figures=figures,
             tables=tables,
             citations=citations,
+            algorithms=algorithms,
         )
 
     def get_graph(self) -> ResearchGraph:
@@ -193,8 +206,16 @@ class PaperForgeProject:
         return len(self.citations)
 
     @property
+    def algorithm_count(self) -> int:
+        return len(self.algorithms)
+
+    @property
     def citation_map(self) -> dict[str, Citation]:
         return {c.key: c for c in self.citations}
+
+    @property
+    def algorithm_map(self) -> dict[str, Algorithm]:
+        return {a.id: a for a in self.algorithms}
 
     @property
     def paperforge_dir(self) -> Path:
