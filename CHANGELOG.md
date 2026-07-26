@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+- LaTeX special character escaping: % & $ # _ { } ~ ^ now correctly escaped in all user text (claim text, captions, titles, acknowledgments, affiliations). % signs in percentages no longer silently truncate LaTeX content. escape_latex() moved to utils/latex.py as shared utility.
+- Claim deduplication: claims appearing in multiple sections now emit full text only in the first section; subsequent sections emit a comment reference. Prevents duplicate paragraphs and "Label multiply defined" warnings.
+
 ## [1.0.0] — 2026-07-26
 
 ### Added

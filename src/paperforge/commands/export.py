@@ -16,6 +16,7 @@ from rich.text import Text
 
 from paperforge import __version__
 from paperforge.core.project import PaperForgeProject
+from paperforge.utils.latex import escape_latex as _escape_latex
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -215,25 +216,6 @@ def _generate_markdown(project: PaperForgeProject) -> str:
 
 
 # --- Traceability Matrix ---
-
-def _escape_latex(text: str) -> str:
-    if not text:
-        return ""
-    text = text.replace("\\", "\x00BACKSLASH\x00")
-    text = text.replace("%", "\\%")
-    text = text.replace("$", "\\$")
-    text = text.replace("&", "\\&")
-    text = text.replace("#", "\\#")
-    text = text.replace("_", "\\_")
-    text = text.replace("{", "\\{")
-    text = text.replace("}", "\\}")
-    text = text.replace("~", "\x00TILDE\x00")
-    text = text.replace("^", "\x00CIRCUM\x00")
-
-    text = text.replace("\x00BACKSLASH\x00", "\\textbackslash{}")
-    text = text.replace("\x00TILDE\x00", "\\textasciitilde{}")
-    text = text.replace("\x00CIRCUM\x00", "\\textasciicircum{}")
-    return text
 
 
 def _generate_traceability_md(project: PaperForgeProject) -> str:

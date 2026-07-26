@@ -1,1 +1,1 @@
-"""PaperForge utilities package."""
+"""PaperForge utilities."""

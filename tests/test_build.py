@@ -98,7 +98,7 @@ def test_build_tex_contains_claim_text(tmp_path: Path) -> None:
     content = (tmp_path / "paper" / "paper.tex").read_text(
         encoding="utf-8"
     )
-    assert "This model achieves 98.4% accuracy." in content
+    assert "This model achieves 98.4\\% accuracy." in content
 
 
 def test_build_tex_contains_documentclass(tmp_path: Path) -> None:
@@ -130,7 +130,7 @@ def test_build_abstract_from_claims(tmp_path: Path) -> None:
         encoding="utf-8"
     )
     abstract_block = content.split("\\begin{abstract}")[1].split("\\end{abstract}")[0]
-    assert "This model achieves 98.4% accuracy." in abstract_block
+    assert "This model achieves 98.4\\% accuracy." in abstract_block
 
 
 def test_build_no_claims_in_section_emits_todo(tmp_path: Path) -> None:

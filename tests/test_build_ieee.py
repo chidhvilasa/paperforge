@@ -357,3 +357,57 @@ def test_build_overwrites_stub_references_bib(tmp_path: Path) -> None:
     bib_path = tmp_path / "paper" / "references.bib"
     content = bib_path.read_text(encoding="utf-8")
     assert "@article" in content
+
+
+def test_build_escapes_percentage_in_claim_text(tmp_path: Path) -> None:
+    write_journal_project(tmp_path)
+    pf_dir = tmp_path / ".paperforge"
+    claim_path = pf_dir / "claims" / "claim_02.yaml"
+    claim_data = yaml.safe_load(claim_path.read_text(encoding="utf-8"))
+    claim_data["text"] = "achieves 98.4% accuracy"
+    claim_path.write_text(yaml.dump(claim_data, default_flow_style=False), encoding="utf-8")
+
+    build.run(tmp_path, target="ieee-journal")
+    content = _read_tex(tmp_path)
+    assert "98.4\\%" in content
+    assert "98.4%" not in content
+
+
+def test_build_escapes_ampersand_in_claim_text(tmp_path: Path) -> None:
+    write_journal_project(tmp_path)
+    pf_dir = tmp_path / ".paperforge"
+    claim_path = pf_dir / "claims" / "claim_02.yaml"
+    claim_data = yaml.safe_load(claim_path.read_text(encoding="utf-8"))
+    claim_data["text"] = "A & B comparison"
+    claim_path.write_text(yaml.dump(claim_data, default_flow_style=False), encoding="utf-8")
+
+    build.run(tmp_path, target="ieee-journal")
+    content = _read_tex(tmp_path)
+    assert "A \\& B" in content
+    assert "A & B" not in content
+
+
+def test_build_claim_appears_once_when_in_multiple_sections(tmp_path: Path) -> None:
+    write_journal_project(tmp_path)
+    pf_dir = tmp_path / ".paperforge"
+    claim_path = pf_dir / "claims" / "claim_02.yaml"
+    claim_data = yaml.safe_load(claim_path.read_text(encoding="utf-8"))
+    claim_data["text"] = "Unique claim text for dedup test."
+    claim_data["sections"] = ["results", "discussion"]
+    claim_path.write_text(yaml.dump(claim_data, default_flow_style=False), encoding="utf-8")
+
+    build.run(tmp_path, target="ieee-journal")
+    content = _read_tex(tmp_path)
+    count = content.count("Unique claim text for dedup test")
+    assert count == 1, f"Claim text appeared {count} times, expected 1"
+
+
+def test_escape_latex_function() -> None:
+    from paperforge.utils.latex import escape_latex
+
+    assert escape_latex("98.4%") == "98.4\\%"
+    assert escape_latex("A & B") == "A \\& B"
+    assert escape_latex("$x$") == "\\$x\\$"
+    assert escape_latex("") == ""
+    assert escape_latex("normal text") == "normal text"
+
