@@ -362,7 +362,7 @@ def collect_issues(project: PaperForgeProject) -> list[Issue]:
                 ),
             )
         )
-    if 0 < abstract_word_count < 50:
+    if 0 < abstract_word_count < 100:
         issues.append(
             Issue(
                 code="ABSTRACT_TOO_SHORT",
@@ -540,7 +540,7 @@ def collect_issues(project: PaperForgeProject) -> list[Issue]:
             figure.resolution_dpi is not None
             and figure.format is not None
             and figure.format.lower() in ("png", "jpg", "jpeg", "tiff", "tif")
-            and figure.resolution_dpi < 300
+            and 150 <= figure.resolution_dpi < 300
         ):
             issues.append(
                 Issue(
@@ -760,6 +760,392 @@ def collect_issues(project: PaperForgeProject) -> list[Issue]:
                         f"{claim.id} draws from {1 + len(claim.experiments)} "
                         f"experiments: [{claim.experiment}] + "
                         f"{claim.experiments}. Verify all are cited."
+                    ),
+                )
+            )
+
+    # Check 50 — FUNDING_IN_ACKNOWLEDGMENT (WARNING)
+    if project.config.acknowledgment:
+        ack_lower = project.config.acknowledgment.lower()
+        funding_keywords = ["supported by", "grant", "funded by", "nsf", "nih"]
+        if any(kw in ack_lower for kw in funding_keywords):
+            issues.append(
+                Issue(
+                    code="FUNDING_IN_ACKNOWLEDGMENT",
+                    severity="WARNING",
+                    message=(
+                        "Acknowledgment section appears to contain funding info. "
+                        "Per IEEE convention, funding goes in the \\thanks{} "
+                        "footnote (use the 'funding:' field in paper.yaml), "
+                        "not in the acknowledgment section."
+                    ),
+                )
+            )
+
+    # Check 51 — MISSING_COI (WARNING)
+    if not project.config.conflict_of_interest:
+        issues.append(
+            Issue(
+                code="MISSING_COI",
+                severity="WARNING",
+                message=(
+                    "IEEE Access requires a conflict of interest statement. "
+                    "Set 'conflict_of_interest:' in paper.yaml. If none: "
+                    "'The authors declare no conflicts of interest.'"
+                ),
+            )
+        )
+
+    # Check 52 — MISSING_DATA_AVAILABILITY (WARNING)
+    if not project.config.data_availability:
+        issues.append(
+            Issue(
+                code="MISSING_DATA_AVAILABILITY",
+                severity="WARNING",
+                message=(
+                    "IEEE Access expects a data availability statement. "
+                    "Set 'data_availability:' in paper.yaml."
+                ),
+            )
+        )
+
+    # Check 53 — ABSTRACT_HAS_CITATION (ERROR)
+    abstract_claims_list = [c for c in project.claims if "abstract" in c.sections]
+    if any(c.citations for c in abstract_claims_list):
+        issues.append(
+            Issue(
+                code="ABSTRACT_HAS_CITATION",
+                severity="ERROR",
+                message=(
+                    "Abstract claims have linked citations. IEEE Access "
+                    "abstracts must not contain citation references. "
+                    "Move citations to Introduction or body sections."
+                ),
+            )
+        )
+
+    # Check 54 — ABSTRACT_MULTIPARAGRAPH (WARNING)
+    joined_abstract_text = " ".join(c.text for c in abstract_claims_list if c.text)
+    if "\n\n" in joined_abstract_text:
+        issues.append(
+            Issue(
+                code="ABSTRACT_MULTIPARAGRAPH",
+                severity="WARNING",
+                message=(
+                    "Abstract appears to contain multiple paragraphs. "
+                    "IEEE Access requires a single-paragraph abstract."
+                ),
+            )
+        )
+
+    # Check 55 — KEYWORDS_NOT_ALPHABETICAL (WARNING)
+    if project.config.keywords and len(project.config.keywords) > 1:
+        sorted_kw = sorted(project.config.keywords, key=str.lower)
+        if sorted_kw != project.config.keywords:
+            issues.append(
+                Issue(
+                    code="KEYWORDS_NOT_ALPHABETICAL",
+                    severity="WARNING",
+                    message=(
+                        "IEEE style recommends alphabetical keyword order. "
+                        f"Suggested order: {', '.join(sorted_kw)}"
+                    ),
+                )
+            )
+
+    # Check 56 — TOO_FEW_KEYWORDS (WARNING)
+    if len(project.config.keywords) < 4:
+        issues.append(
+            Issue(
+                code="TOO_FEW_KEYWORDS",
+                severity="WARNING",
+                message=(
+                    f"Only {len(project.config.keywords)} keyword(s). "
+                    "IEEE Access expects 4-8 keywords."
+                ),
+            )
+        )
+
+    # Check 57 — TOO_MANY_KEYWORDS (WARNING)
+    if len(project.config.keywords) > 8:
+        issues.append(
+            Issue(
+                code="TOO_MANY_KEYWORDS",
+                severity="WARNING",
+                message=(
+                    f"{len(project.config.keywords)} keywords. "
+                    "IEEE Access recommends 4-8 keywords."
+                ),
+            )
+        )
+
+    # Check 58 — TABLE_NOTES_INTERNAL_REF (WARNING)
+    table_internal_patterns = [
+        r"\.\w{2,4}$",
+        r"exp_\w+",
+        r"D-\d{3}",
+        r"TECH_DEBT",
+        r"results[/\\]",
+        r"\.json",
+        r"\.txt",
+        r"\w+_results",
+    ]
+    for table in project.tables:
+        if table.notes:
+            matched_pat = None
+            for pat in table_internal_patterns:
+                if re.search(pat, table.notes, re.IGNORECASE):
+                    matched_pat = pat
+                    break
+            if matched_pat:
+                issues.append(
+                    Issue(
+                        code="TABLE_NOTES_INTERNAL_REF",
+                        severity="WARNING",
+                        message=(
+                            f"{table.id} notes contain internal references "
+                            f"(matched '{matched_pat}'). Table notes should be "
+                            f"reader-facing prose, not lab notes."
+                        ),
+                    )
+                )
+
+    # Check 59 — ABSTRACT_INTRO_OVERLAP (ERROR)
+    claims_in_abstract_set = {
+        c.id for c in project.claims if "abstract" in c.sections
+    }
+    claims_in_intro_set = {
+        c.id for c in project.claims if "introduction" in c.sections
+    }
+    overlap_set = claims_in_abstract_set & claims_in_intro_set
+    if overlap_set:
+        issues.append(
+            Issue(
+                code="ABSTRACT_INTRO_OVERLAP",
+                severity="ERROR",
+                message=(
+                    f"Claims {sorted(overlap_set)} appear in both abstract "
+                    f"and introduction. The introduction must not repeat "
+                    f"the abstract. Use separate claims for each section."
+                ),
+            )
+        )
+
+    # Check 60 — INTRO_MISSING_MOTIVATION (WARNING)
+    claims_in_results_set = {
+        c.id for c in project.claims if "results" in c.sections
+    }
+    if claims_in_intro_set and claims_in_intro_set.issubset(
+        claims_in_abstract_set | claims_in_results_set
+    ):
+        issues.append(
+            Issue(
+                code="INTRO_MISSING_MOTIVATION",
+                severity="WARNING",
+                message=(
+                    "Introduction only contains result statements. "
+                    "Introduction should also contain: problem motivation, "
+                    "gap in existing work, and explicit contributions list."
+                ),
+            )
+        )
+
+    # Check 61 — DUPLICATE_CITATION_KEY (WARNING)
+    for claim in project.claims:
+        if claim.citations and len(claim.citations) != len(set(claim.citations)):
+            issues.append(
+                Issue(
+                    code="DUPLICATE_CITATION_KEY",
+                    severity="WARNING",
+                    message=(
+                        "Claim has duplicate citation key. "
+                        "Each key should appear once per claim."
+                    ),
+                )
+            )
+
+    # Check 62 — CITATION_YEAR_FUTURE (WARNING)
+    for citation in project.citations:
+        if citation.year is not None and citation.year > 2026:
+            issues.append(
+                Issue(
+                    code="CITATION_YEAR_FUTURE",
+                    severity="WARNING",
+                    message=(
+                        f"Citation '{citation.key}' has year {citation.year} "
+                        f"which is in the future. Verify the year is correct."
+                    ),
+                )
+            )
+
+    # Check 63 — FIGURE_CRITICALLY_LOW_RESOLUTION (ERROR)
+    for figure in project.figures:
+        if (
+            figure.resolution_dpi is not None
+            and figure.format is not None
+            and figure.format.lower() in ("png", "jpg", "jpeg", "tiff", "tif")
+            and figure.resolution_dpi < 150
+        ):
+            issues.append(
+                Issue(
+                    code="FIGURE_CRITICALLY_LOW_RESOLUTION",
+                    severity="ERROR",
+                    message=(
+                        f"{figure.id} has {figure.resolution_dpi} DPI. "
+                        f"Minimum for IEEE production: 300 DPI (photos/color), "
+                        f"600 DPI (line art). This will fail production check."
+                    ),
+                )
+            )
+
+    # Check 64 — FIGURE_FORMAT_NOT_IEEE (WARNING)
+    for figure in project.figures:
+        if (
+            figure.format
+            and figure.format.lower()
+            not in (
+                "pdf",
+                "eps",
+                "ps",
+                "png",
+                "jpg",
+                "jpeg",
+                "tiff",
+                "tif",
+            )
+        ):
+                issues.append(
+                    Issue(
+                        code="FIGURE_FORMAT_NOT_IEEE",
+                        severity="WARNING",
+                        message=(
+                            f"{figure.id} format '{figure.format}' may not be "
+                            f"accepted by IEEE production. Preferred: PDF, EPS, "
+                            f"PNG (300+ DPI), TIFF (300+ DPI)."
+                        ),
+                    )
+                )
+
+    # Check 65 — UNUSUAL_SECTION_ORDER (WARNING)
+    expected_section_order = [
+        "abstract",
+        "introduction",
+        "related_work",
+        "methodology",
+        "experiments",
+        "results",
+        "discussion",
+        "conclusion",
+    ]
+    configured_sections = [
+        s for s in project.config.sections if s in expected_section_order
+    ]
+    indices = [expected_section_order.index(s) for s in configured_sections]
+    if indices != sorted(indices):
+        issues.append(
+            Issue(
+                code="UNUSUAL_SECTION_ORDER",
+                severity="WARNING",
+                message=(
+                    f"Section order {configured_sections} deviates from "
+                    f"standard IEEE structure. Verify this is intentional."
+                ),
+            )
+        )
+
+    # Check 66 — REPRODUCIBILITY_INCOMPLETE (WARNING)
+    for experiment in project.experiments:
+        missing_repro = []
+        if not experiment.seed and not experiment.seeds:
+            missing_repro.append("seed")
+        if not experiment.hardware:
+            missing_repro.append("hardware")
+        if not experiment.dataset:
+            missing_repro.append("dataset")
+        if not experiment.description:
+            missing_repro.append("description")
+        if missing_repro:
+            issues.append(
+                Issue(
+                    code="REPRODUCIBILITY_INCOMPLETE",
+                    severity="WARNING",
+                    message=(
+                        f"{experiment.id} missing reproducibility fields: "
+                        f"{', '.join(missing_repro)}. IEEE reviewers routinely "
+                        f"request these for replication."
+                    ),
+                )
+            )
+
+    # Check 67 — PVALUE_WITHOUT_TEST_NAME (WARNING)
+    p_val_regex = re.compile(r"p\s*[=<>]\s*0\.\d+", re.IGNORECASE)
+    test_keywords = ["wilcoxon", "t-test", "anova", "mann-whitney", "chi-square"]
+    for claim in project.claims:
+        if claim.text and p_val_regex.search(claim.text):
+            exp = experiment_map.get(claim.experiment or "")
+            exp_desc = (exp.description or "").lower() if exp else ""
+            if not any(tk in exp_desc for tk in test_keywords):
+                issues.append(
+                    Issue(
+                        code="PVALUE_WITHOUT_TEST_NAME",
+                        severity="WARNING",
+                        message=(
+                            f"{claim.id} reports a p-value but the linked "
+                            f"experiment description does not name the statistical "
+                            f"test used. IEEE reviewers require the test name, "
+                            f"degrees of freedom, and effect size."
+                        ),
+                    )
+                )
+
+    # Check 68 — MISSING_CORRESPONDING_EMAIL (WARNING)
+    if not project.config.email:
+        issues.append(
+            Issue(
+                code="MISSING_CORRESPONDING_EMAIL",
+                severity="WARNING",
+                message=(
+                    "No corresponding author email set. Add 'email:' "
+                    "to paper.yaml. IEEE Access requires a corresponding "
+                    "author email in the author block."
+                ),
+            )
+        )
+
+    # Check 69 — MISSING_ORCID (INFO)
+    if not project.config.orcid:
+        issues.append(
+            Issue(
+                code="MISSING_ORCID",
+                severity="INFO",
+                message=(
+                    "No ORCID iD set. IEEE Access supports ORCID "
+                    "in the author block. Add 'orcid:' to paper.yaml."
+                ),
+            )
+        )
+
+    # Check 70 — TITLE_ENDS_WITH_PERIOD (WARNING)
+    if project.config.title and project.config.title.strip().endswith("."):
+        issues.append(
+            Issue(
+                code="TITLE_ENDS_WITH_PERIOD",
+                severity="WARNING",
+                message="IEEE title should not end with a period.",
+            )
+        )
+
+    # Check 71 — TITLE_TOO_LONG (WARNING)
+    if project.config.title:
+        word_cnt = len(project.config.title.split())
+        if word_cnt > 15:
+            issues.append(
+                Issue(
+                    code="TITLE_TOO_LONG",
+                    severity="WARNING",
+                    message=(
+                        f"Title is {word_cnt} words. IEEE titles are "
+                        f"typically under 15 words."
                     ),
                 )
             )

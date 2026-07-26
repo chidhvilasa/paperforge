@@ -45,13 +45,24 @@ def write_project_with_table(tmp_path: Path) -> None:
         "id": "claim_02",
         "text": "System achieves 98.4% accuracy.",
         "experiment": "exp_01",
-        "sections": ["results", "abstract"],
+        "sections": ["results"],
         "tables": ["tbl_01"],
         "citations": ["smith2024"],
         "status": "verified",
     }
     (pf_dir / "claims" / "claim_02.yaml").write_text(
         yaml.dump(claim_data), encoding="utf-8"
+    )
+
+    abs_claim_data = {
+        "id": "claim_abs",
+        "text": "Abstract text.",
+        "experiment": "exp_01",
+        "sections": ["abstract"],
+        "status": "verified",
+    }
+    (pf_dir / "claims" / "claim_abs.yaml").write_text(
+        yaml.dump(abs_claim_data), encoding="utf-8"
     )
     # Remove default empty claim_01 if present
     c1 = pf_dir / "claims" / "claim_01.yaml"

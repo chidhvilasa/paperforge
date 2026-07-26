@@ -43,11 +43,25 @@ def write_journal_project(tmp_path: Path) -> None:
         text="The system achieves 98.4% accuracy.",
         experiment="exp_01",
         citations=["smith2024"],
-        sections=["abstract", "results", "introduction"],
+        sections=["results", "introduction"],
         status="verified",
     )
     claim_path.write_text(
         yaml.dump(claim.to_yaml(), default_flow_style=False, allow_unicode=True),
+        encoding="utf-8",
+    )
+
+    abs_claim_path = pf_dir / "claims" / "claim_abs.yaml"
+    abs_claim = Claim(
+        id="claim_abs",
+        text="Abstract text without citations.",
+        experiment="exp_01",
+        citations=[],
+        sections=["abstract"],
+        status="verified",
+    )
+    abs_claim_path.write_text(
+        yaml.dump(abs_claim.to_yaml(), default_flow_style=False, allow_unicode=True),
         encoding="utf-8",
     )
 
@@ -163,6 +177,7 @@ def test_build_conference_unchanged(tmp_path: Path) -> None:
     data = yaml.safe_load(paper_yaml.read_text(encoding="utf-8"))
     data["title"] = "Test Paper Title"
     data["authors"] = ["Test Author"]
+    data["paper_type"] = "conference"
     paper_yaml.write_text(yaml.dump(data, default_flow_style=False), encoding="utf-8")
 
     build.run(tmp_path, target="ieee")
@@ -378,7 +393,7 @@ def test_build_escapes_ampersand_in_claim_text(tmp_path: Path) -> None:
     pf_dir = tmp_path / ".paperforge"
     claim_path = pf_dir / "claims" / "claim_02.yaml"
     claim_data = yaml.safe_load(claim_path.read_text(encoding="utf-8"))
-    claim_data["text"] = "A & B comparison"
+    claim_data["text"] = "System A & B comparison"
     claim_path.write_text(yaml.dump(claim_data, default_flow_style=False), encoding="utf-8")
 
     build.run(tmp_path, target="ieee-journal")

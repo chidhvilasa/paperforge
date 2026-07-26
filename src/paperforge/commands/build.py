@@ -14,7 +14,7 @@ from rich.panel import Panel
 from rich.text import Text
 
 from paperforge.commands.doctor import collect_issues
-from paperforge.core.project import Affiliation, PaperForgeProject
+from paperforge.core.project import Affiliation, PaperForgeProject, ProjectConfig
 from paperforge.models.claim import Claim
 from paperforge.models.figure import Figure
 from paperforge.models.table import Table
@@ -300,7 +300,7 @@ def _generate_journal_sections(
                                 )
                         elif tbl_obj and tbl_id in emitted_tables:
                             first_tbl_envs.append(
-                                f"% Table~\\ref{{tab:{tbl_id}}} already defined above."
+                                f"% Table~\\ref{{tbl:{tbl_id}}} already defined above."
                             )
                         else:
                             first_tbl_envs.append(
@@ -381,11 +381,12 @@ def _generate_journal_sections(
 def _generate_author_block_journal(
     authors: list[str],
     affiliations: list[Affiliation],
+    config: ProjectConfig | None = None,
     compsoc: bool = False,
 ) -> str:
     escaped_authors = [escape_latex(a) for a in authors]
-    if not affiliations:
-        return ", ".join(escaped_authors)
+    if not authors:
+        return "Author(s) TBD"
 
     if compsoc:
         lines = []
@@ -414,41 +415,127 @@ def _generate_author_block_journal(
                 lines.append(f"  {author}")
         return "\n".join(lines)
 
-    # Non-compsoc journal mode: standard \thanks{} footnote form.
-    parts = []
-    for i, author in enumerate(escaped_authors):
-        if i < len(affiliations):
-            aff = affiliations[i]
-            aff_str = ", ".join(
-                filter(
-                    None,
-                    [
-                        escape_latex(aff.department or ""),
-                        escape_latex(aff.institution or ""),
-                        escape_latex(aff.city or ""),
-                        escape_latex(aff.country or ""),
-                    ],
-                )
-            )
-            if aff_str:
-                parts.append(
-                    f"{author},~\\IEEEmembership{{Member,~IEEE}}"
-                    f"\\thanks{{{aff_str}}}"
+    # Non-compsoc journal mode
+    if not affiliations and (
+        not config
+        or (
+            not config.funding
+            and not config.email
+            and not config.manuscript_received
+        )
+    ):
+        return ", ".join(escaped_authors)
+
+    has_extra = config and (
+        config.funding or config.email or config.manuscript_received
+    )
+
+    if has_extra:
+        author_parts = []
+        for author in escaped_authors:
+            if config and config.orcid:
+                author_parts.append(
+                    f"{author}~\\orcidlink{{{escape_latex(config.orcid)}}}"
                 )
             else:
-                parts.append(f"{author},~\\IEEEmembership{{Member,~IEEE}}")
+                author_parts.append(author)
+
+        if len(author_parts) == 1:
+            author_str = f"{author_parts[0]},~\\IEEEmembership{{Member,~IEEE}}"
+        elif len(author_parts) == 2:
+            author_str = f"{author_parts[0]} and {author_parts[1]}"
         else:
-            parts.append(author)
-    return " \\and\n".join(parts)
+            author_str = (
+                ", ".join(author_parts[:-1]) + f", and {author_parts[-1]}"
+            )
+
+        thanks_parts = []
+        if config and config.funding:
+            fund_text = escape_latex(config.funding).strip()
+            if not fund_text.endswith("."):
+                fund_text += "."
+            thanks_parts.append(fund_text)
+
+        if affiliations:
+            aff_lines = []
+            for i, aff in enumerate(affiliations):
+                aff_items = [
+                    escape_latex(aff.department or ""),
+                    escape_latex(aff.institution or ""),
+                    escape_latex(aff.city or ""),
+                    escape_latex(aff.country or ""),
+                ]
+                aff_str = ", ".join(filter(None, aff_items))
+                if aff.email:
+                    aff_str += f" (e-mail: {escape_latex(aff.email)})"
+                if aff_str:
+                    if len(escaped_authors) > i:
+                        aff_lines.append(
+                            f"{escaped_authors[i]} is with {aff_str}."
+                        )
+                    else:
+                        aff_lines.append(f"{aff_str}.")
+            if aff_lines:
+                thanks_parts.append(" ".join(aff_lines))
+
+        if config and config.email:
+            thanks_parts.append(
+                f"Corresponding author: {escaped_authors[0]} (e-mail: {escape_latex(config.email)})."
+            )
+
+        if config and config.manuscript_received:
+            thanks_parts.append(
+                f"Manuscript received {escape_latex(config.manuscript_received)}."
+            )
+
+        thanks_block = " ".join(thanks_parts)
+        return f"{author_str}\\thanks{{{thanks_block}}}"
+    else:
+        parts = []
+        for i, author in enumerate(escaped_authors):
+            if config and config.orcid:
+                author_fmt = f"{author}~\\orcidlink{{{escape_latex(config.orcid)}}}"
+            else:
+                author_fmt = author
+            if i < len(affiliations):
+                aff = affiliations[i]
+                aff_items = [
+                    escape_latex(aff.department or ""),
+                    escape_latex(aff.institution or ""),
+                    escape_latex(aff.city or ""),
+                    escape_latex(aff.country or ""),
+                ]
+                aff_str = ", ".join(filter(None, aff_items))
+                if aff.email:
+                    aff_str += f" (e-mail: {escape_latex(aff.email)})"
+                if aff_str:
+                    parts.append(
+                        f"{author_fmt},~\\IEEEmembership{{Member,~IEEE}}"
+                        f"\\thanks{{{aff_str}}}"
+                    )
+                else:
+                    parts.append(f"{author_fmt},~\\IEEEmembership{{Member,~IEEE}}")
+            else:
+                parts.append(author_fmt)
+        return " \\and\n".join(parts)
+
+    return author_str
 
 
 def _generate_acknowledgment(project: PaperForgeProject) -> str:
     ack_text = project.config.acknowledgment
+    comment_line = ""
+    if project.config.funding:
+        comment_line = (
+            "% Note: Funding acknowledgment is in the \\thanks{} footnote per IEEE convention. "
+            "Add only people/institution thanks here.\n"
+        )
     if not ack_text:
         ack_text = "% TODO: Add acknowledgment text."
     else:
         ack_text = escape_latex(ack_text)
     return (
+        f"{comment_line}"
         "\\ifCLASSOPTIONcompsoc\n"
         "  \\section*{Acknowledgments}\n"
         "\\else\n"
@@ -543,9 +630,30 @@ def _generate_latex_conference(
     sections = _generate_sections(project.config.sections, project)
     bibliography = _generate_bibliography(project)
 
+    preamble = plugin.generate_preamble()
+    if project.config.orcid and "\\usepackage{orcidlink}" not in preamble:
+        preamble += "\n\\usepackage{orcidlink}"
+
+    statements = []
+    if project.config.data_availability:
+        statements.append(
+            f"\\section*{{Data Availability}}\n{escape_latex(project.config.data_availability)}"
+        )
+    if project.config.code_availability:
+        statements.append(
+            f"\\section*{{Code Availability}}\n{escape_latex(project.config.code_availability)}"
+        )
+    if project.config.conflict_of_interest:
+        statements.append(
+            f"\\section*{{Conflict of Interest}}\n{escape_latex(project.config.conflict_of_interest)}"
+        )
+    statements_block = "\n\n".join(statements)
+    if statements_block:
+        statements_block = "\n\n" + statements_block
+
     return f"""{plugin.latex_documentclass}
 
-{plugin.generate_preamble()}
+{preamble}
 
 \\begin{{document}}
 
@@ -559,7 +667,7 @@ def _generate_latex_conference(
 {abstract_content}
 \\end{{abstract}}
 
-{sections}
+{sections}{statements_block}
 
 {bibliography}
 
@@ -574,7 +682,10 @@ def _generate_latex_journal(
     title = escape_latex(project.config.title or "Untitled Paper")
     compsoc = getattr(plugin, "mode", None) == "journal-compsoc"
     author_block = _generate_author_block_journal(
-        project.config.authors, project.config.affiliations, compsoc=compsoc
+        project.config.authors,
+        project.config.affiliations,
+        project.config,
+        compsoc=compsoc,
     )
     abstract_content = _generate_abstract(project.claims)
     keywords_source = project.config.keywords or project.config.sections[:6]
@@ -583,9 +694,34 @@ def _generate_latex_journal(
     bibliography = _generate_bibliography(project)
     acknowledgment = _generate_acknowledgment(project)
 
+    preamble = plugin.generate_preamble()
+    if project.config.orcid and "\\usepackage{orcidlink}" not in preamble:
+        preamble += "\n\\usepackage{orcidlink}"
+
+    publisher_id_block = ""
+    if project.config.publisher_id:
+        publisher_id_block = f"\n\\IEEEpubid{{{escape_latex(project.config.publisher_id)}}}\n"
+
+    statements = []
+    if project.config.data_availability:
+        statements.append(
+            f"\\section*{{Data Availability}}\n{escape_latex(project.config.data_availability)}"
+        )
+    if project.config.code_availability:
+        statements.append(
+            f"\\section*{{Code Availability}}\n{escape_latex(project.config.code_availability)}"
+        )
+    if project.config.conflict_of_interest:
+        statements.append(
+            f"\\section*{{Conflict of Interest}}\n{escape_latex(project.config.conflict_of_interest)}"
+        )
+    statements_block = "\n\n".join(statements)
+    if statements_block:
+        statements_block = "\n\n" + statements_block
+
     return f"""{plugin.latex_documentclass}
 
-{plugin.generate_preamble()}
+{preamble}
 
 \\hyphenation{{op-tical net-works semi-conduc-tor}}
 
@@ -605,13 +741,13 @@ def _generate_latex_journal(
 \\end{{IEEEkeywords}}}}
 
 \\maketitle
-
+{publisher_id_block}
 \\IEEEdisplaynontitleabstractindextext
 \\IEEEpeerreviewmaketitle
 
 {sections}
 
-{acknowledgment}
+{acknowledgment}{statements_block}
 
 {bibliography}
 

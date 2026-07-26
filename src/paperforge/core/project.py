@@ -23,6 +23,7 @@ class Affiliation:
     department: str = ""
     city: str = ""
     country: str = ""
+    email: str = ""
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Affiliation:
@@ -32,6 +33,7 @@ class Affiliation:
             department=data.get("department", ""),
             city=data.get("city", ""),
             country=data.get("country", ""),
+            email=data.get("email", ""),
         )
 
 
@@ -49,6 +51,14 @@ class ProjectConfig:
     keywords: list[str] = field(default_factory=list)
     affiliations: list[Affiliation] = field(default_factory=list)
     acknowledgment: str = ""
+    email: str = ""
+    orcid: str = ""
+    funding: str = ""
+    data_availability: str = ""
+    code_availability: str = ""
+    conflict_of_interest: str = ""
+    manuscript_received: str = ""
+    publisher_id: str = ""
 
     @classmethod
     def from_yaml(cls, data: dict) -> ProjectConfig:
@@ -66,6 +76,14 @@ class ProjectConfig:
             keywords=data.get("keywords", []),
             affiliations=[Affiliation.from_dict(a) for a in data.get("affiliations", [])],
             acknowledgment=data.get("acknowledgment", ""),
+            email=data.get("email", ""),
+            orcid=data.get("orcid", ""),
+            funding=data.get("funding", ""),
+            data_availability=data.get("data_availability", ""),
+            code_availability=data.get("code_availability", ""),
+            conflict_of_interest=data.get("conflict_of_interest", ""),
+            manuscript_received=data.get("manuscript_received", ""),
+            publisher_id=data.get("publisher_id", ""),
         )
 
 

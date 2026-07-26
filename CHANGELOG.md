@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Added
+- IEEE Access compliance overhaul: funding footnote in `\thanks{}`, corresponding author email, ORCID links (`\orcidlink`), manuscript received date, publisher ID (`\IEEEpubid`), Data Availability, Code Availability, and Conflict of Interest sections
+- 22 new doctor checks (Checks 50-71): `FUNDING_IN_ACKNOWLEDGMENT`, `MISSING_COI`, `MISSING_DATA_AVAILABILITY`, `ABSTRACT_HAS_CITATION`, `ABSTRACT_MULTIPARAGRAPH`, `KEYWORDS_NOT_ALPHABETICAL`, `TOO_FEW_KEYWORDS`, `TOO_MANY_KEYWORDS`, `TABLE_NOTES_INTERNAL_REF`, `ABSTRACT_INTRO_OVERLAP`, `INTRO_MISSING_MOTIVATION`, `DUPLICATE_CITATION_KEY`, `CITATION_YEAR_FUTURE`, `FIGURE_CRITICALLY_LOW_RESOLUTION`, `FIGURE_FORMAT_NOT_IEEE`, `UNUSUAL_SECTION_ORDER`, `REPRODUCIBILITY_INCOMPLETE`, `PVALUE_WITHOUT_TEST_NAME`, `MISSING_CORRESPONDING_EMAIL`, `MISSING_ORCID`, `TITLE_ENDS_WITH_PERIOD`, `TITLE_TOO_LONG`
+- Updated Overleaf export `README.txt` with full compilation instructions and bibliography troubleshooting
+- 20 unit tests for IEEE compliance in `tests/test_ieee_compliance.py` (384 total tests passing)
+
 ### Fixed
 - LaTeX special character escaping: % & $ # _ { } ~ ^ now correctly escaped in all user text (claim text, captions, titles, acknowledgments, affiliations). % signs in percentages no longer silently truncate LaTeX content. escape_latex() moved to utils/latex.py as shared utility.
 - Claim deduplication: claims appearing in multiple sections now emit full text only in the first section; subsequent sections emit a comment reference. Prevents duplicate paragraphs and "Label multiply defined" warnings.

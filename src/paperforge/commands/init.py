@@ -14,15 +14,40 @@ if hasattr(sys.stdout, "reconfigure"):
 console = Console()
 
 PAPER_YAML = """\
+# PaperForge paper.yaml — project configuration
+# Run 'paperforge doctor' after changes to validate.
+
 version: "0.1"
-title: ""
-authors: []
-affiliations: []
-venue: ""
-status: "draft"
-paper_type: "conference"
-keywords: []
-acknowledgment: ""
+title: ""              # Title case. Under 15 words. No period.
+authors:
+  - ""                 # Full name, e.g. "Alice Smith"
+venue: ""              # e.g. "IEEE Access"
+status: "draft"        # draft | submitted | accepted | published
+paper_type: "journal"  # conference | journal
+
+# IEEE Access specific
+email: ""              # Corresponding author email (required)
+orcid: ""              # ORCID iD, e.g. 0000-0000-0000-0000
+funding: ""            # Grant/funding for \\thanks{} footnote
+                       # e.g. "This work was supported by..."
+manuscript_received: "" # Leave blank; IEEE fills this at production
+
+# Statements (IEEE Access increasingly requires these)
+conflict_of_interest: "" # e.g. "The authors declare no conflicts of interest."
+data_availability: ""  # e.g. "Data available on reasonable request."
+code_availability: ""  # e.g. "Code at https://github.com/..."
+
+acknowledgment: ""     # People/institutions only (not funding)
+
+keywords: []           # 4-8 keywords, alphabetical order
+
+affiliations:
+  - name: ""
+    institution: ""
+    department: ""
+    city: ""
+    country: ""
+    email: ""          # Per-author email if multi-author
 
 sections:
   - abstract
@@ -37,6 +62,8 @@ sections:
 build:
   output_dir: "paper"
   latex_template: "ieee"
+
+publisher_id: ""       # Leave blank; IEEE fills at production
 """
 
 CLAIM_01_YAML = """\
