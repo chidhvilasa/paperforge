@@ -104,11 +104,19 @@ def build(
     no_reveal: bool = typer.Option(
         False, "--no-reveal", help="Do not open output folder after build."
     ),
+    force: bool = typer.Option(
+        False, "--force", "-f", help="Force rebuild even if PDF is up to date."
+    ),
 ) -> None:
     """Compile research data into an IEEE LaTeX paper."""
     from paperforge.commands.build import run
 
-    run(project_root=path.resolve(), target=target, no_reveal=no_reveal)
+    run(
+        project_root=path.resolve(),
+        target=target,
+        no_reveal=no_reveal,
+        force=force,
+    )
 
 
 @app.command()

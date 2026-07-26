@@ -426,3 +426,137 @@ def test_escape_latex_function() -> None:
     assert escape_latex("") == ""
     assert escape_latex("normal text") == "normal text"
 
+
+def test_pdf_stale_when_no_pdf_exists(tmp_path: Path) -> None:
+    write_journal_project(tmp_path)
+    assert build._is_pdf_stale(tmp_path) is True
+
+
+def test_pdf_stale_when_claim_newer_than_pdf(tmp_path: Path) -> None:
+    import time
+
+    write_journal_project(tmp_path)
+    paper_dir = tmp_path / "paper"
+    paper_dir.mkdir(parents=True, exist_ok=True)
+    pdf_path = paper_dir / "paper.pdf"
+    pdf_path.write_text("fake pdf content", encoding="utf-8")
+
+    time.sleep(0.05)
+    claim_path = tmp_path / ".paperforge" / "claims" / "claim_02.yaml"
+    claim_data = yaml.safe_load(claim_path.read_text(encoding="utf-8"))
+    claim_data["text"] = "Updated claim text for freshness test."
+    claim_path.write_text(yaml.dump(claim_data), encoding="utf-8")
+
+    assert build._is_pdf_stale(tmp_path) is True
+
+
+def test_pdf_not_stale_when_pdf_newer(tmp_path: Path) -> None:
+    import os
+    import time
+
+    write_journal_project(tmp_path)
+    paper_dir = tmp_path / "paper"
+    paper_dir.mkdir(parents=True, exist_ok=True)
+    pdf_path = paper_dir / "paper.pdf"
+    pdf_path.write_text("fake pdf content", encoding="utf-8")
+
+    now = time.time()
+    for f in (tmp_path / ".paperforge").rglob("*.yaml"):
+        os.utime(f, (now - 10, now - 10))
+
+    assert build._is_pdf_stale(tmp_path) is False
+
+
+def test_docx_generated_when_no_latex(tmp_path: Path, monkeypatch) -> None:
+    write_journal_project(tmp_path)
+    monkeypatch.setattr("shutil.which", lambda name: None)
+    build.run(tmp_path, target="ieee-access", force=True)
+    assert (tmp_path / "paper" / "paper.docx").exists()
+
+
+def test_docx_contains_title(tmp_path: Path, monkeypatch) -> None:
+    from docx import Document
+
+    write_journal_project(tmp_path)
+    paper_yaml = tmp_path / ".paperforge" / "paper.yaml"
+    data = yaml.safe_load(paper_yaml.read_text(encoding="utf-8"))
+    data["title"] = "My Test Paper"
+    paper_yaml.write_text(yaml.dump(data), encoding="utf-8")
+
+    monkeypatch.setattr("shutil.which", lambda name: None)
+    build.run(tmp_path, target="ieee-access", force=True)
+
+    doc = Document(str(tmp_path / "paper" / "paper.docx"))
+    full_text = " ".join(p.text for p in doc.paragraphs)
+    assert "My Test Paper" in full_text
+
+
+def test_docx_contains_table(tmp_path: Path, monkeypatch) -> None:
+    from docx import Document
+
+    write_journal_project(tmp_path)
+    tbl_data = {
+        "id": "tbl_01",
+        "caption": "DOCX Table Caption",
+        "columns": ["Col1", "Col2"],
+        "rows": [["Val1", "Val2"]],
+    }
+    (tmp_path / ".paperforge" / "tables" / "tbl_01.yaml").write_text(
+        yaml.dump(tbl_data), encoding="utf-8"
+    )
+    claim_path = tmp_path / ".paperforge" / "claims" / "claim_02.yaml"
+    claim_data = yaml.safe_load(claim_path.read_text(encoding="utf-8"))
+    claim_data["tables"] = ["tbl_01"]
+    claim_path.write_text(yaml.dump(claim_data), encoding="utf-8")
+
+    monkeypatch.setattr("shutil.which", lambda name: None)
+    build.run(tmp_path, target="ieee-access", force=True)
+
+    doc = Document(str(tmp_path / "paper" / "paper.docx"))
+    assert len(doc.tables) >= 1
+
+
+def test_force_flag_bypasses_freshness_check(tmp_path: Path, monkeypatch) -> None:
+    import os
+    import time
+
+    write_journal_project(tmp_path)
+    paper_dir = tmp_path / "paper"
+    paper_dir.mkdir(parents=True, exist_ok=True)
+    pdf_path = paper_dir / "paper.pdf"
+    pdf_path.write_text("fake pdf content", encoding="utf-8")
+
+    now = time.time()
+    for f in (tmp_path / ".paperforge").rglob("*.yaml"):
+        os.utime(f, (now - 10, now - 10))
+
+    tex_path = paper_dir / "paper.tex"
+    if tex_path.exists():
+        tex_path.unlink()
+
+    monkeypatch.setattr("shutil.which", lambda name: None)
+    build.run(tmp_path, target="ieee-access", force=True)
+
+    assert tex_path.exists()
+
+
+def test_stale_pdf_deleted_before_rebuild(tmp_path: Path, monkeypatch) -> None:
+    import time
+
+    write_journal_project(tmp_path)
+    paper_dir = tmp_path / "paper"
+    paper_dir.mkdir(parents=True, exist_ok=True)
+    pdf_path = paper_dir / "paper.pdf"
+    pdf_path.write_text("old fake pdf content", encoding="utf-8")
+
+    time.sleep(0.05)
+    claim_path = tmp_path / ".paperforge" / "claims" / "claim_02.yaml"
+    claim_data = yaml.safe_load(claim_path.read_text(encoding="utf-8"))
+    claim_data["text"] = "Stale pdf test updated claim."
+    claim_path.write_text(yaml.dump(claim_data), encoding="utf-8")
+
+    monkeypatch.setattr("shutil.which", lambda name: None)
+    build.run(tmp_path, target="ieee-access")
+
+    assert not pdf_path.exists() or pdf_path.read_text(encoding="utf-8") != "old fake pdf content"
+

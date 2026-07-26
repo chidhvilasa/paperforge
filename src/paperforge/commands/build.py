@@ -755,19 +755,47 @@ def _generate_latex_journal(
 """
 
 
-def _compile_pdf(tex_path: Path, output_dir: Path) -> tuple[bool, str]:
+def _is_pdf_stale(project_root: Path, output_dir: Path | None = None) -> bool:
+    """
+    Returns True if paper.pdf does not exist or is older
+    than any source file in .paperforge/.
+    Returns False if PDF is newer than all sources.
+    """
+    if output_dir is None:
+        output_dir = project_root / "paper"
+    pdf_path = output_dir / "paper.pdf"
+    if not pdf_path.exists():
+        return True
 
+    pdf_mtime = pdf_path.stat().st_mtime
+    pf_dir = project_root / ".paperforge"
+
+    # Check all YAML source files
+    for yaml_file in pf_dir.rglob("*.yaml"):
+        if yaml_file.stat().st_mtime > pdf_mtime:
+            return True
+
+    return False
+
+
+def _compile_pdf_full(
+    tex_path: Path,
+    output_dir: Path,
+) -> tuple[bool, str]:
     latexmk = shutil.which("latexmk")
     pdflatex = shutil.which("pdflatex")
+    bibtex = shutil.which("bibtex")
 
     if latexmk:
+        # latexmk handles the full BibTeX pipeline automatically
         result = subprocess.run(
             [
                 latexmk,
                 "-pdf",
+                "-bibtex",
                 "-interaction=nonstopmode",
                 f"-outdir={output_dir}",
-                str(tex_path.name),
+                str(tex_path),
             ],
             capture_output=True,
             text=True,
@@ -777,8 +805,10 @@ def _compile_pdf(tex_path: Path, output_dir: Path) -> tuple[bool, str]:
         return result.returncode == 0, "latexmk"
 
     if pdflatex:
-        for _ in range(2):
-            result = subprocess.run(
+        tex_name = tex_path.stem  # "paper" without extension
+
+        def run_pdflatex() -> subprocess.CompletedProcess[str]:
+            return subprocess.run(
                 [
                     pdflatex,
                     "-interaction=nonstopmode",
@@ -787,11 +817,203 @@ def _compile_pdf(tex_path: Path, output_dir: Path) -> tuple[bool, str]:
                 ],
                 capture_output=True,
                 text=True,
+                cwd=output_dir,
                 check=False,
             )
-        return result.returncode == 0, "pdflatex"
+
+        def run_bibtex() -> subprocess.CompletedProcess[str] | None:
+            if bibtex:
+                return subprocess.run(
+                    [bibtex, tex_name],
+                    capture_output=True,
+                    text=True,
+                    cwd=output_dir,
+                    check=False,
+                )
+            return None
+
+        # Full BibTeX pipeline: pdflatex -> bibtex -> pdflatex -> pdflatex
+        run_pdflatex()          # pass 1: generate .aux
+        run_bibtex()            # bibtex: process references
+        run_pdflatex()          # pass 2: resolve citations
+        result = run_pdflatex() # pass 3: resolve cross-references
+        return result.returncode == 0, "pdflatex+bibtex"
 
     return False, "none"
+
+
+_compile_pdf = _compile_pdf_full
+
+
+def _generate_docx(
+    project: PaperForgeProject,
+    output_dir: Path,
+) -> Path:
+    from docx import Document
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import Inches, Pt
+
+    doc = Document()
+
+    # Page margins (IEEE-like: narrow)
+    for section in doc.sections:
+        section.top_margin = Inches(0.75)
+        section.bottom_margin = Inches(1.0)
+        section.left_margin = Inches(0.75)
+        section.right_margin = Inches(0.75)
+
+    # Title
+    title_para = doc.add_paragraph()
+    title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run_t = title_para.add_run(project.config.title or "Untitled")
+    run_t.bold = True
+    run_t.font.size = Pt(14)
+
+    # Authors
+    authors_para = doc.add_paragraph()
+    authors_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    authors_para.add_run(", ".join(project.config.authors) or "Author TBD")
+
+    # Affiliations
+    for aff in project.config.affiliations:
+        aff_parts = list(
+            filter(
+                None,
+                [aff.department, aff.institution, aff.city, aff.country],
+            )
+        )
+        aff_str = ", ".join(aff_parts)
+        if aff_str:
+            aff_para = doc.add_paragraph()
+            aff_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run_a = aff_para.add_run(aff_str)
+            run_a.italic = True
+            run_a.font.size = Pt(9)
+
+    doc.add_paragraph()  # spacing
+
+    # Abstract
+    abs_claims = [c for c in project.claims if "abstract" in c.sections]
+    if abs_claims:
+        abs_para = doc.add_paragraph()
+        abs_run = abs_para.add_run("Abstract\u2014")
+        abs_run.bold = True
+        abs_para.add_run(" ".join(c.text for c in abs_claims if c.text))
+
+    # Keywords
+    if project.config.keywords:
+        kw_para = doc.add_paragraph()
+        kw_run = kw_para.add_run("Index Terms\u2014")
+        kw_run.bold = True
+        kw_para.add_run(", ".join(project.config.keywords))
+
+    doc.add_paragraph()
+
+    # Sections
+    section_titles = {
+        "introduction": "Introduction",
+        "related_work": "Related Work",
+        "methodology": "Methodology",
+        "experiments": "Experimental Setup",
+        "results": "Results",
+        "discussion": "Discussion",
+        "conclusion": "Conclusion",
+    }
+
+    emitted_claims: set[str] = set()
+    emitted_tables: set[str] = set()
+
+    for section_name in project.config.sections:
+        if section_name == "abstract":
+            continue
+
+        title = section_titles.get(
+            section_name, section_name.replace("_", " ").title()
+        )
+        doc.add_heading(title, level=1)
+
+        section_claims = [
+            c for c in project.claims if section_name in c.sections
+        ]
+
+        for claim in section_claims:
+            if claim.id in emitted_claims:
+                continue
+            if claim.text:
+                doc.add_paragraph(claim.text)
+                emitted_claims.add(claim.id)
+
+            # Tables
+            for tbl_id in claim.tables:
+                if tbl_id in emitted_tables:
+                    continue
+                tbl_obj = next(
+                    (t for t in project.tables if t.id == tbl_id), None
+                )
+                if tbl_obj and tbl_obj.columns and tbl_obj.rows:
+                    # Caption above table (IEEE style)
+                    cap = doc.add_paragraph()
+                    cap.add_run(f"TABLE: {tbl_obj.caption}").bold = True
+                    # Table
+                    word_table = doc.add_table(
+                        rows=1 + len(tbl_obj.rows), cols=len(tbl_obj.columns)
+                    )
+                    word_table.style = "Table Grid"
+                    # Header row
+                    hdr = word_table.rows[0].cells
+                    for i, col in enumerate(tbl_obj.columns):
+                        hdr[i].text = col
+                        hdr[i].paragraphs[0].runs[0].bold = True
+                    # Data rows
+                    for r_idx, row in enumerate(tbl_obj.rows):
+                        cells = word_table.rows[r_idx + 1].cells
+                        for c_idx, cell in enumerate(row):
+                            if c_idx < len(cells):
+                                cells[c_idx].text = cell
+                    if tbl_obj.notes:
+                        note_para = doc.add_paragraph()
+                        run_n = note_para.add_run(tbl_obj.notes)
+                        run_n.italic = True
+                        run_n.font.size = Pt(8)
+                    emitted_tables.add(tbl_id)
+
+    # Acknowledgment
+    ack = project.config.acknowledgment
+    if ack and ack.strip():
+        doc.add_heading("Acknowledgment", level=1)
+        doc.add_paragraph(ack)
+
+    # COI
+    coi = project.config.conflict_of_interest
+    if coi and coi.strip():
+        doc.add_heading("Conflict of Interest", level=1)
+        doc.add_paragraph(coi)
+
+    # References
+    doc.add_heading("References", level=1)
+    cit_map = project.citation_map
+    all_keys = sorted(
+        {key for claim in project.claims for key in claim.citations}
+    )
+    for i, key in enumerate(all_keys, 1):
+        cit = cit_map.get(key)
+        if cit and cit.title:
+            authors_str = (
+                " and ".join(cit.authors) if cit.authors else "Author"
+            )
+            ref_text = (
+                f"[{i}] {authors_str}, \"{cit.title},\" "
+                f"{cit.venue}, {cit.year or 'n.d.'}"
+            )
+            if cit.doi:
+                ref_text += f", doi: {cit.doi}"
+        else:
+            ref_text = f"[{i}] {key} — add citation YAML for real reference"
+        doc.add_paragraph(ref_text)
+
+    docx_path = output_dir / "paper.docx"
+    doc.save(str(docx_path))
+    return docx_path
 
 
 def _reveal_output(path: Path) -> None:
@@ -812,6 +1034,7 @@ def run(
     project_root: Path,
     target: str = "ieee",
     no_reveal: bool = False,
+    force: bool = False,
 ) -> None:
     if not (project_root / ".paperforge").exists():
         console.print("[red]Not a PaperForge project. Run `paperforge init` first.[/red]")
@@ -840,10 +1063,27 @@ def run(
         console.print(Panel(body, border_style="red"))
         sys.exit(1)
 
-    venue_warnings = [issue for issue in venue_issues if issue.severity == "WARNING"]
-
     rel_output = project.config.build_output_dir or "paper"
     output_dir = project_root / rel_output
+    pdf_path = output_dir / "paper.pdf"
+
+    stale = _is_pdf_stale(project_root, output_dir)
+
+    if not stale and pdf_path.exists() and not force:
+        body = Group(
+            Text(f"{rel_output}/paper.pdf is newer than all source files."),
+            Text("No rebuild needed."),
+            Text(""),
+            Text("To force a rebuild: paperforge build --force"),
+        )
+        console.print(Panel(body, title="PDF Up To Date", border_style="dim"))
+        return
+
+    if stale and pdf_path.exists():
+        console.print("[dim]Source changed — deleting stale PDF...[/dim]")
+        pdf_path.unlink()
+
+    venue_warnings = [issue for issue in venue_issues if issue.severity == "WARNING"]
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if project.config.paper_type == "journal":
@@ -886,37 +1126,51 @@ def run(
             )
             bib_status = "references.bib    (stubs generated — fill in real entries)"
 
-    pdf_ok, method = _compile_pdf(tex_path, output_dir)
-    pdf_path = output_dir / "paper.pdf"
-    if pdf_ok and not no_reveal:
-        _reveal_output(pdf_path)
+    _pdf_ok, compiler = _compile_pdf_full(tex_path, output_dir)
+
+    if compiler == "none":
+        console.print(
+            "[yellow]No LaTeX toolchain found. Generating DOCX instead...[/yellow]"
+        )
+        docx_path = _generate_docx(project, output_dir)
+        console.print(
+            f"[green]DOCX generated: {docx_path.relative_to(project_root)}[/green]"
+        )
+    else:
+        pdf_ok_actual = pdf_path.exists()
+        if pdf_ok_actual:
+            console.print(f"[green]PDF generated: {rel_output}/paper.pdf[/green]")
+            if not no_reveal:
+                _reveal_output(pdf_path)
+        else:
+            console.print(
+                f"[red]LaTeX compilation failed. Check {rel_output}/paper.log[/red]"
+            )
+            if not no_reveal:
+                _reveal_output(tex_path)
 
     unique_citations = {c for claim in project.claims for c in claim.citations}
 
-    if method == "latexmk":
-        compiler_msg = "Compiled with latexmk (auto cross-references)"
-    elif method == "pdflatex":
-        compiler_msg = "Compiled with pdflatex (2 passes)"
+    if compiler == "none":
+        body_lines = [
+            Text(f"Output:    {rel_output}/paper.docx  \u2713  (LaTeX not installed)"),
+            Text(f"Source:    {rel_output}/paper.tex"),
+            Text("Install TeX Live for PDF: https://tug.org/texlive/"),
+            Text("Or upload paper_overleaf.zip to Overleaf for free PDF"),
+        ]
+    elif pdf_path.exists():
+        body_lines = [
+            Text(f"Output:    {rel_output}/paper.pdf  \u2713"),
+            Text(f"Compiled:  {compiler}"),
+            Text(f"Source:    {rel_output}/paper.tex"),
+        ]
     else:
-        compiler_msg = "pdflatex and latexmk not found — install TeX Live"
+        body_lines = [
+            Text(f"Output:    {rel_output}/paper.tex  (compilation failed)"),
+            Text(f"Log:       {rel_output}/paper.log"),
+            Text("Check the log for LaTeX errors."),
+        ]
 
-    if pdf_ok:
-        pdf_line = "paper.pdf          \u2713"
-    else:
-        pdf_line = (
-            f"paper.pdf          {compiler_msg}"
-            if method == "none"
-            else f"paper.pdf          compilation failed — see {rel_output}/paper.log"
-        )
-
-    body_lines = [
-        Text(f"Output: {rel_output}/"),
-        Text(""),
-        Text("Files:"),
-        Text("  paper.tex          \u2713"),
-        Text(f"  {pdf_line}"),
-        Text(f"  ({compiler_msg})"),
-    ]
     if bib_status:
         body_lines.append(Text(f"  {bib_status}"))
     body_lines.append(Text(""))
