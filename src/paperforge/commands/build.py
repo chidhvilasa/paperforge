@@ -18,7 +18,11 @@ from paperforge.core.project import Affiliation, PaperForgeProject, ProjectConfi
 from paperforge.models.claim import Claim
 from paperforge.models.figure import Figure
 from paperforge.models.table import Table
-from paperforge.utils.latex import escape_latex
+from paperforge.utils.latex import (
+    escape_latex,
+    escape_latex_safe,
+    markdown_to_latex_inline,
+)
 from paperforge.venues.base import VenuePlugin
 from paperforge.venues.registry import get_plugin
 
@@ -39,9 +43,20 @@ SECTION_TITLES = {
 
 
 def _claim_paragraph(claim: Claim, project: PaperForgeProject) -> str:
-    paragraph = escape_latex(claim.text)
-    for citation in claim.citations:
-        paragraph += f" \\cite{{{citation}}}"
+    raw = claim.is_math or claim.raw_latex
+    text_to_emit = escape_latex_safe(claim.text, raw=raw)
+    if not raw:
+        text_to_emit = markdown_to_latex_inline(text_to_emit)
+
+    if claim.citations:
+        cite_block = "\\cite{" + ",".join(claim.citations) + "}"
+        text = text_to_emit.rstrip()
+        if text.endswith("."):
+            paragraph = text[:-1] + f" {cite_block}."
+        else:
+            paragraph = text + f" {cite_block}."
+    else:
+        paragraph = text_to_emit
 
     first_figure_yaml = None
     for figure_id in claim.figures:
@@ -54,6 +69,13 @@ def _claim_paragraph(claim: Claim, project: PaperForgeProject) -> str:
 
     for table in claim.tables:
         paragraph += f" \\ref{{tab:{table}}}"
+
+    if claim.claim_type == "proof":
+        paragraph = f"\\begin{{proof}}\n{paragraph}\n\\end{{proof}}"
+    elif claim.claim_type in ("theorem", "lemma", "definition", "corollary", "remark"):
+        label = f"{claim.claim_type}:{claim.id}"
+        paragraph = f"\\begin{{{claim.claim_type}}}\n\\label{{{label}}}\n{paragraph}\n\\end{{{claim.claim_type}}}"
+
     return paragraph
 
 
@@ -61,14 +83,19 @@ def _generate_abstract(claims: list[Claim]) -> str:
     abstract_claims = [c for c in claims if "abstract" in c.sections]
     if not abstract_claims:
         return "% TODO: Add claims to the abstract section."
-    return " ".join(
-        escape_latex(c.text) for c in sorted(abstract_claims, key=lambda c: c.id)
-    )
+    parts = []
+    for c in sorted(abstract_claims, key=lambda claim: claim.id):
+        raw = c.is_math or c.raw_latex
+        txt = escape_latex_safe(c.text, raw=raw)
+        if not raw:
+            txt = markdown_to_latex_inline(txt)
+        parts.append(txt)
+    return " ".join(parts)
 
 
 def _generate_figure_latex(fig_obj: Figure, project_root: Path | None = None) -> str:
     env = "figure*" if fig_obj.wide else "figure"
-    escaped_caption = escape_latex(fig_obj.caption or "")
+    escaped_caption = escape_latex_safe(fig_obj.caption or "", raw=fig_obj.is_math)
 
     file_exists = False
     if fig_obj.path:
@@ -96,7 +123,7 @@ def _generate_figure_latex(fig_obj: Figure, project_root: Path | None = None) ->
         )
 
     # Missing figure placeholder box
-    path_display = escape_latex(fig_obj.path or "not set")
+    path_display = escape_latex_safe(fig_obj.path or "not set")
     return (
         f"\\begin{{{env}}}[!t]\n"
         f"\\centering\n"
@@ -115,7 +142,7 @@ def _generate_table_latex(
     table: Table, project: PaperForgeProject | None = None
 ) -> str:
     env = "table*" if table.wide else "table"
-    escaped_caption = escape_latex(table.caption or "")
+    escaped_caption = escape_latex_safe(table.caption or "", raw=table.is_math)
 
     columns = list(table.columns)
     rows = list(table.rows)
@@ -139,19 +166,23 @@ def _generate_table_latex(
         )
 
     col_spec = " ".join(["c"] * len(columns))
-    header_row = " & ".join(escape_latex(c) for c in columns) + " \\\\"
+    header_row = " & ".join(
+        escape_latex_safe(c, raw=table.raw_latex_rows) for c in columns
+    ) + " \\\\"
 
     data_rows = []
     for row in rows:
         padded = row[: len(columns)]
         while len(padded) < len(columns):
             padded.append("")
-        escaped_row = [escape_latex(cell) for cell in padded]
+        escaped_row = [
+            escape_latex_safe(cell, raw=table.raw_latex_rows) for cell in padded
+        ]
         data_rows.append(" & ".join(escaped_row) + " \\\\")
 
     notes_block = ""
     if table.notes:
-        notes_block = f"\n\\footnotesize{{\\textit{{Note: {escape_latex(table.notes)}}}}}"
+        notes_block = f"\n\\footnotesize{{\\textit{{Note: {escape_latex_safe(table.notes, raw=table.is_math)}}}}}"
 
     lines = [
         f"\\begin{{{env}}}[!t]",
@@ -813,6 +844,16 @@ def _generate_latex_conference(
         preamble += "\n\\usepackage{algorithm}\n\\usepackage{algorithmic}"
     if project.config.orcid and "\\usepackage{orcidlink}" not in preamble:
         preamble += "\n\\usepackage{orcidlink}"
+    if project.config.theorem_packages and "\\newtheorem" not in preamble:
+        preamble += (
+            "\n\\usepackage{amsthm}\n"
+            "\\newtheorem{theorem}{Theorem}[section]\n"
+            "\\newtheorem{lemma}[theorem]{Lemma}\n"
+            "\\newtheorem{definition}[theorem]{Definition}\n"
+            "\\newtheorem{corollary}[theorem]{Corollary}\n"
+            "\\newtheorem{remark}{Remark}\n"
+            "\\theoremstyle{remark}"
+        )
 
     statements = []
     if project.config.data_availability:
@@ -879,6 +920,16 @@ def _generate_latex_journal(
         preamble += "\n\\usepackage{algorithm}\n\\usepackage{algorithmic}"
     if project.config.orcid and "\\usepackage{orcidlink}" not in preamble:
         preamble += "\n\\usepackage{orcidlink}"
+    if project.config.theorem_packages and "\\newtheorem" not in preamble:
+        preamble += (
+            "\n\\usepackage{amsthm}\n"
+            "\\newtheorem{theorem}{Theorem}[section]\n"
+            "\\newtheorem{lemma}[theorem]{Lemma}\n"
+            "\\newtheorem{definition}[theorem]{Definition}\n"
+            "\\newtheorem{corollary}[theorem]{Corollary}\n"
+            "\\newtheorem{remark}{Remark}\n"
+            "\\theoremstyle{remark}"
+        )
 
     publisher_id_block = ""
     if project.config.publisher_id:
@@ -1214,16 +1265,20 @@ def _reveal_output(path: Path) -> None:
         pass  # Never crash the build over a reveal failure
 
 
-def _rotate_output(project_root: Path) -> None:
+def _rotate_output(project_root: Path, output_dir: Path | None = None) -> None:
     """
     Before each build, copy current/ to previous/.
     This preserves the last successful build for comparison.
     """
-    current = project_root / "paper_generated" / "current"
-    previous = project_root / "paper_generated" / "previous"
+    if output_dir is None:
+        project = PaperForgeProject.load(project_root)
+        rel_output = project.config.build_output_dir or "paper_generated/current"
+        output_dir = project_root / rel_output
 
-    current.mkdir(parents=True, exist_ok=True)
-    previous.mkdir(parents=True, exist_ok=True)
+    previous_dir = output_dir.parent / "previous"
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    previous_dir.mkdir(parents=True, exist_ok=True)
 
     rotatable = [
         "paper.tex",
@@ -1234,8 +1289,8 @@ def _rotate_output(project_root: Path) -> None:
     ]
 
     for filename in rotatable:
-        src = current / filename
-        dst = previous / filename
+        src = output_dir / filename
+        dst = previous_dir / filename
         if src.exists():
             import shutil
 
@@ -1275,10 +1330,9 @@ def run(
         console.print(Panel(body, border_style="red"))
         sys.exit(1)
 
-    _rotate_output(project_root)
-
-    rel_output = project.config.build_output_dir or "paper_generated/current"
+    rel_output = project.config.build_output_dir or "paper/paper_generated/current"
     output_dir = project_root / rel_output
+    _rotate_output(project_root, output_dir)
     pdf_path = output_dir / "paper.pdf"
 
     stale = _is_pdf_stale(project_root, output_dir)

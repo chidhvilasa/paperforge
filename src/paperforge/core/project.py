@@ -25,6 +25,8 @@ class Affiliation:
     city: str = ""
     country: str = ""
     email: str = ""
+    membership: str = ""
+    shared_with: list[str] = field(default_factory=list)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Affiliation:
@@ -35,6 +37,8 @@ class Affiliation:
             city=data.get("city", ""),
             country=data.get("country", ""),
             email=data.get("email", ""),
+            membership=data.get("membership", ""),
+            shared_with=data.get("shared_with") or [],
         )
 
 
@@ -46,8 +50,10 @@ class ProjectConfig:
     venue: str
     status: str
     sections: list[str]
-    build_output_dir: str
-    latex_template: str
+    build_output_dir: str = "paper_generated/current"
+    paper_information_dir: str = "paper_information"
+    base_dir: str = ""
+    latex_template: str = "ieee"
     paper_type: str = "conference"
     keywords: list[str] = field(default_factory=list)
     affiliations: list[Affiliation] = field(default_factory=list)
@@ -61,6 +67,7 @@ class ProjectConfig:
     manuscript_received: str = ""
     publisher_id: str = ""
     sections_overview: str = ""
+    theorem_packages: bool = True
 
     @classmethod
     def from_yaml(cls, data: dict) -> ProjectConfig:
@@ -73,6 +80,8 @@ class ProjectConfig:
             status=data.get("status", "draft"),
             sections=data.get("sections", []),
             build_output_dir=build.get("output_dir", ".paperforge/output"),
+            paper_information_dir=build.get("paper_information_dir", "paper_information"),
+            base_dir=build.get("base_dir", ""),
             latex_template=build.get("latex_template", "ieee"),
             paper_type=data.get("paper_type", "conference"),
             keywords=data.get("keywords", []),
@@ -87,6 +96,7 @@ class ProjectConfig:
             manuscript_received=data.get("manuscript_received", ""),
             publisher_id=data.get("publisher_id", ""),
             sections_overview=data.get("sections_overview", ""),
+            theorem_packages=bool(build.get("theorem_packages", True)),
         )
 
 

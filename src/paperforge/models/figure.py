@@ -23,6 +23,9 @@ class Figure:
     chart_title: str = ""                 # chart title (optional)
     metric_keys: list[str] = field(default_factory=list)  # specific metric keys to plot
     x_labels: list[str] = field(default_factory=list)     # custom tick labels for metrics
+    is_math: bool = False                 # caption contains raw LaTeX math
+    line_experiments: list[str] = field(default_factory=list)  # additional experiments for line chart series
+    x_values: list[float] = field(default_factory=list)        # numeric X values for line chart
 
     @classmethod
     def from_yaml(cls, data: dict[str, Any]) -> Figure:
@@ -43,6 +46,9 @@ class Figure:
             chart_title=data.get("chart_title", ""),
             metric_keys=data.get("metric_keys") or [],
             x_labels=data.get("x_labels") or [],
+            is_math=bool(data.get("is_math", False)),
+            line_experiments=data.get("line_experiments") or [],
+            x_values=[float(v) for v in data.get("x_values") or []],
         )
 
     def to_yaml(self) -> dict[str, Any]:
@@ -63,4 +69,7 @@ class Figure:
             "chart_title": self.chart_title,
             "metric_keys": self.metric_keys,
             "x_labels": self.x_labels,
+            "is_math": self.is_math,
+            "line_experiments": self.line_experiments,
+            "x_values": self.x_values,
         }

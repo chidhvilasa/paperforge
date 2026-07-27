@@ -77,11 +77,14 @@ def doctor(
         "-t",
         help="Venue target for additional checks: ieee, acm, neurips",
     ),
+    self_check: bool = typer.Option(
+        False, "--self-check", help="Check PaperForge installation health."
+    ),
 ) -> None:
     """Check research project consistency."""
     from paperforge.commands.doctor import run
 
-    run(project_root=path.resolve(), fix=fix, target=target)
+    run(project_root=path.resolve(), fix=fix, target=target, self_check=self_check)
 
 
 @app.command()

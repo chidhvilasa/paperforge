@@ -21,6 +21,7 @@ paperforge doctor [OPTIONS]
 | `--path`, `-p` | `.` | Project root directory |
 | `--fix` | `False` | Auto-resolve fixable warnings (sets unverified claims to stale) |
 | `--target`, `-t` | `None` | Venue target for additional checks: `ieee`, `acm`, `neurips` |
+| `--self-check` | `False` | Check PaperForge installation health |
 | `--help` | — | Show help and exit |
 
 ## Example
@@ -116,8 +117,21 @@ On a project with issues, each issue is printed with its code and severity:
 | 47 | `CITATION_NO_YEAR` | WARNING | Citation has no year field defined |
 | 48 | `CITATION_NO_AUTHORS` | WARNING | Citation has no authors list defined |
 | 49 | `MULTI_EXPERIMENT_CLAIM` | INFO | Claim links to additional experiments beyond primary |
+| 75 | `MATH_CLAIM_MISSING_FLAG` | WARNING | Claim text contains LaTeX math commands but is_math: false |
+| 76 | `PROOF_WITHOUT_THEOREM` | WARNING | Proof claim has no preceding theorem/lemma |
 
-These 49 checks are always run by `collect_issues()`, independent of `--target`.
+## Self-Check
+
+`paperforge doctor --self-check` validates your installation
+without requiring a PaperForge project. Checks:
+- PaperForge version vs PyPI latest
+- Required Python packages (python-docx, matplotlib, etc.)
+- LaTeX toolchain (pdflatex, latexmk)
+- AI review tool (llm)
+- Configured paths exist
+- PyPI name collision warning (paperforge vs paperforge-research)
+
+These checks are always run by `collect_issues()`, independent of `--target`.
 
 ### Severity Breakdown (49 Checks Total)
 - **8 ERRORs**: `ORPHAN_CLAIM`, `MISSING_EXPERIMENT`, `STALE_CLAIM`, `EMPTY_CLAIM_TEXT`, `METRIC_CLAIM_MISMATCH`, `RESULTS_SECTION_EMPTY`, `TABLE_NO_CAPTION`, `CITATION_NO_TITLE` (blocks build and git hook).

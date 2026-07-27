@@ -427,7 +427,7 @@ def test_escape_latex_function() -> None:
 
     assert escape_latex("98.4%") == "98.4\\%"
     assert escape_latex("A & B") == "A \\& B"
-    assert escape_latex("$x$") == "\\$x\\$"
+    assert escape_latex("$x$") == "$x$"
     assert escape_latex("") == ""
     assert escape_latex("normal text") == "normal text"
 

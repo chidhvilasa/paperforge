@@ -72,7 +72,7 @@ paperforge export overleaf zip export.
 Doctor check 49 (MULTI_EXPERIMENT_CLAIM).
 Production/Stable status on PyPI.
 
-### v1.1.0 (this release)
+### v1.1.0
 paper_information/ input layer for human-friendly content entry.
 paperforge import command with claim deduplication.
 paperforge update with PyPI check and editable install detection.
@@ -83,16 +83,30 @@ sections_overview full-sentence detection.
 Critical bug fixes: LaTeX escaping, BibTeX pipeline,
 claim deduplication, stale PDF handling.
 
+### v1.2.0 (this release)
+Critical production fixes from real IEEE paper use.
+Math mode: is_math/raw_latex fields, inline math protection.
+claim_type: theorem/lemma/definition/proof environments.
+Markdown bold/italic/code in claim text.
+Configurable paths: all directories read from paper.yaml.
+Citations rendered inline as \cite{key1,key2}.
+Import parses subsections and [citation-key] notation.
+Multi-series line charts in generate-figures.
+Shared author affiliations and IEEE membership grades.
+doctor --self-check installation health command.
+441 tests. 76 doctor checks.
+
 ## Planned
 
-### v1.2.0 — Figure Quality + Comparison Tables
-- Multi-experiment comparison figures: plot the same metric
-  across multiple experiments (e.g. latency vs traffic density)
-- paperforge compare-experiments: generates comparison table
-  and figure from 2+ experiment YAMLs
-- Figure annotation: add significance markers (*, **, ***)
-  to bars based on linked Wilcoxon p-values
-- Table auto-formatting: highlight best value per column
+### v1.3.0 — Multi-Experiment Comparison
+- paperforge compare-experiments: grouped bar/line chart
+  across multiple experiments with significance markers
+- Significance annotation: *, **, *** on bars from
+  linked Wilcoxon p-values in experiment YAML
+- Notation table auto-generation from tracked symbols
+- Definition list / \textbf{Term:} paragraph support
+- paperforge doctor --full: run all 76 checks plus
+  style checks (passive voice count, sentence length)
 
 ## Non-Goals
 

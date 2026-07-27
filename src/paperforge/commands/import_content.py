@@ -14,50 +14,66 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
+from paperforge.core.project import PaperForgeProject
+
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
 console = Console()
 
 
-def _strip_markdown_formatting(raw: str) -> list[tuple[str, bool]]:
-    """
-    Parses Markdown content into (paragraph_text, is_contribution) tuples.
-    Filters out HTML comments and header titles.
+def _strip_markdown_formatting(raw: str) -> list[tuple[str, bool, str]]:
+    """Parses Markdown content into (paragraph_text, is_contribution, subsection) tuples.
+
+    Filters out HTML comments and main section header titles.
     """
     clean_raw = re.sub(r"<!--.*?-->", "", raw, flags=re.DOTALL)
     lines = clean_raw.splitlines()
 
-    paragraphs: list[tuple[str, bool]] = []
+    paragraphs: list[tuple[str, bool, str]] = []
     current_para: list[str] = []
     in_contributions_section = False
+    current_subsection = ""
 
     for line in lines:
         stripped = line.strip()
 
-        if stripped.startswith(("##", "#")):
+        if stripped.startswith("## ") and not stripped.startswith("### "):
             if current_para:
                 text = " ".join(current_para).strip()
                 if text:
-                    paragraphs.append((text, False))
+                    paragraphs.append((text, False, current_subsection))
                 current_para = []
 
-            header_title = stripped.lstrip("#").strip().lower()
-            in_contributions_section = "contribution" in header_title
+            sub_title = stripped.lstrip("#").strip()
+            header_title_lower = sub_title.lower()
+            in_contributions_section = "contribution" in header_title_lower
+            if "contribution" not in header_title_lower:
+                current_subsection = sub_title
+            continue
+        elif stripped.startswith("#"):
+            if current_para:
+                text = " ".join(current_para).strip()
+                if text:
+                    paragraphs.append((text, False, current_subsection))
+                current_para = []
+            header_title_lower = stripped.lstrip("#").strip().lower()
+            in_contributions_section = "contribution" in header_title_lower
+            current_subsection = ""
             continue
 
         if stripped.startswith(("- ", "* ")):
             item_text = stripped[2:].strip()
             if item_text:
                 is_contrib = in_contributions_section
-                paragraphs.append((item_text, is_contrib))
+                paragraphs.append((item_text, is_contrib, current_subsection))
             continue
 
         if not stripped:
             if current_para:
                 text = " ".join(current_para).strip()
                 if text:
-                    paragraphs.append((text, False))
+                    paragraphs.append((text, False, current_subsection))
                 current_para = []
             continue
 
@@ -66,7 +82,7 @@ def _strip_markdown_formatting(raw: str) -> list[tuple[str, bool]]:
     if current_para:
         text = " ".join(current_para).strip()
         if text:
-            paragraphs.append((text, False))
+            paragraphs.append((text, False, current_subsection))
 
     return paragraphs
 
@@ -83,11 +99,16 @@ def run(
         )
         sys.exit(1)
 
-    info_dir = project_root / "paper_information"
+    project = PaperForgeProject.load(project_root)
+    info_dir = project_root / project.config.paper_information_dir
     if not info_dir.exists():
-        console.print(
-            "[yellow]paper_information/ directory not found.[/yellow]"
-        )
+        alt_info_dir = project_root / "paper_information"
+        if alt_info_dir.exists():
+            info_dir = alt_info_dir
+        else:
+            console.print(
+                f"[yellow]{info_dir} directory not found.[/yellow]"
+            )
 
     paper_yaml_path = pf_dir / "paper.yaml"
     paper_data: dict[str, Any] = {}
@@ -130,6 +151,8 @@ def run(
                             "city": a.get("city", ""),
                             "country": a.get("country", ""),
                             "email": a.get("email", ""),
+                            "membership": a.get("membership", ""),
+                            "shared_with": a.get("shared_with") or [],
                         }
                     )
                     if a.get("corresponding"):
@@ -153,6 +176,7 @@ def run(
     content_dir = info_dir / "content"
     claims_dir = pf_dir / "claims"
     claims_dir.mkdir(parents=True, exist_ok=True)
+    citations_dir = pf_dir / "citations"
 
     existing_claim_files = list(claims_dir.glob("*.yaml"))
     existing_ids: set[str] = set()
@@ -177,6 +201,8 @@ def run(
         return cid
 
     section_results: dict[str, tuple[int, int]] = {}
+    citation_pattern = re.compile(r"\[([a-z][a-zA-Z0-9]+\d{4}[a-z]?)\]")
+    imported_claims_list: list[dict[str, Any]] = []
 
     if content_dir.exists():
         sec_files = sorted(content_dir.glob("*.md"))
@@ -193,27 +219,46 @@ def run(
             new_claims_cnt = 0
             new_contrib_cnt = 0
 
-            for para_text, is_contrib in parsed_paras:
+            for para_text, is_contrib, sub_hdr in parsed_paras:
                 norm_prefix = para_text.strip().lower()[:80]
                 if norm_prefix in existing_prefixes and not force:
                     continue
 
+                # Parse [citation-key] notation
+                found_keys = citation_pattern.findall(para_text)
+                valid_keys: list[str] = []
+                for key in found_keys:
+                    cit_path = citations_dir / f"{key}.yaml"
+                    if cit_path.exists():
+                        if key not in valid_keys:
+                            valid_keys.append(key)
+                    else:
+                        console.print(
+                            f"[yellow]Citation [{key}] not found in "
+                            f".paperforge/citations/ -- skipped.[/yellow]"
+                        )
+
+                clean_text = citation_pattern.sub("", para_text).strip()
+
                 new_cid = get_next_id()
                 cdata = {
                     "id": new_cid,
-                    "text": para_text,
+                    "text": clean_text,
                     "experiment": "",
                     "experiments": [],
                     "figures": [],
                     "tables": [],
-                    "citations": [],
+                    "citations": valid_keys,
                     "sections": [sec_name],
                     "status": "unverified",
                     "last_verified": None,
-                    "subsection": "",
+                    "subsection": sub_hdr,
                     "algorithms": [],
                     "is_contribution": is_contrib,
                     "compared_work": "",
+                    "is_math": False,
+                    "raw_latex": False,
+                    "claim_type": "claim",
                 }
                 (claims_dir / f"{new_cid}.yaml").write_text(
                     yaml.dump(cdata, default_flow_style=False, allow_unicode=True),
@@ -223,6 +268,7 @@ def run(
                 new_claims_cnt += 1
                 if is_contrib:
                     new_contrib_cnt += 1
+                imported_claims_list.append(cdata)
 
             section_results[sec_name] = (new_claims_cnt, new_contrib_cnt)
 
@@ -274,6 +320,8 @@ def run(
                         "source_experiment": None,
                         "wide": False,
                         "auto_rows_from_experiment": None,
+                        "is_math": False,
+                        "raw_latex_rows": False,
                     }
                     tbl_yaml_path.write_text(
                         yaml.dump(
@@ -319,3 +367,11 @@ def run(
             border_style="green",
         )
     )
+
+    orphan_count = sum(1 for c in imported_claims_list if not c.get("experiment"))
+    if orphan_count > 0:
+        console.print(
+            f"[yellow]{orphan_count} imported claims have no linked "
+            "experiment. Link them manually in .paperforge/claims/ "
+            "or use: paperforge doctor to find ORPHAN_CLAIM issues.[/yellow]"
+        )

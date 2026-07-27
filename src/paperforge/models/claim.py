@@ -25,6 +25,9 @@ class Claim:
     algorithms: list[str] = field(default_factory=list)
     is_contribution: bool = False
     compared_work: str = ""
+    is_math: bool = False
+    raw_latex: bool = False
+    claim_type: str = "claim"  # claim, theorem, lemma, definition, proof, corollary, remark
 
     @classmethod
     def from_yaml(cls, data: dict) -> Claim:
@@ -46,6 +49,9 @@ class Claim:
             algorithms=data.get("algorithms", []),
             is_contribution=bool(data.get("is_contribution", False)),
             compared_work=data.get("compared_work", ""),
+            is_math=bool(data.get("is_math", False)),
+            raw_latex=bool(data.get("raw_latex", False)),
+            claim_type=str(data.get("claim_type", "claim")),
         )
 
     def to_yaml(self) -> dict:
@@ -66,4 +72,7 @@ class Claim:
             "algorithms": self.algorithms,
             "is_contribution": self.is_contribution,
             "compared_work": self.compared_work,
+            "is_math": self.is_math,
+            "raw_latex": self.raw_latex,
+            "claim_type": self.claim_type,
         }

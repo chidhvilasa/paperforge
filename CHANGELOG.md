@@ -2,6 +2,52 @@
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-07-26
+
+### Fixed (Phase 29 — critical bugs from production use)
+- CRITICAL: escape_latex() now protects inline math spans
+  ($...$, $$...$$, \(...\)) from escaping; claim.is_math and
+  raw_latex bypass escaping entirely for full LaTeX content.
+  Equations, subscripts, superscripts no longer corrupted.
+- CRITICAL: export overleaf exits 1 if paper.tex not found
+  at configured output_dir — no more silent stale-content fallback
+- All output paths (output_dir, paper_information_dir, base_dir)
+  now read from paper.yaml build section; no hardcoded
+  project-root assumptions; _rotate_output uses configured path
+- Citations rendered as \cite{key1,key2} inline before sentence
+  period — not trailing separate \cite{} calls on their own line
+- paperforge import now preserves ## subsection headers into
+  claim.subsection field
+- paperforge import now parses [citation-key] bracket notation
+  into claim.citations (verifies key exists in .paperforge/citations/)
+- paperforge import warns about claims with no linked experiment
+- METRIC_CLAIM_MISMATCH now checks claim.experiments list
+  in addition to primary claim.experiment
+
+### Added (Phase 29)
+- Claim.is_math and raw_latex fields: bypass escape_latex()
+  for LaTeX math content
+- Claim.claim_type field: "theorem", "lemma", "definition",
+  "proof", "corollary", "remark" — emits correct LaTeX environments
+  (\begin{theorem}, \begin{proof}, etc.) with \label{}
+- Inline Markdown in claim text converted to LaTeX:
+  **bold** → \textbf{}, *italic* → \textit{}, `code` → \texttt{}
+- Table.raw_rows field: bypass escaping for pre-formatted LaTeX rows
+- Figure.line_experiments and x_values fields for multi-series
+  line charts
+- generate-figures chart_type: "line" with multi-experiment overlay
+- Affiliation.membership field: IEEE membership grade
+  ("Member", "Senior Member", "Fellow")
+- Affiliation.shared_with field: grouped author footnotes
+  (two authors sharing one \thanks{} block)
+- Doctor check 75: MATH_CLAIM_MISSING_FLAG (WARNING) — fires
+  when claim text contains LaTeX math commands but is_math: false
+- Doctor check 76: PROOF_WITHOUT_THEOREM (WARNING) — fires
+  when a proof claim has no preceding theorem/lemma
+- paperforge doctor --self-check: installation health check
+  (version, dependencies, LaTeX toolchain, path validation)
+- 18 new tests (441 total)
+
 ## [1.1.0] — 2026-07-26
 
 ### Added

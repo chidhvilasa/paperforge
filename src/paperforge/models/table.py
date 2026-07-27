@@ -19,6 +19,8 @@ class Table:
                                 # experiment id that generated this table's data
     wide: bool = False         # spans both columns (table*) in IEEE two-column layout
     auto_rows_from_experiment: str | None = None
+    is_math: bool = False      # caption contains raw LaTeX math
+    raw_latex_rows: bool = False  # skip escaping table row cells
 
     @classmethod
     def from_yaml(cls, data: dict[str, Any]) -> Table:
@@ -32,6 +34,8 @@ class Table:
             source_experiment=data.get("source_experiment"),
             wide=data.get("wide", False),
             auto_rows_from_experiment=data.get("auto_rows_from_experiment"),
+            is_math=bool(data.get("is_math", False)),
+            raw_latex_rows=bool(data.get("raw_latex_rows", False)),
         )
 
     def to_yaml(self) -> dict[str, Any]:
@@ -45,4 +49,6 @@ class Table:
             "source_experiment": self.source_experiment,
             "wide": self.wide,
             "auto_rows_from_experiment": self.auto_rows_from_experiment,
+            "is_math": self.is_math,
+            "raw_latex_rows": self.raw_latex_rows,
         }

@@ -66,6 +66,8 @@ def test_table_to_yaml_keys() -> None:
         "source_experiment",
         "wide",
         "auto_rows_from_experiment",
+        "is_math",
+        "raw_latex_rows",
     }
 
 

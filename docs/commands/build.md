@@ -75,6 +75,20 @@ panel under a `VENUE (<display name>)` heading.
 | Doctor ERRORs or venue-plugin ERRORs found | `Build blocked. Fix all ERRORs before building.` — lists each issue, exits 1 before generating any output |
 | Unknown `--target` | `Unknown venue '<target>'. Available: acm, ieee, neurips` (exit 1) |
 
+## Math Support
+
+Claims with `is_math: true` or `raw_latex: true` are passed
+directly to LaTeX without escaping. Use for equations,
+theorem statements, and any content with LaTeX math mode.
+
+Claims with `claim_type: theorem` (or lemma, definition, proof,
+corollary, remark) generate the corresponding LaTeX environments.
+Requires `\usepackage{amsthm}` — added automatically when any
+theorem-type claim exists.
+
+Inline math `$...$` in regular claims is automatically
+protected from escaping.
+
 ## Notes
 
 - **Runs doctor checks first.** Any ERROR-severity issue blocks the build. Fix issues with `paperforge doctor` before building.

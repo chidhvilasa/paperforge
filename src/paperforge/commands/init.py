@@ -61,6 +61,8 @@ sections:
 
 build:
   output_dir: "paper_generated/current"
+  paper_information_dir: "paper_information"
+  base_dir: ""
   latex_template: "ieee"
 
 publisher_id: ""       # Leave blank; IEEE fills at production
@@ -212,6 +214,8 @@ authors:
     city: "Your City"
     country: "Your Country"
     email: "your@email.com"
+    membership: "Member"    # Member, Senior Member, Fellow
+    shared_with: []         # other authors sharing this footnote
     orcid: ""
     corresponding: true
 """
@@ -358,6 +362,10 @@ def run(path: Path) -> None:
     (gen_dir / ".gitignore").write_text(
         PAPER_GENERATED_GITIGNORE, encoding="utf-8"
     )
+
+    # Legacy paper/ directory for backward compatibility
+    paper_dir = path / "paper"
+    paper_dir.mkdir(parents=True, exist_ok=True)
 
     # Legacy paper/ folder compatibility (also create if needed)
     paper_dir = path / "paper"

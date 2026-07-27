@@ -162,13 +162,26 @@ def collect_issues(project: PaperForgeProject) -> list[Issue]:
     # Check 11 — METRIC_CLAIM_MISMATCH (ERROR)
     experiment_map = {exp.id: exp for exp in project.experiments}
     for claim in project.claims:
-        if not claim.text or not claim.experiment:
+        if not claim.text:
             continue
-        exp = experiment_map.get(claim.experiment)
-        if exp is None:
+        linked_exp_ids: list[str] = []
+        if claim.experiment:
+            linked_exp_ids.append(claim.experiment)
+        for eid in claim.experiments:
+            if eid not in linked_exp_ids:
+                linked_exp_ids.append(eid)
+        if not linked_exp_ids:
             continue
-        if not exp.metrics:
+
+        combined_metrics: dict[str, float] = {}
+        for eid in linked_exp_ids:
+            exp_obj = experiment_map.get(eid)
+            if exp_obj and exp_obj.metrics:
+                combined_metrics.update(exp_obj.metrics)
+
+        if not combined_metrics:
             continue
+
         percentage_numbers = [
             n for n in extract_numbers(claim.text) if n.is_percentage
         ]
@@ -176,7 +189,7 @@ def collect_issues(project: PaperForgeProject) -> list[Issue]:
             continue
         # Only consider metrics whose values are in the 0-100 range
         range_metrics = {
-            k: v for k, v in exp.metrics.items() if 0 <= v <= 100
+            k: v for k, v in combined_metrics.items() if 0 <= v <= 100
         }
         if not range_metrics:
             continue
@@ -192,8 +205,8 @@ def collect_issues(project: PaperForgeProject) -> list[Issue]:
                         severity="ERROR",
                         message=(
                             f"{claim.id} contains '{extracted.raw}' "
-                            f"but no metric in {exp.id} matches "
-                            f"(metrics: {exp.metrics})"
+                            f"but no metric in {linked_exp_ids} matches "
+                            f"(metrics: {combined_metrics})"
                         ),
                     )
                 )
@@ -1200,6 +1213,47 @@ def collect_issues(project: PaperForgeProject) -> list[Issue]:
                         )
                     )
 
+    # Check 75 — MATH_CLAIM_MISSING_FLAG (WARNING)
+    math_tokens = [
+        r"\\", r"\alpha", r"\beta", r"\gamma", r"\theta", r"\sum", r"\prod",
+        r"\frac", r"\begin{equation", r"\mathbf", r"\mathcal", r"\[", "$$", "$"
+    ]
+    for claim in project.claims:
+        if (
+            not claim.is_math
+            and not claim.raw_latex
+            and any(token in claim.text for token in math_tokens)
+        ):
+            issues.append(
+                Issue(
+                    code="MATH_CLAIM_MISSING_FLAG",
+                    severity="WARNING",
+                    message=(
+                        f"{claim.id} text appears to contain LaTeX math "
+                        f"but is_math: false. Set 'is_math: true' to prevent "
+                        f"escape_latex() from corrupting math content."
+                    ),
+                )
+            )
+
+    # Check 76 — PROOF_WITHOUT_THEOREM (WARNING)
+    for claim in project.claims:
+        if claim.claim_type == "proof":
+            has_thm = any(
+                c.claim_type in ("theorem", "lemma") for c in project.claims
+            )
+            if not has_thm:
+                issues.append(
+                    Issue(
+                        code="PROOF_WITHOUT_THEOREM",
+                        severity="WARNING",
+                        message=(
+                            f"{claim.id} is a proof but no theorem/lemma "
+                            f"precedes it in the project."
+                        ),
+                    )
+                )
+
     return issues
 
 
@@ -1223,7 +1277,60 @@ def _apply_fix(project_root: Path, unverified_claims: list[Claim]) -> None:
         console.print(f"  Fixed: {loaded.id} status set to stale")
 
 
-def run(project_root: Path, fix: bool = False, target: str | None = None) -> None:
+def run_self_check(project_root: Path) -> None:
+    import importlib.metadata
+    import shutil
+
+    from paperforge import __version__
+
+    console.print(f"[bold]PaperForge Environment Diagnostics (v{__version__})[/bold]\n")
+
+    # 1. Version & dependencies
+    console.print("[cyan]1. Dependencies & Libraries[/cyan]")
+    for pkg in ["python-docx", "matplotlib", "pyyaml", "rich", "typer"]:
+        try:
+            ver = importlib.metadata.version(pkg)
+            console.print(f"  ✅ {pkg}: installed ({ver})")
+        except importlib.metadata.PackageNotFoundError:
+            console.print(f"  ❌ {pkg}: NOT installed")
+
+    # 2. System tools
+    console.print("\n[cyan]2. System Tools & Toolchains[/cyan]")
+    pdflatex = shutil.which("pdflatex")
+    latexmk = shutil.which("latexmk")
+    llm = shutil.which("llm")
+    git = shutil.which("git")
+
+    console.print(f"  {'✅' if pdflatex else '⚠️'} pdflatex: {pdflatex or 'not found (DOCX fallback)'}")
+    console.print(f"  {'✅' if latexmk else '⚠️'} latexmk: {latexmk or 'not found'}")
+    console.print(f"  {'✅' if llm else 'ℹ️'} llm CLI: {llm or 'not found (optional)'}")
+    console.print(f"  {'✅' if git else '⚠️'} git: {git or 'not found'}")
+
+    # 3. Directories
+    console.print("\n[cyan]3. Project Directory Structure[/cyan]")
+    if (project_root / ".paperforge").exists():
+        project = PaperForgeProject.load(project_root)
+        out_dir = project_root / project.config.build_output_dir
+        info_dir = project_root / project.config.paper_information_dir
+        console.print("  ✅ .paperforge/ present")
+        console.print(f"  {'✅' if out_dir.exists() else '⚠️'} Output dir ({project.config.build_output_dir}): {'exists' if out_dir.exists() else 'missing'}")
+        console.print(f"  {'✅' if info_dir.exists() else '⚠️'} Info dir ({project.config.paper_information_dir}): {'exists' if info_dir.exists() else 'missing'}")
+    else:
+        console.print("  ℹ️ Not inside a PaperForge project directory")
+
+    console.print("\n[bold green]Self-check completed.[/bold green]")
+
+
+def run(
+    project_root: Path,
+    fix: bool = False,
+    target: str | None = None,
+    self_check: bool = False,
+) -> None:
+    if self_check:
+        run_self_check(project_root)
+        return
+
     if not (project_root / ".paperforge").exists():
         console.print("[red]Not a PaperForge project. Run `paperforge init` first.[/red]")
         sys.exit(1)

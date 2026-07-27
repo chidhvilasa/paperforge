@@ -77,7 +77,7 @@ See [CONSTITUTION.md](CONSTITUTION.md).
 ## Install
 
 ```bash
-pip install paperforge-research==1.1.0
+pip install paperforge-research==1.2.0
 # or always latest:
 pip install paperforge-research
 ```
@@ -96,6 +96,9 @@ paperforge update --git    # update from git (dev installs)
 ## Quick Start
 
 ```bash
+# Check your PaperForge installation
+paperforge doctor --self-check
+
 # 1. Initialize inside any research project
 cd my-research-project
 paperforge init
@@ -161,6 +164,33 @@ paperforge improve claim_01
 paperforge review
 ```
 
+## Math and Equations
+
+PaperForge v1.2.0 supports LaTeX equations in claims.
+Set `is_math: true` in any claim that contains equations:
+
+```yaml
+# .paperforge/claims/claim_05.yaml
+id: claim_05
+text: "The verification equation is $\\alpha_i^T M = pk_i + h_1^i k_{\\mathrm{Pub}} + h_2^i X_i$."
+is_math: true
+sections: [methodology]
+```
+
+Inline math spans (`$...$`) in regular claims are automatically
+protected from LaTeX escaping.
+
+For theorem/lemma/proof environments:
+
+```yaml
+id: claim_06
+text: "The proposed scheme achieves EUF-CMA security under the SIS assumption."
+claim_type: theorem
+sections: [methodology]
+```
+
+Generates `\begin{theorem}...\end{theorem}` with automatic labeling.
+
 ## The paper_information/ Workflow
 
 PaperForge v1.1.0 introduces a human-friendly input layer.
@@ -210,7 +240,7 @@ is preserved in `paper_generated/previous/` for comparison.
 | `paperforge improve` | AI-assisted claim improvement via llm (advisory only) |
 | `paperforge venues` | List available venue targets |
 | `paperforge install-hooks` | Install git pre-commit hook |
-| `paperforge export` | Export as BibTeX, JSON, Markdown, traceability matrix, or Overleaf zip |
+| `paperforge export` | Export BibTeX, JSON, Markdown, traceability, Overleaf zip |
 | `paperforge status` | Project health dashboard |
 | `paperforge find` | Search claims and experiments by keyword |
 | `paperforge log` | Show change history for a claim |
