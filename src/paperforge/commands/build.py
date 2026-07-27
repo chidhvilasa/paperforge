@@ -587,6 +587,13 @@ def _generate_journal_sections(
     return "\n\n".join(blocks)
 
 
+def _get_membership_tag(membership: str | None) -> str:
+    if not membership or membership.strip().lower() in ("", "student member"):
+        return ""
+    mem = membership.strip()
+    return f",~\\IEEEmembership{{{mem},~IEEE}}"
+
+
 def _generate_author_block_journal(
     authors: list[str],
     affiliations: list[Affiliation],
@@ -600,8 +607,9 @@ def _generate_author_block_journal(
     if compsoc:
         lines = []
         for i, author in enumerate(escaped_authors):
-            if i < len(affiliations):
-                aff = affiliations[i]
+            aff = affiliations[i] if i < len(affiliations) else None
+            mem_tag = _get_membership_tag(aff.membership if aff else None)
+            if aff:
                 aff_str = ", ".join(
                     filter(
                         None,
@@ -613,7 +621,7 @@ def _generate_author_block_journal(
                         ],
                     )
                 )
-                lines.append(f"  {author},~\\IEEEmembership{{Member,~IEEE}}")
+                lines.append(f"  {author}{mem_tag}")
                 if aff_str:
                     lines.append(
                         f"  \\IEEEcompsocitemizethanks{{"
@@ -621,7 +629,7 @@ def _generate_author_block_journal(
                         f"{aff_str}.}}"
                     )
             else:
-                lines.append(f"  {author}")
+                lines.append(f"  {author}{mem_tag}")
         return "\n".join(lines)
 
     # Non-compsoc journal mode
@@ -641,16 +649,18 @@ def _generate_author_block_journal(
 
     if has_extra:
         author_parts = []
-        for author in escaped_authors:
+        for i, author in enumerate(escaped_authors):
+            aff = affiliations[i] if i < len(affiliations) else None
+            mem_tag = _get_membership_tag(aff.membership if aff else None)
             if config and config.orcid:
                 author_parts.append(
-                    f"{author}~\\orcidlink{{{escape_latex(config.orcid)}}}"
+                    f"{author}{mem_tag}~\\orcidlink{{{escape_latex(config.orcid)}}}"
                 )
             else:
-                author_parts.append(author)
+                author_parts.append(f"{author}{mem_tag}")
 
         if len(author_parts) == 1:
-            author_str = f"{author_parts[0]},~\\IEEEmembership{{Member,~IEEE}}"
+            author_str = author_parts[0]
         elif len(author_parts) == 2:
             author_str = f"{author_parts[0]} and {author_parts[1]}"
         else:
@@ -702,12 +712,13 @@ def _generate_author_block_journal(
     else:
         parts = []
         for i, author in enumerate(escaped_authors):
+            aff = affiliations[i] if i < len(affiliations) else None
+            mem_tag = _get_membership_tag(aff.membership if aff else None)
             if config and config.orcid:
                 author_fmt = f"{author}~\\orcidlink{{{escape_latex(config.orcid)}}}"
             else:
                 author_fmt = author
-            if i < len(affiliations):
-                aff = affiliations[i]
+            if aff:
                 aff_items = [
                     escape_latex(aff.department or ""),
                     escape_latex(aff.institution or ""),
@@ -719,13 +730,13 @@ def _generate_author_block_journal(
                     aff_str += f" (e-mail: {escape_latex(aff.email)})"
                 if aff_str:
                     parts.append(
-                        f"{author_fmt},~\\IEEEmembership{{Member,~IEEE}}"
+                        f"{author_fmt}{mem_tag}"
                         f"\\thanks{{{aff_str}}}"
                     )
                 else:
-                    parts.append(f"{author_fmt},~\\IEEEmembership{{Member,~IEEE}}")
+                    parts.append(f"{author_fmt}{mem_tag}")
             else:
-                parts.append(author_fmt)
+                parts.append(f"{author_fmt}{mem_tag}")
         return " \\and\n".join(parts)
 
     return author_str
@@ -1297,11 +1308,27 @@ def _rotate_output(project_root: Path, output_dir: Path | None = None) -> None:
             shutil.copy2(str(src), str(dst))
 
 
+BLOCKING_CHECKS = {
+    "ORPHAN_CLAIM",
+    "MISSING_EXPERIMENT",
+    "STALE_CLAIM",
+    "EMPTY_CLAIM_TEXT",
+    "RESULTS_SECTION_EMPTY",
+    "TABLE_NO_CAPTION",
+    "METRIC_CLAIM_MISMATCH",
+    "CITATION_NO_TITLE",
+    "ABSTRACT_HAS_CITATION",
+    "ABSTRACT_INTRO_OVERLAP",
+    "DUPLICATE_CLAIM_TEXT",
+}
+
+
 def run(
     project_root: Path,
     target: str = "ieee",
     no_reveal: bool = False,
     force: bool = False,
+    force_anyway: bool = False,
 ) -> None:
     if not (project_root / ".paperforge").exists():
         console.print("[red]Not a PaperForge project. Run `paperforge init` first.[/red]")
@@ -1318,14 +1345,18 @@ def run(
     issues = collect_issues(project)
     venue_issues = plugin.validate(project)
 
-    errors = [issue for issue in issues if issue.severity == "ERROR"]
+    blocking_issues = [
+        issue for issue in issues
+        if issue.severity == "ERROR" or issue.code in BLOCKING_CHECKS
+    ]
     venue_errors = [issue for issue in venue_issues if issue.severity == "ERROR"]
-    if errors or venue_errors:
+    if (blocking_issues or venue_errors) and not force_anyway:
         body = Group(
-            Text("Build blocked. Fix all ERRORs before building."),
-            *(Text(f"  [{issue.code}] {issue.message}") for issue in errors),
+            Text("Build blocked. Fix all ERRORs and blocking checks before building."),
+            *(Text(f"  [{issue.code}] {issue.message}") for issue in blocking_issues),
             *(Text(f"  [{issue.code}] {issue.message}") for issue in venue_errors),
             Text("Run `paperforge doctor` for full details."),
+            Text("Use --force-anyway to bypass (NOT recommended for submission)."),
         )
         console.print(Panel(body, border_style="red"))
         sys.exit(1)

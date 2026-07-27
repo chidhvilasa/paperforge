@@ -34,14 +34,20 @@ class IEEEAccessPlugin(VenuePlugin):
 
     def generate_preamble(self) -> str:
         return (
+            "\\usepackage[T1]{fontenc}\n"
+            "\\usepackage[utf8]{inputenc}\n"
             "\\usepackage{cite}\n"
             "\\usepackage{amsmath,amssymb,amsfonts}\n"
-            "\\usepackage{graphicx}\n"
+            "\\usepackage{algorithmic}\n"
+            "\\usepackage{array}\n"
             "\\usepackage{textcomp}\n"
             "\\usepackage{xcolor}\n"
+            "\\usepackage{graphicx}\n"
+            "\\usepackage{booktabs}\n"
             "\\usepackage{microtype}\n"
             "\\usepackage[hidelinks]{hyperref}"
         )
+
 
     def generate_author_block(self, authors: list[str]) -> str:
         if not authors:

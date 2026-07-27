@@ -212,7 +212,7 @@ def collect_issues(project: PaperForgeProject) -> list[Issue]:
                 )
                 break  # at most one METRIC_CLAIM_MISMATCH per claim
 
-    # Check 12 — DUPLICATE_CLAIM_TEXT (WARNING)
+    # Check 12 — DUPLICATE_CLAIM_TEXT (ERROR)
     text_to_ids: dict[str, list[str]] = {}
     for claim in project.claims:
         if not claim.text:
@@ -224,7 +224,7 @@ def collect_issues(project: PaperForgeProject) -> list[Issue]:
             issues.append(
                 Issue(
                     code="DUPLICATE_CLAIM_TEXT",
-                    severity="WARNING",
+                    severity="ERROR",
                     message=(
                         f"Identical text in {claim_ids}: '{text_key[:60]}...'"
                     ),
@@ -1321,21 +1321,104 @@ def run_self_check(project_root: Path) -> None:
     console.print("\n[bold green]Self-check completed.[/bold green]")
 
 
+def run_pre_submission_check(project: PaperForgeProject) -> bool:
+    """Print a SUBMISSION READINESS REPORT with pass/fail for 10 submission requirements."""
+    abstract_claims = [c for c in project.claims if "abstract" in c.sections]
+    abstract_words = sum(len(c.text.split()) for c in abstract_claims)
+    abstract_pass = 150 <= abstract_words <= 250
+
+    unique_citations = {k for c in project.claims for k in c.citations}
+    num_citations = max(len(unique_citations), len(project.citations))
+    citations_pass = num_citations >= 15
+
+    figs_with_captions = sum(
+        1 for f in project.figures if f.caption and f.caption.strip()
+    )
+    total_figs = len(project.figures)
+    figs_pass = total_figs == 0 or figs_with_captions == total_figs
+
+    tbls_with_captions = sum(
+        1 for t in project.tables if t.caption and t.caption.strip()
+    )
+    total_tbls = len(project.tables)
+    tbls_pass = total_tbls == 0 or tbls_with_captions == total_tbls
+
+    contrib_claims = [c for c in project.claims if c.is_contribution]
+    contrib_pass = len(contrib_claims) >= 1
+
+    verified_claims = [c for c in project.claims if c.status == "verified"]
+    total_claims = len(project.claims)
+    verified_pass = total_claims > 0 and len(verified_claims) == total_claims
+
+    email_set = bool(
+        project.config.email
+        or any(a.email for a in project.config.affiliations)
+    )
+    coi_set = bool(project.config.conflict_of_interest)
+    data_avail_set = bool(project.config.data_availability)
+
+    all_pass = (
+        abstract_pass
+        and citations_pass
+        and figs_pass
+        and tbls_pass
+        and contrib_pass
+        and verified_pass
+        and email_set
+        and coi_set
+        and data_avail_set
+    )
+
+    def mark(ok: bool) -> str:
+        return "[bold green]✓[/bold green]" if ok else "[bold red]✗[/bold red]"
+
+    report_lines = [
+        f"Abstract word count:     {abstract_words} / 150-250  [{mark(abstract_pass)}]",
+        f"Citations:               {num_citations} / 15+      [{mark(citations_pass)}]",
+        f"Figures with captions:   {figs_with_captions}/{total_figs}          [{mark(figs_pass)}]",
+        f"Tables with captions:    {tbls_with_captions}/{total_tbls}          [{mark(tbls_pass)}]",
+        f"Contribution claims:     {len(contrib_claims)}            [{mark(contrib_pass)}]",
+        f"Verified claims:         {len(verified_claims)}/{total_claims}          [{mark(verified_pass)}]",
+        f"Email set:               [{mark(email_set)}]",
+        f"COI set:                 [{mark(coi_set)}]",
+        f"Data availability set:   [{mark(data_avail_set)}]",
+        "",
+        f"Overall: [{'READY FOR SUBMISSION' if all_pass else 'NOT READY FOR SUBMISSION'}]",
+    ]
+
+    style = "green" if all_pass else "yellow"
+    console.print(
+        Panel(
+            "\n".join(report_lines),
+            title="SUBMISSION READINESS REPORT",
+            border_style=style,
+        )
+    )
+    return all_pass
+
+
 def run(
     project_root: Path,
     fix: bool = False,
     target: str | None = None,
     self_check: bool = False,
+    pre_submission: bool = False,
 ) -> None:
     if self_check:
         run_self_check(project_root)
         return
 
     if not (project_root / ".paperforge").exists():
-        console.print("[red]Not a PaperForge project. Run `paperforge init` first.[/red]")
+        console.print(
+            "[red]Not a PaperForge project. Run `paperforge init` first.[/red]"
+        )
         sys.exit(1)
 
     project = PaperForgeProject.load(project_root)
+
+    if pre_submission:
+        run_pre_submission_check(project)
+
 
     issues = collect_issues(project)
 

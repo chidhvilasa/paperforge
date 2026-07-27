@@ -17,7 +17,7 @@ class Figure:
     notes: str = ""             # any free-form notes about the figure
     wide: bool = False           # spans both columns (figure*) in IEEE two-column layout
     source_experiment: str | None = None  # experiment to plot
-    chart_type: str = "auto"              # bar, line, scatter, auto
+    chart_type: str = "auto"              # bar, line, scatter, grouped_bar, auto
     x_label: str = ""                     # x-axis label
     y_label: str = ""                     # y-axis label
     chart_title: str = ""                 # chart title (optional)
@@ -26,6 +26,9 @@ class Figure:
     is_math: bool = False                 # caption contains raw LaTeX math
     line_experiments: list[str] = field(default_factory=list)  # additional experiments for line chart series
     x_values: list[float] = field(default_factory=list)        # numeric X values for line chart
+    error_bars: bool = False              # show uncertainty/error bars
+    std_metric_keys: list[str] = field(default_factory=list)   # metric keys for standard deviation
+    significance_markers: list[str] = field(default_factory=list) # significance markers e.g. ["*", "**", "n.s."]
 
     @classmethod
     def from_yaml(cls, data: dict[str, Any]) -> Figure:
@@ -49,6 +52,9 @@ class Figure:
             is_math=bool(data.get("is_math", False)),
             line_experiments=data.get("line_experiments") or [],
             x_values=[float(v) for v in data.get("x_values") or []],
+            error_bars=bool(data.get("error_bars", False)),
+            std_metric_keys=data.get("std_metric_keys") or [],
+            significance_markers=data.get("significance_markers") or [],
         )
 
     def to_yaml(self) -> dict[str, Any]:
@@ -72,4 +78,7 @@ class Figure:
             "is_math": self.is_math,
             "line_experiments": self.line_experiments,
             "x_values": self.x_values,
+            "error_bars": self.error_bars,
+            "std_metric_keys": self.std_metric_keys,
+            "significance_markers": self.significance_markers,
         }

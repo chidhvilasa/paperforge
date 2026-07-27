@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from paperforge.utils.latex import escape_latex
+from paperforge.utils.latex import escape_latex_safe
 
 
 @dataclass
@@ -36,12 +36,15 @@ class Algorithm:
         """Generate IEEE-compatible algorithm environment."""
         lines = [
             "\\begin{algorithm}[!t]",
-            f"\\caption{{{escape_latex(self.caption)}}}",
-            f"\\label{{alg:{self.id}}}",
+            "\\caption{" + escape_latex_safe(self.caption) + "}",
+            "\\label{alg:" + self.id + "}",
             "\\begin{algorithmic}[1]",
         ]
         for step in self.steps:
-            lines.append(f"  {escape_latex(step)}")
+            if step.startswith("\\"):
+                lines.append(f"  {step}")
+            else:
+                lines.append(f"  \\State {escape_latex_safe(step)}")
         lines.extend(
             [
                 "\\end{algorithmic}",

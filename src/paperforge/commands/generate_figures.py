@@ -63,12 +63,26 @@ def _generate_bar_chart(
     values = list(metrics.values())
     tick_labels = figure.x_labels if figure.x_labels else keys
 
+    yerr = None
+    if figure.error_bars and figure.std_metric_keys:
+        stds = [experiment.metrics.get(k, 0.0) for k in figure.std_metric_keys]
+        if len(stds) == len(values):
+            yerr = stds
+
     fig_width = figure.width_inches if figure.width_inches else 3.5
     _fig, ax = plt.subplots(figsize=(fig_width, fig_width * 0.75))
 
-    bars = ax.bar(
-        tick_labels, values, color="#2196F3", edgecolor="black", linewidth=0.5
-    )
+    bar_kw: dict = {
+        "color": "#2196F3",
+        "edgecolor": "black",
+        "linewidth": 0.5,
+    }
+    if yerr is not None:
+        bar_kw["yerr"] = yerr
+        bar_kw["capsize"] = 3
+        bar_kw["error_kw"] = {"ecolor": "black", "elinewidth": 0.8}
+
+    bars = ax.bar(tick_labels, values, **bar_kw)
 
     ax.set_xlabel(figure.x_label or "Metric")
     ax.set_ylabel(figure.y_label or "Value")
@@ -77,6 +91,8 @@ def _generate_bar_chart(
 
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
+
+    max_val = max(values) if values else 1.0
 
     # Add value labels on bars
     for bar, val in zip(bars, values):
@@ -88,6 +104,123 @@ def _generate_bar_chart(
             va="bottom",
             fontsize=7,
         )
+
+    # Add significance markers if set
+    if figure.significance_markers:
+        for idx, marker in enumerate(figure.significance_markers):
+            if idx < len(tick_labels) and marker:
+                ax.text(
+                    idx,
+                    max_val * 1.05,
+                    marker,
+                    ha="center",
+                    va="bottom",
+                    fontsize=9,
+                    fontweight="bold",
+                )
+
+    plt.tight_layout()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(str(output_path), dpi=300)
+    plt.close()
+
+
+def _generate_grouped_bar_chart(
+    figure: Figure,
+    experiments: list[tuple[str, dict]],
+    output_path: Path,
+) -> None:
+    """experiments: list of (label, metrics_dict) tuples.
+
+    Plots a grouped bar chart with multi-series data.
+    """
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    plt.rcParams.update(
+        {
+            "font.family": "serif",
+            "font.size": 9,
+            "axes.labelsize": 9,
+            "xtick.labelsize": 8,
+            "ytick.labelsize": 8,
+            "legend.fontsize": 8,
+            "figure.dpi": 300,
+            "savefig.dpi": 300,
+            "savefig.bbox": "tight",
+            "savefig.pad_inches": 0.05,
+        }
+    )
+
+    if not experiments:
+        return
+
+    keys = figure.metric_keys
+    if not keys:
+        keys = list(experiments[0][1].keys())
+
+    tick_labels = figure.x_labels if figure.x_labels else keys
+    num_categories = len(keys)
+    num_series = len(experiments)
+
+    fig_width = figure.width_inches if figure.width_inches else 3.5
+    _fig, ax = plt.subplots(figsize=(fig_width, fig_width * 0.75))
+
+    x = np.arange(num_categories)
+    total_width = 0.8
+    bar_width = total_width / max(num_series, 1)
+
+    colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b"]
+    hatches = ["", "//", "\\\\", "..", "xx", "++"]
+
+    max_val = 0.0
+    for i, (label, metrics) in enumerate(experiments):
+        vals = [metrics.get(k, 0.0) for k in keys]
+        offset = (i - (num_series - 1) / 2) * bar_width
+        pos = x + offset
+        ax.bar(
+            pos,
+            vals,
+            width=bar_width,
+            label=label,
+            color=colors[i % len(colors)],
+            hatch=hatches[i % len(hatches)],
+            edgecolor="black",
+            linewidth=0.5,
+        )
+        for v in vals:
+            max_val = max(max_val, v)
+
+    ax.set_xlabel(figure.x_label or "Category")
+    ax.set_ylabel(figure.y_label or "Value")
+    if figure.chart_title:
+        ax.set_title(figure.chart_title, fontsize=9)
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(
+        tick_labels,
+        rotation=30 if any(len(str(l)) > 8 for l in tick_labels) else 0,
+        fontsize=8,
+    )
+    ax.legend(fontsize=7, framealpha=0.9)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+    if figure.significance_markers:
+        for idx, marker in enumerate(figure.significance_markers):
+            if idx < len(x) and marker:
+                ax.text(
+                    x[idx],
+                    max_val * 1.05 if max_val > 0 else 1.0,
+                    marker,
+                    ha="center",
+                    va="bottom",
+                    fontsize=9,
+                    fontweight="bold",
+                )
 
     plt.tight_layout()
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -210,8 +343,22 @@ def run(project_root: Path, figure_id: str | None = None) -> None:
         output_path = project_root / rel_path
         chart_type = fig.chart_type.lower()
 
-        if chart_type == "line":
+        if chart_type in ("grouped_bar", "groupedbar") or (
+            chart_type == "bar" and fig.line_experiments
+        ):
             series: list[tuple[str, dict]] = []
+            if fig.source_experiment:
+                exp = exp_map.get(fig.source_experiment)
+                if exp and exp.metrics:
+                    series.append((exp.id, exp.metrics))
+            for exp_id in fig.line_experiments:
+                exp = exp_map.get(exp_id)
+                if exp and exp.metrics:
+                    series.append((exp_id, exp.metrics))
+            if series:
+                _generate_grouped_bar_chart(fig, series, output_path)
+        elif chart_type == "line":
+            series = []
             if fig.source_experiment:
                 exp = exp_map.get(fig.source_experiment)
                 if exp and exp.metrics:

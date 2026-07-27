@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+### Fixed
+- IEEE Access author block: Student Member and empty membership suppressed from \IEEEmembership{}
+- \IEEEPARstart now uses actual first two chars of first introduction claim text (not hardcoded)
+- Unicode typography escaped: em-dash, en-dash, curly quotes, ellipsis, degree, multiplication, Greek letters
+- Markdown links [text](url) → \href{url}{text}
+- Markdown bullet/numbered lists → itemize/enumerate
+- Bare URLs → \url{} via hyperref
+- DUPLICATE_CLAIM_TEXT severity upgraded to ERROR (blocks build)
+- Algorithm.to_latex() emits algorithmic[1] with proper \State wrapping for plain-text steps
+- \usepackage{algorithm} and \usepackage{algorithmic} added to preamble when algorithms exist in project
+
+### Added
+- Figure.error_bars and std_metric_keys fields for uncertainty visualization in bar charts
+- Figure.significance_markers field for *, **, n.s. annotation
+- generate-figures chart_type: "grouped_bar" for multi-series grouped bar charts (the standard IEEE results figure format)
+- paperforge doctor --pre-submission: full submission readiness report with pass/fail for 10 submission requirements
+- build --force-anyway: override blocking doctor checks (not recommended for submission)
+- 10 new tests in test_ieee_template.py (451 total)
+
 ## [1.2.0] — 2026-07-26
 
 ### Fixed (Phase 29 — critical bugs from production use)

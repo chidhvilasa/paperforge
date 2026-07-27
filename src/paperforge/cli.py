@@ -80,11 +80,20 @@ def doctor(
     self_check: bool = typer.Option(
         False, "--self-check", help="Check PaperForge installation health."
     ),
+    pre_submission: bool = typer.Option(
+        False, "--pre-submission", help="Run full submission readiness report."
+    ),
 ) -> None:
     """Check research project consistency."""
     from paperforge.commands.doctor import run
 
-    run(project_root=path.resolve(), fix=fix, target=target, self_check=self_check)
+    run(
+        project_root=path.resolve(),
+        fix=fix,
+        target=target,
+        self_check=self_check,
+        pre_submission=pre_submission,
+    )
 
 
 @app.command()
@@ -110,6 +119,9 @@ def build(
     force: bool = typer.Option(
         False, "--force", "-f", help="Force rebuild even if PDF is up to date."
     ),
+    force_anyway: bool = typer.Option(
+        False, "--force-anyway", help="Build even if doctor checks fail. NOT recommended for submission."
+    ),
 ) -> None:
     """Compile research data into an IEEE LaTeX paper."""
     from paperforge.commands.build import run
@@ -119,6 +131,7 @@ def build(
         target=target,
         no_reveal=no_reveal,
         force=force,
+        force_anyway=force_anyway,
     )
 
 
@@ -451,3 +464,8 @@ def update(
     from paperforge.commands.update import run
 
     run(pre=pre, git=git)
+
+
+if __name__ == "__main__":
+    app()
+

@@ -53,7 +53,7 @@ def test_doctor_passes_when_affiliations_present():
 def test_journal_author_block_with_affiliations():
     authors = ["Alice", "Bob"]
     affiliations = [
-        Affiliation(institution="Inst A"),
+        Affiliation(institution="Inst A", membership="Member"),
         Affiliation(institution="Inst B", country="US")
     ]
     block = _generate_author_block_journal(authors, affiliations)
@@ -65,7 +65,7 @@ def test_journal_author_block_with_affiliations():
 def test_journal_author_block_with_affiliations_compsoc():
     authors = ["Alice", "Bob"]
     affiliations = [
-        Affiliation(institution="Inst A"),
+        Affiliation(institution="Inst A", membership="Member"),
         Affiliation(institution="Inst B", country="US")
     ]
     block = _generate_author_block_journal(authors, affiliations, compsoc=True)

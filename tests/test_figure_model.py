@@ -64,6 +64,9 @@ def test_figure_to_yaml_keys():
         "is_math",
         "line_experiments",
         "x_values",
+        "error_bars",
+        "std_metric_keys",
+        "significance_markers",
     }
 
 
