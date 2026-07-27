@@ -45,24 +45,24 @@ def _fix_all_errors(tmp_path: Path) -> None:
 
 def test_init_creates_paper_directory(tmp_path: Path) -> None:
     init.run(tmp_path)
-    assert (tmp_path / "paper").is_dir()
+    assert (tmp_path / "paper_generated" / "current").is_dir()
 
 
 def test_init_paper_gitignore_exists(tmp_path: Path) -> None:
     init.run(tmp_path)
-    gitignore = tmp_path / "paper" / ".gitignore"
+    gitignore = tmp_path / "paper_generated" / ".gitignore"
     assert gitignore.exists()
 
     content = gitignore.read_text(encoding="utf-8")
-    assert "*.aux" in content
-    assert "!paper.tex" in content
-    assert "!paper.pdf" in content
+    assert "current/*.aux" in content
+    assert "!current/paper.tex" in content
+    assert "!current/paper.pdf" in content
 
 
 def test_build_writes_to_paper_directory(tmp_path: Path) -> None:
     _fix_all_errors(tmp_path)
     build.run(tmp_path, target="ieee")
-    assert (tmp_path / "paper" / "paper.tex").exists()
+    assert (tmp_path / "paper_generated" / "current" / "paper.tex").exists()
 
 
 def test_build_tex_not_in_paperforge_output(tmp_path: Path) -> None:

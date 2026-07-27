@@ -302,6 +302,24 @@ def add_citation(
     )
 
 
+@app.command(name="import")
+def import_content(
+    section: str | None = typer.Argument(
+        None,
+        help="Section to import, e.g. 'abstract'. All if omitted."
+    ),
+    path: Path = typer.Option(Path("."), "--path", "-p"),
+    force: bool = typer.Option(
+        False, "--force", "-f",
+        help="Overwrite existing claims with same text."
+    ),
+) -> None:
+    """Import content from paper_information/ into .paperforge/."""
+    from paperforge.commands.import_content import run
+
+    run(project_root=path.resolve(), section=section, force=force)
+
+
 @app.command(name="install-hooks")
 def install_hooks(
     path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
@@ -415,3 +433,15 @@ def venues() -> None:
             str(plugin.max_pages) if plugin.max_pages else "None",
         )
     console.print(table)
+
+
+@app.command()
+def update(
+    pre: bool = typer.Option(
+        False, "--pre", help="Include pre-release versions."
+    ),
+) -> None:
+    """Update paperforge-research to the latest version."""
+    from paperforge.commands.update import run
+
+    run(pre=pre)

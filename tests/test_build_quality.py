@@ -10,6 +10,13 @@ from paperforge.core.project import PaperForgeProject
 from paperforge.models.algorithm import Algorithm
 
 
+def _read_tex(tmp_path: Path) -> str:
+    p = tmp_path / "paper_generated" / "current" / "paper.tex"
+    if not p.exists():
+        p = tmp_path / "paper" / "paper.tex"
+    return p.read_text(encoding="utf-8")
+
+
 def write_test_project(tmp_path: Path) -> PaperForgeProject:
     init.run(tmp_path)
     paper_yaml = tmp_path / ".paperforge" / "paper.yaml"
@@ -58,7 +65,7 @@ def test_subsection_emitted_when_set(tmp_path: Path) -> None:
     claim_path.write_text(yaml.dump(c_data), encoding="utf-8")
 
     build.run(tmp_path, target="ieee", force=True, no_reveal=True)
-    tex_content = (tmp_path / "paper" / "paper.tex").read_text(encoding="utf-8")
+    tex_content = _read_tex(tmp_path)
     assert "\\subsection{System Architecture}" in tex_content
 
 
@@ -73,7 +80,7 @@ def test_no_subsection_when_empty(tmp_path: Path) -> None:
     claim_path.write_text(yaml.dump(c_data), encoding="utf-8")
 
     build.run(tmp_path, target="ieee", force=True, no_reveal=True)
-    tex_content = (tmp_path / "paper" / "paper.tex").read_text(encoding="utf-8")
+    tex_content = _read_tex(tmp_path)
     assert "\\subsection{" not in tex_content
 
 
@@ -96,7 +103,7 @@ def test_figure_placeholder_when_no_image(tmp_path: Path) -> None:
     claim_path.write_text(yaml.dump(c_data), encoding="utf-8")
 
     build.run(tmp_path, target="ieee", force=True, no_reveal=True)
-    tex_content = (tmp_path / "paper" / "paper.tex").read_text(encoding="utf-8")
+    tex_content = _read_tex(tmp_path)
     assert "fbox" in tex_content or "placeholder" in tex_content.lower()
     assert "\\begin{figure}" in tex_content
 
@@ -125,7 +132,7 @@ def test_figure_includegraphics_when_file_exists(tmp_path: Path) -> None:
     claim_path.write_text(yaml.dump(c_data), encoding="utf-8")
 
     build.run(tmp_path, target="ieee", force=True, no_reveal=True)
-    tex_content = (tmp_path / "paper" / "paper.tex").read_text(encoding="utf-8")
+    tex_content = _read_tex(tmp_path)
     assert "\\includegraphics" in tex_content
 
 
@@ -153,7 +160,7 @@ def test_contribution_claims_emit_itemize(tmp_path: Path) -> None:
     )
 
     build.run(tmp_path, target="ieee", force=True, no_reveal=True)
-    tex_content = (tmp_path / "paper" / "paper.tex").read_text(encoding="utf-8")
+    tex_content = _read_tex(tmp_path)
     assert "\\begin{itemize}" in tex_content
     assert "main contributions" in tex_content.lower()
 

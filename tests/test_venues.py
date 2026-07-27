@@ -147,9 +147,10 @@ def test_build_uses_venue_documentclass(tmp_path: Path) -> None:
 
     build.run(tmp_path, target="acm")
 
-    content = (tmp_path / "paper" / "paper.tex").read_text(
-        encoding="utf-8"
-    )
+    p = tmp_path / "paper_generated" / "current" / "paper.tex"
+    if not p.exists():
+        p = tmp_path / "paper" / "paper.tex"
+    content = p.read_text(encoding="utf-8")
     assert "acmart" in content
 
 

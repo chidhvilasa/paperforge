@@ -66,8 +66,13 @@ def write_journal_project(tmp_path: Path) -> None:
     )
 
 
+def _get_out(tmp_path: Path) -> Path:
+    p = tmp_path / "paper_generated" / "current"
+    return p if p.exists() else tmp_path / "paper"
+
+
 def _read_tex(tmp_path: Path) -> str:
-    p = tmp_path / "paper" / "paper.tex"
+    p = _get_out(tmp_path) / "paper.tex"
     if p.exists():
         return p.read_text(encoding="utf-8")
     return (tmp_path / ".paperforge" / "output" / "paper.tex").read_text(
@@ -78,7 +83,7 @@ def _read_tex(tmp_path: Path) -> str:
 def test_build_journal_creates_tex(tmp_path: Path) -> None:
     write_journal_project(tmp_path)
     build.run(tmp_path, target="ieee-journal")
-    assert (tmp_path / "paper" / "paper.tex").exists()
+    assert (_get_out(tmp_path) / "paper.tex").exists()
 
 
 def test_build_journal_documentclass(tmp_path: Path) -> None:
@@ -136,7 +141,7 @@ def test_build_journal_acknowledgment(tmp_path: Path) -> None:
 def test_build_journal_bibliography_stub(tmp_path: Path) -> None:
     write_journal_project(tmp_path)
     build.run(tmp_path, target="ieee-journal")
-    bib_path = tmp_path / "paper" / "references.bib"
+    bib_path = _get_out(tmp_path) / "references.bib"
     assert bib_path.exists()
     content = bib_path.read_text(encoding="utf-8")
     assert "smith2024" in content
@@ -345,7 +350,7 @@ def test_build_preserves_real_references_bib(tmp_path: Path) -> None:
 
     build.run(tmp_path, target="ieee-journal")
 
-    bib_path = tmp_path / "paper" / "references.bib"
+    bib_path = _get_out(tmp_path) / "references.bib"
     bib_path.write_text(
         "@article{smith2024,\n"
         "  author = {Smith, A.},\n"
@@ -369,7 +374,7 @@ def test_build_overwrites_stub_references_bib(tmp_path: Path) -> None:
     build.run(tmp_path, target="ieee-journal")
     build.run(tmp_path, target="ieee-journal")
 
-    bib_path = tmp_path / "paper" / "references.bib"
+    bib_path = _get_out(tmp_path) / "references.bib"
     content = bib_path.read_text(encoding="utf-8")
     assert "@article" in content
 
@@ -436,7 +441,7 @@ def test_pdf_stale_when_claim_newer_than_pdf(tmp_path: Path) -> None:
     import time
 
     write_journal_project(tmp_path)
-    paper_dir = tmp_path / "paper"
+    paper_dir = _get_out(tmp_path)
     paper_dir.mkdir(parents=True, exist_ok=True)
     pdf_path = paper_dir / "paper.pdf"
     pdf_path.write_text("fake pdf content", encoding="utf-8")
@@ -455,7 +460,7 @@ def test_pdf_not_stale_when_pdf_newer(tmp_path: Path) -> None:
     import time
 
     write_journal_project(tmp_path)
-    paper_dir = tmp_path / "paper"
+    paper_dir = _get_out(tmp_path)
     paper_dir.mkdir(parents=True, exist_ok=True)
     pdf_path = paper_dir / "paper.pdf"
     pdf_path.write_text("fake pdf content", encoding="utf-8")
@@ -471,7 +476,7 @@ def test_docx_generated_when_no_latex(tmp_path: Path, monkeypatch) -> None:
     write_journal_project(tmp_path)
     monkeypatch.setattr("shutil.which", lambda name: None)
     build.run(tmp_path, target="ieee-access", force=True)
-    assert (tmp_path / "paper" / "paper.docx").exists()
+    assert (_get_out(tmp_path) / "paper.docx").exists()
 
 
 def test_docx_contains_title(tmp_path: Path, monkeypatch) -> None:
@@ -486,7 +491,7 @@ def test_docx_contains_title(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr("shutil.which", lambda name: None)
     build.run(tmp_path, target="ieee-access", force=True)
 
-    doc = Document(str(tmp_path / "paper" / "paper.docx"))
+    doc = Document(str(_get_out(tmp_path) / "paper.docx"))
     full_text = " ".join(p.text for p in doc.paragraphs)
     assert "My Test Paper" in full_text
 
@@ -512,7 +517,7 @@ def test_docx_contains_table(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr("shutil.which", lambda name: None)
     build.run(tmp_path, target="ieee-access", force=True)
 
-    doc = Document(str(tmp_path / "paper" / "paper.docx"))
+    doc = Document(str(_get_out(tmp_path) / "paper.docx"))
     assert len(doc.tables) >= 1
 
 
@@ -521,7 +526,7 @@ def test_force_flag_bypasses_freshness_check(tmp_path: Path, monkeypatch) -> Non
     import time
 
     write_journal_project(tmp_path)
-    paper_dir = tmp_path / "paper"
+    paper_dir = _get_out(tmp_path)
     paper_dir.mkdir(parents=True, exist_ok=True)
     pdf_path = paper_dir / "paper.pdf"
     pdf_path.write_text("fake pdf content", encoding="utf-8")
@@ -544,7 +549,7 @@ def test_stale_pdf_deleted_before_rebuild(tmp_path: Path, monkeypatch) -> None:
     import time
 
     write_journal_project(tmp_path)
-    paper_dir = tmp_path / "paper"
+    paper_dir = _get_out(tmp_path)
     paper_dir.mkdir(parents=True, exist_ok=True)
     pdf_path = paper_dir / "paper.pdf"
     pdf_path.write_text("old fake pdf content", encoding="utf-8")

@@ -1,0 +1,29 @@
+# Keep generated files but ignore aux files
+current/*.aux
+current/*.log
+current/*.out
+current/*.toc
+current/*.fls
+current/*.fdb_latexmk
+current/*.synctex.gz
+current/*.bbl
+current/*.blg
+previous/*.aux
+previous/*.log
+previous/*.out
+previous/*.toc
+previous/*.fls
+previous/*.fdb_latexmk
+previous/*.synctex.gz
+previous/*.bbl
+previous/*.blg
+# Keep these in both directories:
+!current/paper.tex
+!current/paper.pdf
+!current/paper.docx
+!current/references.bib
+!current/traceability.tex
+!previous/paper.tex
+!previous/paper.pdf
+!previous/paper.docx
+!previous/references.bib

@@ -10,7 +10,9 @@ from paperforge.core.project import PaperForgeProject
 
 
 def _read_tex(tmp_path: Path) -> str:
-    p = tmp_path / "paper" / "paper.tex"
+    p = tmp_path / "paper_generated" / "current" / "paper.tex"
+    if not p.exists():
+        p = tmp_path / "paper" / "paper.tex"
     return p.read_text(encoding="utf-8")
 
 

@@ -1,0 +1,13 @@
+# Paper metadata
+title: "Your Paper Title"
+venue: "IEEE Access"
+paper_type: "journal"  # journal or conference
+keywords:
+  - "keyword1"
+  - "keyword2"
+funding: ""
+conflict_of_interest: "The authors declare no conflicts of interest."
+data_availability: ""
+code_availability: ""
+acknowledgment: ""
+sections_overview: ""

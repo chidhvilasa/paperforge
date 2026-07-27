@@ -52,9 +52,12 @@ def _fix_all_errors(
 
 
 def _read_tex(tmp_path: Path) -> str:
-    p = tmp_path / "paper" / "paper.tex"
+    p = tmp_path / "paper_generated" / "current" / "paper.tex"
     if p.exists():
         return p.read_text(encoding="utf-8")
+    p2 = tmp_path / "paper" / "paper.tex"
+    if p2.exists():
+        return p2.read_text(encoding="utf-8")
     return (tmp_path / ".paperforge" / "output" / "paper.tex").read_text(
         encoding="utf-8"
     )

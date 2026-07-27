@@ -386,7 +386,9 @@ def _generate_overleaf_zip(
 ) -> Path:
     zip_path = output_path / "paper_overleaf.zip" if output_path.is_dir() else output_path
 
-    paper_dir = project.root / "paper"
+    paper_dir = project.root / "paper_generated" / "current"
+    if not (paper_dir / "paper.tex").exists():
+        paper_dir = project.root / "paper"
     figures_dir = project.root / "figures"
 
     tex_path = paper_dir / "paper.tex"

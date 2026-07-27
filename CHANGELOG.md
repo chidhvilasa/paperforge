@@ -3,6 +3,11 @@
 ## [Unreleased]
 
 ### Added
+- paper_information/ input layer: human-friendly directory created by paperforge init with content/*.md, graphs/*.py, tables/*.csv, author.yaml, metadata.yaml
+- paperforge import command: reads paper_information/ and populates .paperforge/ objects; deduplicates existing claims; executes graph scripts; converts CSV to table YAMLs
+- paper_generated/current/ and paper_generated/previous/ versioned output: current/ holds latest build, previous/ holds the prior build for comparison; rotated before each build
+- paperforge update command: checks PyPI for latest version of paperforge-research and upgrades in-place; --pre flag for pre-release versions
+- 14 new tests (418 total)
 - Claim.subsection field: emits \subsection{} in LaTeX when set
 - Claim.is_contribution field: contribution claims rendered as \begin{itemize} list in introduction section
 - Claim.algorithms field: links claims to algorithm environments

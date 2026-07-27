@@ -1,0 +1,38 @@
+acknowledgment: ''
+affiliations:
+- city: Your City
+  country: Your Country
+  department: Your Department
+  email: your@email.com
+  institution: ''
+  name: Your Name
+authors:
+- Your Name
+build:
+  latex_template: ieee
+  output_dir: paper_generated/current
+code_availability: ''
+conflict_of_interest: The authors declare no conflicts of interest.
+data_availability: ''
+email: your@email.com
+funding: ''
+keywords:
+- keyword1
+- keyword2
+manuscript_received: ''
+orcid: ''
+paper_type: journal
+publisher_id: ''
+sections:
+- abstract
+- introduction
+- related_work
+- methodology
+- experiments
+- results
+- discussion
+- conclusion
+status: draft
+title: Your Paper Title
+venue: IEEE Access
+version: '0.1'

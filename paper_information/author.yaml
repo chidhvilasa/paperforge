@@ -1,0 +1,12 @@
+# Author information
+# One entry per author. Mark corresponding: true for the
+# corresponding author.
+authors:
+  - name: "Your Name"
+    affiliation: "Your Institution"
+    department: "Your Department"
+    city: "Your City"
+    country: "Your Country"
+    email: "your@email.com"
+    orcid: ""
+    corresponding: true

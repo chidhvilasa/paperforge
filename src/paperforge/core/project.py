@@ -145,14 +145,14 @@ class PaperForgeProject:
         figures: list[Figure] = []
         figures_dir = pf_dir / "figures"
         if figures_dir.exists():
-            for fig_file in sorted(figures_dir.glob("fig_*.yaml")):
+            for fig_file in sorted(figures_dir.glob("*.yaml")):
                 with open(fig_file, encoding="utf-8") as f:
                     figures.append(Figure.from_yaml(yaml.safe_load(f)))
 
         tables: list[Table] = []
         tables_dir = pf_dir / "tables"
         if tables_dir.exists():
-            for tbl_file in sorted(tables_dir.glob("tbl_*.yaml")):
+            for tbl_file in sorted(tables_dir.glob("*.yaml")):
                 with open(tbl_file, encoding="utf-8") as f:
                     tables.append(Table.from_yaml(yaml.safe_load(f)))
 

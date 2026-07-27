@@ -930,7 +930,9 @@ def _is_pdf_stale(project_root: Path, output_dir: Path | None = None) -> bool:
     Returns False if PDF is newer than all sources.
     """
     if output_dir is None:
-        output_dir = project_root / "paper"
+        output_dir = project_root / "paper_generated" / "current"
+        if not (output_dir / "paper.pdf").exists() and (project_root / "paper" / "paper.pdf").exists():
+            output_dir = project_root / "paper"
     pdf_path = output_dir / "paper.pdf"
     if not pdf_path.exists():
         return True
@@ -1198,6 +1200,34 @@ def _reveal_output(path: Path) -> None:
         pass  # Never crash the build over a reveal failure
 
 
+def _rotate_output(project_root: Path) -> None:
+    """
+    Before each build, copy current/ to previous/.
+    This preserves the last successful build for comparison.
+    """
+    current = project_root / "paper_generated" / "current"
+    previous = project_root / "paper_generated" / "previous"
+
+    current.mkdir(parents=True, exist_ok=True)
+    previous.mkdir(parents=True, exist_ok=True)
+
+    rotatable = [
+        "paper.tex",
+        "paper.pdf",
+        "paper.docx",
+        "references.bib",
+        "traceability.tex",
+    ]
+
+    for filename in rotatable:
+        src = current / filename
+        dst = previous / filename
+        if src.exists():
+            import shutil
+
+            shutil.copy2(str(src), str(dst))
+
+
 def run(
     project_root: Path,
     target: str = "ieee",
@@ -1231,7 +1261,9 @@ def run(
         console.print(Panel(body, border_style="red"))
         sys.exit(1)
 
-    rel_output = project.config.build_output_dir or "paper"
+    _rotate_output(project_root)
+
+    rel_output = project.config.build_output_dir or "paper_generated/current"
     output_dir = project_root / rel_output
     pdf_path = output_dir / "paper.pdf"
 
