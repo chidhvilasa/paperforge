@@ -8,6 +8,7 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 from rich.console import Console
 
@@ -17,7 +18,72 @@ if hasattr(sys.stdout, "reconfigure"):
 console = Console()
 
 
-def run(pre: bool = False) -> None:
+def _is_editable_install() -> bool:
+    """Check if paperforge-research is installed as editable."""
+    try:
+        dist = importlib.metadata.distribution("paperforge-research")
+        direct_url = dist.read_text("direct_url.json")
+        if direct_url:
+            data = json.loads(direct_url)
+            return data.get("dir_info", {}).get("editable", False)
+    except (OSError, KeyError, json.JSONDecodeError, AttributeError, importlib.metadata.PackageNotFoundError):
+        pass
+    return False
+
+
+def run(pre: bool = False, git: bool = False) -> None:
+    if git:
+        possible = [
+            Path.home() / "Downloads" / "PaperForge" / "paperforge",
+            Path.cwd(),
+            Path.cwd().parent,
+        ]
+        repo = None
+        for p in possible:
+            if (p / "pyproject.toml").exists():
+                content = (p / "pyproject.toml").read_text(encoding="utf-8")
+                if "paperforge-research" in content:
+                    repo = p
+                    break
+
+        if repo is None:
+            console.print(
+                "[red]Could not find paperforge repo. "
+                "Run from the repo directory.[/red]"
+            )
+            return
+
+        console.print(f"Updating from repo: {repo}")
+        result = subprocess.run(
+            ["git", "pull", "origin", "main"],
+            capture_output=True,
+            text=True,
+            cwd=repo,
+            check=False,
+        )
+        console.print(result.stdout)
+        if result.returncode == 0:
+            subprocess.run(
+                [sys.executable, "-m", "pip", "install", "-e", ".", "--quiet"],
+                cwd=repo,
+                check=False,
+            )
+            console.print("[green]Git update complete.[/green]")
+        else:
+            console.print(f"[red]Git pull failed:[/red] {result.stderr}")
+        return
+
+    if _is_editable_install():
+        console.print(
+            "[yellow]PaperForge is installed in editable/development mode.[/yellow]"
+        )
+        console.print("To update a development install, pull the latest changes:")
+        console.print("  cd <paperforge-repo>")
+        console.print("  git pull origin main")
+        console.print("  pip install -e . --quiet")
+        console.print("Or run: paperforge update --git")
+        return
+
     try:
         current = importlib.metadata.version("paperforge-research")
     except importlib.metadata.PackageNotFoundError:
@@ -34,7 +100,9 @@ def run(pre: bool = False) -> None:
         latest = data["info"]["version"]
         console.print(f"Latest version:  paperforge-research {latest}")
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, KeyError):
-        console.print("[yellow]Could not check PyPI: connection or format error[/yellow]")
+        console.print(
+            "[yellow]Could not check PyPI: connection or format error[/yellow]"
+        )
         console.print("Run manually: pip install paperforge-research --upgrade")
         return
     except Exception as e:  # noqa: BLE001

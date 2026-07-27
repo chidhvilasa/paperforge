@@ -48,14 +48,26 @@ def _generate_bar_chart(
     if not metrics:
         return
 
+    # Filter to specified keys if set
+    if figure.metric_keys:
+        metrics = {k: v for k, v in metrics.items() if k in figure.metric_keys}
+        if not metrics:
+            console.print(
+                f"[yellow]Warning: none of {figure.metric_keys} "
+                f"found in {experiment.id} metrics. "
+                f"Available: {list(experiment.metrics.keys())}[/yellow]"
+            )
+            return
+
     keys = list(metrics.keys())
     values = list(metrics.values())
+    tick_labels = figure.x_labels if figure.x_labels else keys
 
     fig_width = figure.width_inches if figure.width_inches else 3.5
     _fig, ax = plt.subplots(figsize=(fig_width, fig_width * 0.75))
 
     bars = ax.bar(
-        keys, values, color="#2196F3", edgecolor="black", linewidth=0.5
+        tick_labels, values, color="#2196F3", edgecolor="black", linewidth=0.5
     )
 
     ax.set_xlabel(figure.x_label or "Metric")

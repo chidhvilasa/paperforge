@@ -2,7 +2,15 @@
 
 ## [Unreleased]
 
+### Fixed
+- generate-figures: added metric_keys field to Figure for selecting specific metrics to plot; prevents mixed-unit charts (latency ms + ratios on same axis)
+- generate-figures: added x_labels field to Figure for readable axis tick labels instead of raw metric key names
+- sections_overview: auto-detects full sentences vs completion fragments; no longer doubles "Section II" when user writes a complete sentence
+- update command: detects editable/development installs and provides git pull instructions instead of PyPI upgrade; --git flag for explicit git-based update from source
+
 ### Added
+- Doctor check 74: FIGURE_MIXED_METRIC_UNITS (WARNING)
+- update --git flag for development installs
 - paper_information/ input layer: human-friendly directory created by paperforge init with content/*.md, graphs/*.py, tables/*.csv, author.yaml, metadata.yaml
 - paperforge import command: reads paper_information/ and populates .paperforge/ objects; deduplicates existing claims; executes graph scripts; converts CSV to table YAMLs
 - paper_generated/current/ and paper_generated/previous/ versioned output: current/ holds latest build, previous/ holds the prior build for comparison; rotated before each build

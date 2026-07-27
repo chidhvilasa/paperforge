@@ -243,3 +243,84 @@ def test_missing_sections_overview_warning(tmp_path: Path) -> None:
     project = PaperForgeProject.load(tmp_path)
     issues = collect_issues(project)
     assert any(i.code == "MISSING_SECTIONS_OVERVIEW" for i in issues)
+
+
+def test_figure_metric_keys_filters_metrics(tmp_path: Path) -> None:
+    write_test_project(tmp_path)
+    exp_yaml = tmp_path / ".paperforge" / "experiments" / "exp_01.yaml"
+    edata = yaml.safe_load(exp_yaml.read_text(encoding="utf-8"))
+    edata["metrics"] = {"meanAuthLatencyMs": 71.86, "packetDeliveryRatio": 0.993}
+    exp_yaml.write_text(yaml.dump(edata), encoding="utf-8")
+
+    fig_data = {
+        "id": "fig_01",
+        "caption": "Filtered Bar Chart",
+        "source_experiment": "exp_01",
+        "chart_type": "bar",
+        "path": "figures/fig_01.png",
+        "metric_keys": ["meanAuthLatencyMs"],
+        "x_labels": ["Auth Latency (ms)"],
+    }
+    (tmp_path / ".paperforge" / "figures" / "fig_01.yaml").write_text(
+        yaml.dump(fig_data), encoding="utf-8"
+    )
+
+    generate_figures.run(tmp_path, "fig_01")
+    assert (tmp_path / "figures" / "fig_01.png").exists()
+
+
+def test_figure_mixed_units_warning(tmp_path: Path) -> None:
+    write_test_project(tmp_path)
+    exp_yaml = tmp_path / ".paperforge" / "experiments" / "exp_01.yaml"
+    edata = yaml.safe_load(exp_yaml.read_text(encoding="utf-8"))
+    edata["metrics"] = {"meanAuthLatencyMs": 71.86, "packetDeliveryRatio": 0.993}
+    exp_yaml.write_text(yaml.dump(edata), encoding="utf-8")
+
+    fig_data = {
+        "id": "fig_01",
+        "caption": "Mixed Units Chart",
+        "source_experiment": "exp_01",
+        "chart_type": "bar",
+        "path": "figures/fig_01.png",
+        "metric_keys": [],
+    }
+    (tmp_path / ".paperforge" / "figures" / "fig_01.yaml").write_text(
+        yaml.dump(fig_data), encoding="utf-8"
+    )
+
+    project = PaperForgeProject.load(tmp_path)
+    issues = collect_issues(project)
+    assert any(i.code == "FIGURE_MIXED_METRIC_UNITS" for i in issues)
+
+
+def test_sections_overview_full_sentence_not_doubled(tmp_path: Path) -> None:
+    write_test_project(tmp_path)
+    paper_yaml = tmp_path / ".paperforge" / "paper.yaml"
+    p_data = yaml.safe_load(paper_yaml.read_text(encoding="utf-8"))
+    p_data["sections_overview"] = "Section II reviews related work. Section III presents..."
+    paper_yaml.write_text(yaml.dump(p_data), encoding="utf-8")
+
+    build.run(tmp_path, target="ieee", force=True, no_reveal=True)
+    tex_content = _read_tex(tmp_path)
+    assert tex_content.count("Section II reviews") == 1
+    assert "organized as follows: Section II reviews" not in tex_content
+
+
+def test_sections_overview_completion_fragment(tmp_path: Path) -> None:
+    write_test_project(tmp_path)
+    paper_yaml = tmp_path / ".paperforge" / "paper.yaml"
+    p_data = yaml.safe_load(paper_yaml.read_text(encoding="utf-8"))
+    p_data["sections_overview"] = "related work in Section II."
+    paper_yaml.write_text(yaml.dump(p_data), encoding="utf-8")
+
+    build.run(tmp_path, target="ieee", force=True, no_reveal=True)
+    tex_content = _read_tex(tmp_path)
+    assert "organized as follows" in tex_content
+    assert "related work in Section II" in tex_content
+
+
+def test_update_detects_editable_install() -> None:
+    from paperforge.commands.update import _is_editable_install
+
+    res = _is_editable_install()
+    assert isinstance(res, bool)

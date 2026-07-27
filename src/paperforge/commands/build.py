@@ -174,6 +174,22 @@ def _generate_table_latex(
     return "\n".join(lines)
 
 
+def _generate_sections_overview(overview: str) -> str:
+    if not overview or not overview.strip():
+        return ""
+    text = overview.strip()
+    standalone_prefixes = (
+        "section",
+        "the rest",
+        "this paper",
+        "the remainder",
+        "the paper",
+    )
+    if text.lower().startswith(standalone_prefixes):
+        return escape_latex(text)
+    return f"The rest of this paper is organized as follows: {escape_latex(text)}"
+
+
 def _generate_sections(sections: list[str], project: PaperForgeProject) -> str:
     blocks: list[str] = []
     emitted_figures: set[str] = set()
@@ -291,10 +307,9 @@ def _generate_sections(sections: list[str], project: PaperForgeProject) -> str:
                     claim_blocks.append(item_block)
 
                 if project.config.sections_overview:
-                    sec_overview = escape_latex(project.config.sections_overview)
-                    claim_blocks.append(
-                        f"The rest of this paper is organized as follows: Section II presents {sec_overview}."
-                    )
+                    so = _generate_sections_overview(project.config.sections_overview)
+                    if so:
+                        claim_blocks.append(so)
 
             block += "\n\n".join(claim_blocks)
         else:
@@ -443,10 +458,9 @@ def _generate_journal_sections(
                     paragraphs.append(item_block)
 
                 if project.config.sections_overview:
-                    sec_overview = escape_latex(project.config.sections_overview)
-                    paragraphs.append(
-                        f"The rest of this paper is organized as follows: Section II presents {sec_overview}."
-                    )
+                    so = _generate_sections_overview(project.config.sections_overview)
+                    if so:
+                        paragraphs.append(so)
 
                 body = "\n\n".join(paragraphs)
             else:

@@ -59,6 +59,8 @@ def test_figure_to_yaml_keys():
         "x_label",
         "y_label",
         "chart_title",
+        "metric_keys",
+        "x_labels",
     }
 
 

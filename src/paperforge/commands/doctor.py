@@ -1179,6 +1179,27 @@ def collect_issues(project: PaperForgeProject) -> list[Issue]:
             )
         )
 
+    # Check 74 — FIGURE_MIXED_METRIC_UNITS (WARNING)
+    for figure in project.figures:
+        if figure.source_experiment and not figure.metric_keys:
+            exp = experiment_map.get(figure.source_experiment)
+            if exp and exp.metrics:
+                m_keys = [k.lower() for k in exp.metrics]
+                has_latency = any("ms" in k or "latency" in k for k in m_keys)
+                has_ratio = any("ratio" in k or "pdr" in k or "rate" in k for k in m_keys)
+                if has_latency and has_ratio:
+                    issues.append(
+                        Issue(
+                            code="FIGURE_MIXED_METRIC_UNITS",
+                            severity="WARNING",
+                            message=(
+                                f"{figure.id} will plot metrics with mixed units "
+                                f"(latency in ms + ratios). Set 'metric_keys:' "
+                                f"to specify which metrics to plot."
+                            ),
+                        )
+                    )
+
     return issues
 
 

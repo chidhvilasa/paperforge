@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 
@@ -21,6 +21,8 @@ class Figure:
     x_label: str = ""                     # x-axis label
     y_label: str = ""                     # y-axis label
     chart_title: str = ""                 # chart title (optional)
+    metric_keys: list[str] = field(default_factory=list)  # specific metric keys to plot
+    x_labels: list[str] = field(default_factory=list)     # custom tick labels for metrics
 
     @classmethod
     def from_yaml(cls, data: dict[str, Any]) -> Figure:
@@ -39,6 +41,8 @@ class Figure:
             x_label=data.get("x_label", ""),
             y_label=data.get("y_label", ""),
             chart_title=data.get("chart_title", ""),
+            metric_keys=data.get("metric_keys") or [],
+            x_labels=data.get("x_labels") or [],
         )
 
     def to_yaml(self) -> dict[str, Any]:
@@ -57,4 +61,6 @@ class Figure:
             "x_label": self.x_label,
             "y_label": self.y_label,
             "chart_title": self.chart_title,
+            "metric_keys": self.metric_keys,
+            "x_labels": self.x_labels,
         }

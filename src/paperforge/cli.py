@@ -440,8 +440,11 @@ def update(
     pre: bool = typer.Option(
         False, "--pre", help="Include pre-release versions."
     ),
+    git: bool = typer.Option(
+        False, "--git", help="Update from git (for development installs)."
+    ),
 ) -> None:
     """Update paperforge-research to the latest version."""
     from paperforge.commands.update import run
 
-    run(pre=pre)
+    run(pre=pre, git=git)

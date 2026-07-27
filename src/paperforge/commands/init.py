@@ -230,6 +230,10 @@ data_availability: ""
 code_availability: ""
 acknowledgment: ""
 sections_overview: ""
+# Write either:
+# - A completion: "Section II reviews..."
+# - A full sentence: "The rest of this paper is organized as..."
+# PaperForge detects which and formats accordingly.
 """
 
 MATH_MD = """\
