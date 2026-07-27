@@ -77,12 +77,21 @@ See [CONSTITUTION.md](CONSTITUTION.md).
 ## Install
 
 ```bash
+pip install paperforge-research==1.1.0
+# or always latest:
 pip install paperforge-research
 ```
 
 > **Note:** The package is named `paperforge-research` on PyPI due to a name conflict with an inactive project.
 
 Requires Python 3.11+.
+
+## Updating
+
+```bash
+paperforge update          # check PyPI and upgrade
+paperforge update --git    # update from git (dev installs)
+```
 
 ## Quick Start
 
@@ -152,19 +161,51 @@ paperforge improve claim_01
 paperforge review
 ```
 
+## The paper_information/ Workflow
+
+PaperForge v1.1.0 introduces a human-friendly input layer.
+After `paperforge init`, write your paper in plain Markdown:
+paper_information/
+├── content/
+│   ├── abstract.md       ← write your abstract here
+│   ├── introduction.md   ← motivation, gap, contributions
+│   ├── related_work.md   ← surveyed papers
+│   ├── methodology.md    ← system design
+│   ├── results.md        ← your findings
+│   └── ...
+├── graphs/
+│   └── latency.py        ← matplotlib scripts, auto-executed
+├── tables/
+│   └── results.csv       ← auto-converted to LaTeX tables
+├── author.yaml           ← name, affiliation, email, ORCID
+└── metadata.yaml         ← title, venue, keywords, COI
+
+Then run:
+```bash
+paperforge import          # read paper_information/ → .paperforge/
+paperforge doctor          # validate consistency
+paperforge build           # compile LaTeX + PDF
+```
+
+Output goes to `paper_generated/current/`. The previous build
+is preserved in `paper_generated/previous/` for comparison.
+
 ## Commands
 
 | Command | Description |
 |---------|-------------|
 | `paperforge init` | Initialize PaperForge in a project directory |
+| `paperforge import` | Import markdown files, CSV tables, and graph scripts from `paper_information/` |
+| `paperforge update` | Check PyPI for updates and upgrade in-place (or `--git` for dev installs) |
 | `paperforge capture` | Capture experiment results, create draft claim |
 | `paperforge add-claim` | Interactively create a new claim |
 | `paperforge add-figure` | Interactively create a new figure YAML |
 | `paperforge add-table` | Interactively create a new table YAML |
 | `paperforge add-citation` | Add real BibTeX metadata for a citation key |
-| `paperforge doctor` | Run 49 deterministic consistency checks |
+| `paperforge generate-figures` | Generate matplotlib plots from experiment metrics |
+| `paperforge doctor` | Run deterministic consistency checks |
 | `paperforge impact` | Show everything affected by an experiment change |
-| `paperforge build` | Compile research data into LaTeX paper |
+| `paperforge build` | Compile research data into LaTeX paper and PDF |
 | `paperforge review` | AI-assisted review via llm (advisory only) |
 | `paperforge improve` | AI-assisted claim improvement via llm (advisory only) |
 | `paperforge venues` | List available venue targets |

@@ -2,44 +2,34 @@
 
 ## [Unreleased]
 
-### Fixed
-- generate-figures: added metric_keys field to Figure for selecting specific metrics to plot; prevents mixed-unit charts (latency ms + ratios on same axis)
-- generate-figures: added x_labels field to Figure for readable axis tick labels instead of raw metric key names
-- sections_overview: auto-detects full sentences vs completion fragments; no longer doubles "Section II" when user writes a complete sentence
-- update command: detects editable/development installs and provides git pull instructions instead of PyPI upgrade; --git flag for explicit git-based update from source
+## [1.1.0] — 2026-07-26
 
 ### Added
+- paper_information/ input layer: human-friendly directory created by paperforge init with content/*.md section files, graphs/*.py, tables/*.csv, author.yaml, metadata.yaml
+- paperforge import: reads paper_information/ and populates .paperforge/ objects; deduplicates existing claims by first 80 chars; executes graph scripts; converts CSV to table YAMLs; parses contribution bullets from introduction.md
+- paper_generated/current/ and paper_generated/previous/ versioned output: previous/ holds prior build for comparison; rotated at start of every successful build
+- paperforge update: checks PyPI for latest version and upgrades in-place; detects editable installs and shows git instructions; --git flag for development installs; --pre for pre-releases
+- generate-figures metric_keys field: plot specific metrics only, preventing mixed-unit charts (ms + ratios on same axis)
+- generate-figures x_labels field: readable axis tick labels
 - Doctor check 74: FIGURE_MIXED_METRIC_UNITS (WARNING)
-- update --git flag for development installs
-- paper_information/ input layer: human-friendly directory created by paperforge init with content/*.md, graphs/*.py, tables/*.csv, author.yaml, metadata.yaml
-- paperforge import command: reads paper_information/ and populates .paperforge/ objects; deduplicates existing claims; executes graph scripts; converts CSV to table YAMLs
-- paper_generated/current/ and paper_generated/previous/ versioned output: current/ holds latest build, previous/ holds the prior build for comparison; rotated before each build
-- paperforge update command: checks PyPI for latest version of paperforge-research and upgrades in-place; --pre flag for pre-release versions
-- 14 new tests (418 total)
-- Claim.subsection field: emits \subsection{} in LaTeX when set
-- Claim.is_contribution field: contribution claims rendered as \begin{itemize} list in introduction section
-- Claim.algorithms field: links claims to algorithm environments
-- sections_overview field in paper.yaml: emits paper organization paragraph at end of introduction
-- Figure placeholder: missing image files emit \fbox placeholder so paper compiles without actual image
-- Figure.source_experiment, chart_type, x_label, y_label fields
-- Algorithm model: id, caption, steps, notes; to_latex() generates algorithmic environment; .paperforge/algorithms/ directory
-- paperforge generate-figures command: generates matplotlib plots from experiment metrics (300 DPI, IEEE-compatible styling)
-- Doctor checks 72-73: NO_CONTRIBUTION_CLAIMS, MISSING_SECTIONS_OVERVIEW
-- matplotlib and python-docx added as dependencies
-- 12 new tests in test_build_quality.py (404 total)
-- Direct PDF generation via full BibTeX pipeline: `pdflatex` (pass 1) -> `bibtex` -> `pdflatex` -> `pdflatex`. Resolves `[?]` citation references automatically. `latexmk` used when available (handles pipeline automatically).
-- DOCX fallback: when no LaTeX toolchain detected, `paperforge build` generates `paper/paper.docx` with title, authors, affiliations, abstract, all sections, tables, references, acknowledgment, and COI.
-- Stale PDF detection: `paperforge build` checks if any `.paperforge/*.yaml` source is newer than `paper/paper.pdf`. If PDF is current and `--force` not set: skips rebuild with "PDF Up To Date" message.
-- Stale PDF deletion: if source changed, existing PDF is deleted before rebuild to prevent serving stale output.
-- `--force` / `-f` flag on `paperforge build` to force rebuild regardless of freshness.
-- IEEE Access compliance overhaul: funding footnote in `\thanks{}`, corresponding author email, ORCID links (`\orcidlink`), manuscript received date, publisher ID (`\IEEEpubid`), Data Availability, Code Availability, and Conflict of Interest sections
-- 22 new doctor checks (Checks 50-71): `FUNDING_IN_ACKNOWLEDGMENT`, `MISSING_COI`, `MISSING_DATA_AVAILABILITY`, `ABSTRACT_HAS_CITATION`, `ABSTRACT_MULTIPARAGRAPH`, `KEYWORDS_NOT_ALPHABETICAL`, `TOO_FEW_KEYWORDS`, `TOO_MANY_KEYWORDS`, `TABLE_NOTES_INTERNAL_REF`, `ABSTRACT_INTRO_OVERLAP`, `INTRO_MISSING_MOTIVATION`, `DUPLICATE_CITATION_KEY`, `CITATION_YEAR_FUTURE`, `FIGURE_CRITICALLY_LOW_RESOLUTION`, `FIGURE_FORMAT_NOT_IEEE`, `UNUSUAL_SECTION_ORDER`, `REPRODUCIBILITY_INCOMPLETE`, `PVALUE_WITHOUT_TEST_NAME`, `MISSING_CORRESPONDING_EMAIL`, `MISSING_ORCID`, `TITLE_ENDS_WITH_PERIOD`, `TITLE_TOO_LONG`
-- Updated Overleaf export `README.txt` with full compilation instructions and bibliography troubleshooting
-- 20 unit tests for IEEE compliance in `tests/test_ieee_compliance.py`
+- Algorithm model: id, caption, steps, notes; to_latex() generates algorithmic environment
+- paperforge generate-figures command: matplotlib plots from experiment metrics at 300 DPI with IEEE-compatible styling
+- Claim.subsection field: emits \subsection{} in LaTeX
+- Claim.is_contribution field: renders as \begin{itemize} list in introduction
+- sections_overview in paper.yaml with full-sentence detection
+- Figure placeholder \fbox for missing image files
+- 19 new tests across this release cycle (423 total)
 
 ### Fixed
-- LaTeX special character escaping: % & $ # _ { } ~ ^ now correctly escaped in all user text (claim text, captions, titles, acknowledgments, affiliations). % signs in percentages no longer silently truncate LaTeX content. escape_latex() moved to utils/latex.py as shared utility.
-- Claim deduplication: claims appearing in multiple sections now emit full text only in the first section; subsequent sections emit a comment reference. Prevents duplicate paragraphs and "Label multiply defined" warnings.
+- sections_overview: auto-detects full sentences vs completion fragments; no longer prepends "organized as follows:" to complete sentences
+- generate-figures: metric filtering prevents scientifically misleading mixed-unit charts
+- update command: detects editable install, provides correct git pull instructions rather than PyPI upgrade
+- LaTeX special character escaping applied to all user text (%, &, $, #, _, {, }, ~, ^) -- resolves truncated abstract and missing % signs in compiled PDF
+- Claim deduplication: multi-section claims emit text once (first section only); subsequent sections emit comment ref
+- BibTeX pipeline: pdflatex -> bibtex -> pdflatex -> pdflatex resolves [?] citation placeholders in compiled output
+- Stale PDF detection and deletion before rebuild
+- references.bib preserved when real entries exist; rebuilt from citation YAMLs when they exist (source of truth)
+- Windows encoding: explicit UTF-8 on all open() calls
 
 ## [1.0.0] — 2026-07-26
 

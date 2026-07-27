@@ -64,7 +64,7 @@ Build generates references.bib from YAML source of truth.
 5 new doctor checks (48 total).
 No more TODO stubs for defined citations.
 
-### v1.0.0 (this release)
+### v1.0.0
 Non-interactive CLI flags for all add-* commands (--text, --caption, etc.).
 --from-yaml bulk object creation.
 Multi-experiment claim support (experiments: list[str]).
@@ -72,12 +72,27 @@ paperforge export overleaf zip export.
 Doctor check 49 (MULTI_EXPERIMENT_CLAIM).
 Production/Stable status on PyPI.
 
+### v1.1.0 (this release)
+paper_information/ input layer for human-friendly content entry.
+paperforge import command with claim deduplication.
+paperforge update with PyPI check and editable install detection.
+Versioned output: paper_generated/current/ + previous/.
+generate-figures metric filtering (metric_keys, x_labels).
+Doctor check 74 (FIGURE_MIXED_METRIC_UNITS).
+sections_overview full-sentence detection.
+Critical bug fixes: LaTeX escaping, BibTeX pipeline,
+claim deduplication, stale PDF handling.
+
 ## Planned
 
-### v1.1.0 — Citation & Author Extensions
-- paperforge cite-check: verify citation keys against
-  Semantic Scholar API (opt-in, offline default)
-- Author biography block (IEEEbiography/IEEEbiographynophoto)
+### v1.2.0 — Figure Quality + Comparison Tables
+- Multi-experiment comparison figures: plot the same metric
+  across multiple experiments (e.g. latency vs traffic density)
+- paperforge compare-experiments: generates comparison table
+  and figure from 2+ experiment YAMLs
+- Figure annotation: add significance markers (*, **, ***)
+  to bars based on linked Wilcoxon p-values
+- Table auto-formatting: highlight best value per column
 
 ## Non-Goals
 
