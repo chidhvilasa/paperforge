@@ -17,6 +17,45 @@ if hasattr(sys.stdout, "reconfigure"):
 
 console = Console()
 
+IEEE_STYLE = {
+    "font.family": "serif",
+    "font.serif": ["Times New Roman", "Times", "DejaVu Serif"],
+    "font.size": 8,
+    "axes.labelsize": 9,
+    "axes.titlesize": 9,
+    "xtick.labelsize": 8,
+    "ytick.labelsize": 8,
+    "legend.fontsize": 7,
+    "legend.framealpha": 0.9,
+    "legend.edgecolor": "black",
+    "legend.fancybox": False,
+    "figure.dpi": 300,
+    "savefig.dpi": 300,
+    "savefig.bbox": "tight",
+    "savefig.pad_inches": 0.05,
+    "axes.grid": True,
+    "grid.alpha": 0.3,
+    "grid.linestyle": "--",
+    "grid.linewidth": 0.5,
+    "axes.spines.top": False,
+    "axes.spines.right": False,
+    "lines.linewidth": 1.0,
+    "lines.markersize": 4,
+    "patch.linewidth": 0.5,
+}
+
+COLORS = [
+    "#0072B2",  # blue
+    "#E69F00",  # orange
+    "#009E73",  # green
+    "#CC79A7",  # pink
+    "#56B4E9",  # light blue
+    "#F0E442",  # yellow
+    "#D55E00",  # vermillion
+]
+
+HATCH_PATTERNS = ["", "///", "\\\\\\", "xxx", "...", "ooo"]
+
 
 def _generate_bar_chart(
     figure: Figure,
@@ -28,21 +67,7 @@ def _generate_bar_chart(
     matplotlib.use("Agg")  # non-interactive backend
     import matplotlib.pyplot as plt
 
-    # Use IEEE-compatible style
-    plt.rcParams.update(
-        {
-            "font.family": "serif",
-            "font.size": 9,
-            "axes.labelsize": 9,
-            "xtick.labelsize": 8,
-            "ytick.labelsize": 8,
-            "legend.fontsize": 8,
-            "figure.dpi": 300,
-            "savefig.dpi": 300,
-            "savefig.bbox": "tight",
-            "savefig.pad_inches": 0.05,
-        }
-    )
+    plt.rcParams.update(IEEE_STYLE)
 
     metrics = experiment.metrics
     if not metrics:
@@ -73,7 +98,7 @@ def _generate_bar_chart(
     _fig, ax = plt.subplots(figsize=(fig_width, fig_width * 0.75))
 
     bar_kw: dict = {
-        "color": "#2196F3",
+        "color": COLORS[0],
         "edgecolor": "black",
         "linewidth": 0.5,
     }
@@ -140,20 +165,7 @@ def _generate_grouped_bar_chart(
     import matplotlib.pyplot as plt
     import numpy as np
 
-    plt.rcParams.update(
-        {
-            "font.family": "serif",
-            "font.size": 9,
-            "axes.labelsize": 9,
-            "xtick.labelsize": 8,
-            "ytick.labelsize": 8,
-            "legend.fontsize": 8,
-            "figure.dpi": 300,
-            "savefig.dpi": 300,
-            "savefig.bbox": "tight",
-            "savefig.pad_inches": 0.05,
-        }
-    )
+    plt.rcParams.update(IEEE_STYLE)
 
     if not experiments:
         return
@@ -173,9 +185,6 @@ def _generate_grouped_bar_chart(
     total_width = 0.8
     bar_width = total_width / max(num_series, 1)
 
-    colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b"]
-    hatches = ["", "//", "\\\\", "..", "xx", "++"]
-
     max_val = 0.0
     for i, (label, metrics) in enumerate(experiments):
         vals = [metrics.get(k, 0.0) for k in keys]
@@ -186,8 +195,8 @@ def _generate_grouped_bar_chart(
             vals,
             width=bar_width,
             label=label,
-            color=colors[i % len(colors)],
-            hatch=hatches[i % len(hatches)],
+            color=COLORS[i % len(COLORS)],
+            hatch=HATCH_PATTERNS[i % len(HATCH_PATTERNS)],
             edgecolor="black",
             linewidth=0.5,
         )
@@ -242,20 +251,7 @@ def _generate_line_chart(
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    plt.rcParams.update(
-        {
-            "font.family": "serif",
-            "font.size": 9,
-            "axes.labelsize": 9,
-            "xtick.labelsize": 8,
-            "ytick.labelsize": 8,
-            "legend.fontsize": 8,
-            "figure.dpi": 300,
-            "savefig.dpi": 300,
-            "savefig.bbox": "tight",
-            "savefig.pad_inches": 0.05,
-        }
-    )
+    plt.rcParams.update(IEEE_STYLE)
 
     markers = ["o", "s", "^", "D", "v", "x", "+"]
     linestyles = ["-", "--", "-.", ":", "-", "--", "-."]
@@ -288,7 +284,7 @@ def _generate_line_chart(
             values,
             marker=markers[i % len(markers)],
             linestyle=linestyles[i % len(linestyles)],
-            color=colors[i % len(colors)],
+            color=COLORS[i % len(COLORS)],
             label=label,
             linewidth=1.0,
             markersize=4,

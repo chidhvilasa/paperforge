@@ -29,6 +29,7 @@ class Issue:
     code: str
     severity: Literal["ERROR", "WARNING", "INFO"]
     message: str
+    claim_id: str = ""
 
 
 COMMON_ACRONYMS = {
@@ -1251,10 +1252,117 @@ def collect_issues(project: PaperForgeProject) -> list[Issue]:
                             f"{claim.id} is a proof but no theorem/lemma "
                             f"precedes it in the project."
                         ),
+                        claim_id=claim.id,
                     )
                 )
 
+    # Check 78 — CLAIM_MISSING_IMPORT_HASH (INFO)
+    for claim in project.claims:
+        # Heuristic: imported claim = no experiment, status=unverified,
+        # no figures/tables, non-empty text
+        if (
+            not claim.import_hash
+            and not claim.experiment
+            and claim.status == "unverified"
+            and not claim.figures
+            and not claim.tables
+            and claim.text
+        ):
+            issues.append(
+                Issue(
+                    code="CLAIM_MISSING_IMPORT_HASH",
+                    severity="INFO",
+                    message=(
+                        f"{claim.id} appears imported but has no hash. "
+                        "Run `paperforge import` to add tracking hash."
+                    ),
+                    claim_id=claim.id,
+                )
+            )
+
+    # Check 79 — MISSING_BIOGRAPHY (WARNING)
+    if project.config.authors and not project.config.biographies:
+        issues.append(
+            Issue(
+                code="MISSING_BIOGRAPHY",
+                severity="WARNING",
+                message=(
+                    "No author biographies set. IEEE Access strongly "
+                    "encourages author biographies. Add 'biographies:' "
+                    "to paper.yaml."
+                ),
+            )
+        )
+
+    # Check 80 — MISSING_AI_DISCLOSURE (INFO)
+    issues.append(
+        Issue(
+            code="MISSING_AI_DISCLOSURE",
+            severity="INFO",
+            message=(
+                "IEEE requires disclosure if AI tools were used. "
+                "Set 'ai_disclosure:' in paper.yaml, or set to "
+                "'No AI tools were used in this work.' if applicable."
+            ),
+        )
+    )
+
     return issues
+
+
+def _print_fix_hint(issue: "Issue", project: "PaperForgeProject") -> None:
+    """Print a concrete fix hint for an issue when --fix-hints is active."""
+    hints: dict[str, str] = {
+        "ORPHAN_CLAIM": "Edit the claim YAML and set 'experiment: exp_XX'.",
+        "MISSING_EXPERIMENT": "Run `paperforge capture --experiment EXP_ID results.json` to create the experiment.",
+        "STALE_CLAIM": "Re-run your experiment and update the claim text/metrics.",
+        "EMPTY_CLAIM_TEXT": "Edit the claim YAML and add text: 'Your claim here.'",
+        "UNVERIFIED_CLAIM": "After verifying, set 'status: verified' in the claim YAML.",
+        "METRIC_CLAIM_MISMATCH": (
+            "Check experiment metrics. Run `paperforge diff CLAIM_ID --against experiment` "
+            "to see available metric values."
+        ),
+        "DUPLICATE_CLAIM_TEXT": "Delete one of the duplicate claim YAML files in .paperforge/claims/.",
+        "CLAIM_IN_NO_SECTION": "Add 'sections: [results]' (or appropriate section) to the claim YAML.",
+        "MISSING_PAPER_TITLE": "Set 'title: Your Paper Title' in .paperforge/paper.yaml.",
+        "MISSING_AUTHORS": "Set 'authors: [Author Name]' in .paperforge/paper.yaml.",
+        "MISSING_AFFILIATION": "Add 'affiliations:' list to .paperforge/paper.yaml.",
+        "MISSING_ACKNOWLEDGMENT": "Set 'acknowledgment: Your acknowledgment text' in paper.yaml.",
+        "MISSING_COI": "Set 'conflict_of_interest: The authors declare no conflicts of interest.' in paper.yaml.",
+        "MISSING_DATA_AVAILABILITY": "Set 'data_availability:' in paper.yaml.",
+        "MISSING_BIOGRAPHY": "Add 'biographies: [{author: Name, text: Bio text.}]' to paper.yaml.",
+        "MISSING_AI_DISCLOSURE": "Set 'ai_disclosure: No AI tools were used.' or describe your AI tool use in paper.yaml.",
+        "MISSING_CORRESPONDING_EMAIL": "Set 'email: your@email.com' in paper.yaml.",
+        "CLAIM_MISSING_IMPORT_HASH": "Run `paperforge import` to add tracking hashes to legacy claims.",
+        "RESULTS_SECTION_EMPTY": "Add claims with 'sections: [results]' to your results section.",
+        "NO_INTRODUCTION_CLAIMS": "Add claims with 'sections: [introduction]' to introduce your paper.",
+        "NO_CONCLUSION_CLAIMS": "Add claims with 'sections: [conclusion]' to your conclusion section.",
+        "ABSTRACT_TOO_LONG": "Shorten abstract claims. IEEE recommends under 250 words.",
+        "ABSTRACT_TOO_SHORT": "Expand abstract claims to at least 150 words.",
+        "ABSTRACT_HAS_CITATION": "Remove citations from abstract claims — move them to introduction.",
+        "DUPLICATE_CLAIM_TEXT": "Delete one of the duplicate claim YAML files from .paperforge/claims/.",
+    }
+    hint = hints.get(issue.code)
+
+    # For METRIC_CLAIM_MISMATCH, try to show available metrics
+    if issue.code == "METRIC_CLAIM_MISMATCH" and issue.claim_id:
+        claim = next((c for c in project.claims if c.id == issue.claim_id), None)
+        if claim:
+            exp_ids = [claim.experiment] + list(claim.experiments)
+            exp_map = {e.id: e for e in project.experiments}
+            for eid in exp_ids:
+                exp = exp_map.get(eid)
+                if exp and exp.metrics:
+                    metrics_str = ", ".join(
+                        f"{k}: {v}" for k, v in list(exp.metrics.items())[:5]
+                    )
+                    hint = f"Available metrics in {eid}: {metrics_str}"
+                    break
+
+    if hint:
+        console.print(Text(f"    Fix hint: {hint}", style="dim cyan"))
+
+
 
 
 def _apply_fix(project_root: Path, unverified_claims: list[Claim]) -> None:
@@ -1403,6 +1511,8 @@ def run(
     target: str | None = None,
     self_check: bool = False,
     pre_submission: bool = False,
+    fix_hints: bool = False,
+    json_output: bool = False,
 ) -> None:
     if self_check:
         run_self_check(project_root)
@@ -1441,6 +1551,20 @@ def run(
             for vi in plugin.validate(project)
         ]
 
+    all_issues = issues + venue_issues
+
+    # JSON output mode
+    if json_output:
+        import json
+        data = [
+            {"code": i.code, "severity": i.severity, "message": i.message, "claim_id": i.claim_id}
+            for i in all_issues
+        ]
+        console.print(json.dumps({"issues": data}, indent=2, ensure_ascii=False))
+        if any(i.severity == "ERROR" for i in all_issues):
+            sys.exit(1)
+        return
+
     console.print(Text("PaperForge Doctor", style="bold"))
 
     errors = [issue for issue in issues if issue.severity == "ERROR"]
@@ -1469,12 +1593,16 @@ def run(
         console.print(Text("ERROR", style="bold red"))
         for issue in errors:
             console.print(Text(f"  [{issue.code}] {issue.message}"))
+            if fix_hints:
+                _print_fix_hint(issue, project)
 
     if warnings:
         console.print()
         console.print(Text("WARNING", style="bold yellow"))
         for issue in warnings:
             console.print(Text(f"  [{issue.code}] {issue.message}"))
+            if fix_hints:
+                _print_fix_hint(issue, project)
 
     if plugin is not None and venue_issues:
         console.print()
@@ -1491,11 +1619,44 @@ def run(
     total_errors = errors + venue_errors
     total_warnings = warnings + venue_warnings
 
+    # Issues by section
+    section_issue_counts: dict[str, dict[str, int]] = {}
+    claim_map = {c.id: c for c in project.claims}
+    for issue in all_issues:
+        if issue.severity == "INFO":
+            continue
+        # Map to section via claim_id
+        secs: list[str] = []
+        if issue.claim_id and issue.claim_id in claim_map:
+            secs = claim_map[issue.claim_id].sections or ["(global)"]
+        elif not issue.claim_id:
+            secs = ["(global)"]
+        for sec in secs:
+            section_issue_counts.setdefault(sec, {"errors": 0, "warnings": 0})
+            if issue.severity == "ERROR":
+                section_issue_counts[sec]["errors"] += 1
+            else:
+                section_issue_counts[sec]["warnings"] += 1
+
     console.print()
     console.print("─" * 40)
     console.print(
         f"Summary: {len(total_errors)} error(s), {len(total_warnings)} warning(s)"
     )
+
+    if section_issue_counts:
+        console.print()
+        console.print(Text("Issues by section:", style="bold"))
+        for sec, counts in sorted(section_issue_counts.items()):
+            parts = []
+            if counts["errors"]:
+                parts.append(f"{counts['errors']} error(s)")
+            if counts["warnings"]:
+                parts.append(f"{counts['warnings']} warning(s)")
+            if parts:
+                console.print(f"  {sec}: {', '.join(parts)}")
+            else:
+                console.print(f"  {sec}: 0 issues ✓")
 
     if not fix and total_warnings:
         console.print(

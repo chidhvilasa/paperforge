@@ -2,26 +2,61 @@
 
 ## [Unreleased]
 
-### Fixed
-- IEEE Access author block: Student Member and empty membership suppressed from \IEEEmembership{}
-- \IEEEPARstart now uses actual first two chars of first introduction claim text (not hardcoded)
-- Unicode typography escaped: em-dash, en-dash, curly quotes, ellipsis, degree, multiplication, Greek letters
-- Markdown links [text](url) → \href{url}{text}
-- Markdown bullet/numbered lists → itemize/enumerate
-- Bare URLs → \url{} via hyperref
-- DUPLICATE_CLAIM_TEXT severity upgraded to ERROR (blocks build)
-- Algorithm.to_latex() emits algorithmic[1] with proper \State wrapping for plain-text steps
-- \usepackage{algorithm} and \usepackage{algorithmic} added to preamble when algorithms exist in project
+## [1.3.0] — 2026-07-29
 
-### Added
+### Fixed (Phase 33)
+- **CRITICAL: import no longer creates duplicate claims.**
+  Re-running `paperforge import` on existing content now merges instead of
+  appends. The root cause of doubled sections in generated papers is resolved.
+  Each paragraph is identified by a 12-char MD5 hash of its first 120 chars.
+  --force now UPDATES matched claim text (not creates duplicates).
+
+### Added (Phase 33)
+- `import_hash: str` field on Claim — tracks paragraph identity across import runs
+- Doctor check 78: CLAIM_MISSING_IMPORT_HASH (INFO) — legacy claims without hash
+- `paperforge sync` command — bidirectional sync between paper_information/ and .paperforge/
+  - `--direction to-md`: claims are source of truth → rewrites *.md
+  - `--direction to-claims`: same as import with merge mode
+  - `--direction status`: shows per-section MD vs claims timestamps and in-sync state
+- Biography support in paper.yaml: `biographies:` list with author/text/photo_path
+  - `Biography.to_latex()` emits `\\IEEEbiography` (with photo) or
+    `\\IEEEbiographynophoto` (without) in compiled LaTeX
+  - Doctor check 79: MISSING_BIOGRAPHY (WARNING) — IEEE Access encourages biographies
+- AI disclosure support: `ai_disclosure:` field in paper.yaml
+  - Emits `\\subsection*{Use of Artificial Intelligence Tools}` when non-empty
+  - Doctor check 80: MISSING_AI_DISCLOSURE (INFO) — IEEE policy compliance
+- `paperforge validate` command — numerical claim audit against experiment data
+  - Extracts ALL numbers (not just percentages) from claim text
+  - Cross-checks against linked experiment metrics with 0.5 tolerance
+  - Reports VERIFIED / UNVERIFIED / EXEMPT (is_math) per number
+  - Writes `paper_information/VALIDATION_LOG.md`
+- Colorblind-safe figure palette (Wong 2011) applied to all chart types
+  - IEEE_STYLE dict centralizes all rcParams for consistent IEEE publication look
+  - COLORS and HATCH_PATTERNS constants shared across bar/grouped_bar/line charts
+- Doctor `--fix-hints` flag: shows concrete fix suggestion per issue
+- Doctor `--json` flag: outputs issues as JSON for tooling integration
+- Doctor shows issues grouped by section after summary line
+- 15 new tests in test_capabilities.py (466 total)
+
+### Fixed (Phase 32 — carried forward)
+- IEEE Access author block: Student Member and empty membership suppressed from \\IEEEmembership{}
+- \\IEEEPARstart now uses actual first two chars of first introduction claim text (not hardcoded)
+- Unicode typography escaped: em-dash, en-dash, curly quotes, ellipsis, degree, multiplication, Greek letters
+- Markdown links [text](url) → \\href{url}{text}
+- Markdown bullet/numbered lists → itemize/enumerate
+- Bare URLs → \\url{} via hyperref
+- DUPLICATE_CLAIM_TEXT severity upgraded to ERROR (blocks build)
+- Algorithm.to_latex() emits algorithmic[1] with proper \\State wrapping for plain-text steps
+- \\usepackage{algorithm} and \\usepackage{algorithmic} added to preamble when algorithms exist in project
+
+### Added (Phase 32)
 - Figure.error_bars and std_metric_keys fields for uncertainty visualization in bar charts
 - Figure.significance_markers field for *, **, n.s. annotation
-- generate-figures chart_type: "grouped_bar" for multi-series grouped bar charts (the standard IEEE results figure format)
-- paperforge doctor --pre-submission: full submission readiness report with pass/fail for 10 submission requirements
-- build --force-anyway: override blocking doctor checks (not recommended for submission)
-- 10 new tests in test_ieee_template.py (451 total)
+- generate-figures chart_type: "grouped_bar" for multi-series grouped bar charts
+- paperforge doctor --pre-submission: full submission readiness report
+- build --force-anyway: override blocking doctor checks
+- 10 new tests in test_ieee_template.py (451 total before Phase 33)
 
-## [1.2.0] — 2026-07-26
 
 ### Fixed (Phase 29 — critical bugs from production use)
 - CRITICAL: escape_latex() now protects inline math spans

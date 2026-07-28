@@ -1,0 +1,222 @@
+"""paperforge validate command — numerical claim audit against experiment data."""
+
+from __future__ import annotations
+
+import re
+import sys
+from pathlib import Path
+
+import yaml
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table as RichTable
+from rich.text import Text
+
+from paperforge.core.project import PaperForgeProject
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
+console = Console()
+
+_NUMBER_RE = re.compile(
+    r"""
+    (?<![a-zA-Z])          # not preceded by letter (avoid "exp3")
+    ([-+]?\d+(?:\.\d+)?   # integer or decimal
+    (?:%)?                 # optional percent sign
+    )
+    (?![a-zA-Z0-9])        # not followed by alphanumeric (avoid "3D")
+    """,
+    re.VERBOSE,
+)
+
+
+def _extract_all_numbers(text: str) -> list[tuple[str, float]]:
+    """Return list of (raw_string, float_value) tuples from claim text."""
+    results: list[tuple[str, float]] = []
+    for m in _NUMBER_RE.finditer(text):
+        raw = m.group(1)
+        try:
+            val = float(raw.rstrip("%"))
+            results.append((raw, val))
+        except ValueError:
+            pass
+    return results
+
+
+def _numbers_match_loose(val: float, metric_val: float, tolerance: float = 0.5) -> bool:
+    """Returns True if val is within tolerance of metric_val."""
+    return abs(val - metric_val) <= tolerance
+
+
+def run(project_root: Path, output: Path | None = None) -> None:
+    """Validate all numerical claims against experiment data."""
+    pf_dir = project_root / ".paperforge"
+    if not pf_dir.exists():
+        console.print(
+            "[red]Not a PaperForge project. Run `paperforge init` first.[/red]"
+        )
+        sys.exit(1)
+
+    project = PaperForgeProject.load(project_root)
+    exp_map = {e.id: e for e in project.experiments}
+
+    rows: list[dict] = []
+    total = 0
+    verified = 0
+    unverified = 0
+    exempt = 0
+
+    for claim in project.claims:
+        if not claim.text:
+            continue
+
+        if claim.is_math or claim.raw_latex:
+            exempt += 1
+            rows.append(
+                {
+                    "claim": claim.id,
+                    "number": "(entire claim)",
+                    "source": "is_math/raw_latex",
+                    "status": "EXEMPT",
+                }
+            )
+            continue
+
+        # Gather all linked experiment metrics
+        combined_metrics: dict[str, float] = {}
+        linked_exp_ids: list[str] = []
+        if claim.experiment:
+            linked_exp_ids.append(claim.experiment)
+        for eid in claim.experiments:
+            if eid not in linked_exp_ids:
+                linked_exp_ids.append(eid)
+
+        for eid in linked_exp_ids:
+            exp = exp_map.get(eid)
+            if exp and exp.metrics:
+                combined_metrics.update(exp.metrics)
+
+        # Also scan results_file if configured
+        for eid in linked_exp_ids:
+            exp = exp_map.get(eid)
+            if exp and exp.results_file:
+                rf = project_root / exp.results_file
+                if rf.exists():
+                    try:
+                        rdata = yaml.safe_load(rf.read_text(encoding="utf-8")) or {}
+                        for k, v in rdata.items():
+                            if isinstance(v, (int, float)):
+                                combined_metrics.setdefault(k, float(v))
+                    except Exception:
+                        pass
+
+        numbers = _extract_all_numbers(claim.text)
+        if not numbers:
+            continue
+
+        for raw, val in numbers:
+            total += 1
+
+            if not combined_metrics:
+                unverified += 1
+                rows.append(
+                    {
+                        "claim": claim.id,
+                        "number": raw,
+                        "source": "NOT FOUND (no experiment metrics)",
+                        "status": "UNVERIFIED",
+                    }
+                )
+                continue
+
+            best_match: str | None = None
+            for mk, mv in combined_metrics.items():
+                if _numbers_match_loose(val, mv):
+                    best_match = f"{linked_exp_ids[0] if linked_exp_ids else '?'}.metrics.{mk}"
+                    break
+
+            if best_match:
+                verified += 1
+                rows.append(
+                    {
+                        "claim": claim.id,
+                        "number": raw,
+                        "source": best_match,
+                        "status": "VERIFIED",
+                    }
+                )
+            else:
+                unverified += 1
+                rows.append(
+                    {
+                        "claim": claim.id,
+                        "number": raw,
+                        "source": "NOT FOUND",
+                        "status": "UNVERIFIED",
+                    }
+                )
+
+    # Build markdown log
+    log_lines = [
+        "# PaperForge Validation Log\n",
+        f"Generated by `paperforge validate`\n\n",
+        "| Claim | Number | Source | Status |\n",
+        "|-------|--------|--------|--------|\n",
+    ]
+    for row in rows:
+        log_lines.append(
+            f"| {row['claim']} | {row['number']} | {row['source']} | {row['status']} |\n"
+        )
+
+    log_lines.append(f"\n## Summary\n\n")
+    log_lines.append(f"- Total numbers checked: {total}\n")
+    log_lines.append(
+        f"- Verified: {verified} ({int(verified/total*100) if total else 0}%)\n"
+    )
+    log_lines.append(
+        f"- Unverified: {unverified} ({int(unverified/total*100) if total else 0}%) — review before submission\n"
+    )
+    log_lines.append(f"- Exempt (is_math): {exempt}\n")
+
+    log_content = "".join(log_lines)
+
+    # Write log
+    if output:
+        log_path = output
+    else:
+        log_path = project_root / "paper_information" / "VALIDATION_LOG.md"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text(log_content, encoding="utf-8")
+
+    # Display rich table
+    rtable = RichTable(title="Validation Results", show_header=True, header_style="bold cyan")
+    rtable.add_column("Claim")
+    rtable.add_column("Number")
+    rtable.add_column("Source")
+    rtable.add_column("Status")
+
+    for row in rows:
+        status_style = (
+            "green"
+            if row["status"] == "VERIFIED"
+            else ("yellow" if row["status"] == "EXEMPT" else "red")
+        )
+        rtable.add_row(
+            row["claim"],
+            row["number"],
+            row["source"],
+            Text(row["status"], style=status_style),
+        )
+
+    console.print(rtable)
+
+    pct = int(verified / total * 100) if total else 0
+    body = Text(
+        f"Total numbers checked: {total}\n"
+        f"Verified:    {verified} ({pct}%)\n"
+        f"Unverified:  {unverified} ({100-pct if total else 0}%) — review before submission\n"
+        f"Exempt:      {exempt}\n\n"
+        f"Log written to: {log_path.relative_to(project_root)}"
+    )
+    console.print(Panel(body, title="Validation Summary", border_style="green"))

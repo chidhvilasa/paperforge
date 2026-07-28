@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import re
 import subprocess
 import sys
@@ -20,6 +21,15 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
 console = Console()
+
+
+def _paragraph_hash(text: str) -> str:
+    """Compute a canonical 12-char MD5 hash for deduplication.
+
+    Strips whitespace, lowercases, takes first 120 chars.
+    """
+    canonical = " ".join(text.lower().split())[:120]
+    return hashlib.md5(canonical.encode()).hexdigest()[:12]
 
 
 def _strip_markdown_formatting(raw: str) -> list[tuple[str, bool, str]]:
@@ -172,7 +182,7 @@ def run(
             encoding="utf-8",
         )
 
-    # STEP C — Import content/*.md sections
+    # STEP C — Import content/*.md sections (MERGE MODE)
     content_dir = info_dir / "content"
     claims_dir = pf_dir / "claims"
     claims_dir.mkdir(parents=True, exist_ok=True)
@@ -180,15 +190,24 @@ def run(
 
     existing_claim_files = list(claims_dir.glob("*.yaml"))
     existing_ids: set[str] = set()
-    existing_prefixes: set[str] = set()
+    # hash → (claim_id, claim_filepath)
+    existing_hashes: dict[str, tuple[str, Path]] = {}
 
     for cf in existing_claim_files:
         cdata = yaml.safe_load(cf.read_text(encoding="utf-8")) or {}
         cid = cdata.get("id", cf.stem)
         existing_ids.add(cid)
-        ctext = (cdata.get("text") or "").strip().lower()[:80]
-        if ctext:
-            existing_prefixes.add(ctext)
+        # Index by import_hash if stored
+        stored_hash = cdata.get("import_hash", "")
+        if stored_hash:
+            existing_hashes[stored_hash] = (cid, cf)
+        else:
+            # Back-compute hash from text for legacy claims
+            ctext = (cdata.get("text") or "").strip()
+            if ctext:
+                h = _paragraph_hash(ctext)
+                if h not in existing_hashes:
+                    existing_hashes[h] = (cid, cf)
 
     claim_counter = 1
 
@@ -200,7 +219,7 @@ def run(
         existing_ids.add(cid)
         return cid
 
-    section_results: dict[str, tuple[int, int]] = {}
+    section_results: dict[str, tuple[int, int, int]] = {}  # (new, updated, contrib)
     citation_pattern = re.compile(r"\[([a-z][a-zA-Z0-9]+\d{4}[a-z]?)\]")
     imported_claims_list: list[dict[str, Any]] = []
 
@@ -217,12 +236,11 @@ def run(
             parsed_paras = _strip_markdown_formatting(raw_text)
 
             new_claims_cnt = 0
+            updated_claims_cnt = 0
             new_contrib_cnt = 0
 
             for para_text, is_contrib, sub_hdr in parsed_paras:
-                norm_prefix = para_text.strip().lower()[:80]
-                if norm_prefix in existing_prefixes and not force:
-                    continue
+                h = _paragraph_hash(para_text)
 
                 # Parse [citation-key] notation
                 found_keys = citation_pattern.findall(para_text)
@@ -240,6 +258,37 @@ def run(
 
                 clean_text = citation_pattern.sub("", para_text).strip()
 
+                if h in existing_hashes:
+                    # MERGE: claim already exists
+                    existing_cid, existing_cf = existing_hashes[h]
+                    if force:
+                        # --force: UPDATE the matched claim's text and metadata
+                        existing_cdata = yaml.safe_load(
+                            existing_cf.read_text(encoding="utf-8")
+                        ) or {}
+                        existing_cdata["text"] = clean_text
+                        existing_cdata["sections"] = list(
+                            set(existing_cdata.get("sections", []) + [sec_name])
+                        )
+                        existing_cdata["subsection"] = sub_hdr or existing_cdata.get(
+                            "subsection", ""
+                        )
+                        existing_cdata["import_hash"] = h
+                        if valid_keys:
+                            existing_cdata["citations"] = valid_keys
+                        existing_cf.write_text(
+                            yaml.dump(
+                                existing_cdata,
+                                default_flow_style=False,
+                                allow_unicode=True,
+                            ),
+                            encoding="utf-8",
+                        )
+                        updated_claims_cnt += 1
+                    # If not force: skip (already exists — no duplicate created)
+                    continue
+
+                # No match: CREATE new claim with import_hash
                 new_cid = get_next_id()
                 cdata = {
                     "id": new_cid,
@@ -259,18 +308,20 @@ def run(
                     "is_math": False,
                     "raw_latex": False,
                     "claim_type": "claim",
+                    "import_hash": h,
                 }
                 (claims_dir / f"{new_cid}.yaml").write_text(
                     yaml.dump(cdata, default_flow_style=False, allow_unicode=True),
                     encoding="utf-8",
                 )
-                existing_prefixes.add(norm_prefix)
+                # Register hash so subsequent paragraphs in same run don't duplicate
+                existing_hashes[h] = (new_cid, claims_dir / f"{new_cid}.yaml")
                 new_claims_cnt += 1
                 if is_contrib:
                     new_contrib_cnt += 1
                 imported_claims_list.append(cdata)
 
-            section_results[sec_name] = (new_claims_cnt, new_contrib_cnt)
+            section_results[sec_name] = (new_claims_cnt, updated_claims_cnt, new_contrib_cnt)
 
     # STEP D — Import graphs/*.py
     graphs_dir = info_dir / "graphs"
@@ -338,12 +389,15 @@ def run(
         Text(f"metadata.yaml:  {'updated' if metadata_updated else 'skipped/up-to-date'}"),
         Text(f"author.yaml:    {'updated' if author_updated else 'skipped/up-to-date'}"),
         Text(""),
-        Text("Sections imported:"),
+        Text("Sections imported (merge mode):"),
     ]
 
-    for sname, (n_claims, n_contrib) in section_results.items():
-        contrib_str = f", {n_contrib} contribution claims" if n_contrib > 0 else ""
-        lines.append(Text(f"  {sname}:  {n_claims} new claims{contrib_str}"))
+    for sname, (n_new, n_updated, n_contrib) in section_results.items():
+        contrib_str = f", {n_contrib} contribution" if n_contrib > 0 else ""
+        updated_str = f", {n_updated} updated" if n_updated > 0 else ""
+        lines.append(
+            Text(f"  {sname}:  {n_new} new claims{updated_str}{contrib_str}")
+        )
 
     lines.append(Text(""))
     lines.append(
@@ -363,7 +417,7 @@ def run(
     console.print(
         Panel(
             Text("\n").join(lines),
-            title="Import Complete",
+            title="Import Complete (Merge Mode)",
             border_style="green",
         )
     )

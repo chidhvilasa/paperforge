@@ -18,6 +18,42 @@ from paperforge.models.table import Table
 
 
 @dataclass
+class Biography:
+    author: str = ""
+    text: str = ""
+    photo_path: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Biography:
+        return cls(
+            author=data.get("author", ""),
+            text=data.get("text", ""),
+            photo_path=data.get("photo_path", ""),
+        )
+
+    def to_latex(self) -> str:
+        from paperforge.utils.latex import escape_latex_safe
+        text = escape_latex_safe(self.text)
+        author_escaped = escape_latex_safe(self.author)
+        if self.photo_path:
+            return (
+                f"\\begin{{IEEEbiography}}"
+                f"[{{\\includegraphics[width=1in,height=1.25in,"
+                f"clip,keepaspectratio]{{{self.photo_path}}}}}]"
+                f"{{{author_escaped}}}\n"
+                f"{text}\n"
+                f"\\end{{IEEEbiography}}"
+            )
+        else:
+            return (
+                f"\\begin{{IEEEbiographynophoto}}"
+                f"{{{author_escaped}}}\n"
+                f"{text}\n"
+                f"\\end{{IEEEbiographynophoto}}"
+            )
+
+
+@dataclass
 class Affiliation:
     name: str = ""
     institution: str = ""
@@ -68,6 +104,8 @@ class ProjectConfig:
     publisher_id: str = ""
     sections_overview: str = ""
     theorem_packages: bool = True
+    biographies: list[Biography] = field(default_factory=list)
+    ai_disclosure: str = ""
 
     @classmethod
     def from_yaml(cls, data: dict) -> ProjectConfig:
@@ -97,6 +135,8 @@ class ProjectConfig:
             publisher_id=data.get("publisher_id", ""),
             sections_overview=data.get("sections_overview", ""),
             theorem_packages=bool(build.get("theorem_packages", True)),
+            biographies=[Biography.from_dict(b) for b in data.get("biographies", [])],
+            ai_disclosure=data.get("ai_disclosure", ""),
         )
 
 

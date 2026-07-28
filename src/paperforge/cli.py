@@ -83,6 +83,12 @@ def doctor(
     pre_submission: bool = typer.Option(
         False, "--pre-submission", help="Run full submission readiness report."
     ),
+    fix_hints: bool = typer.Option(
+        False, "--fix-hints", help="Show concrete fix suggestions for each issue."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", help="Output issues as JSON for tooling integration."
+    ),
 ) -> None:
     """Check research project consistency."""
     from paperforge.commands.doctor import run
@@ -93,6 +99,8 @@ def doctor(
         target=target,
         self_check=self_check,
         pre_submission=pre_submission,
+        fix_hints=fix_hints,
+        json_output=json_output,
     )
 
 
@@ -466,6 +474,35 @@ def update(
     run(pre=pre, git=git)
 
 
+@app.command()
+def sync(
+    direction: str = typer.Option(
+        "status",
+        "--direction",
+        "-d",
+        help="Sync direction: to-md, to-claims, or status",
+    ),
+    path: Path = typer.Option(Path("."), "--path", "-p"),
+    force: bool = typer.Option(False, "--force", "-f"),
+) -> None:
+    """Sync between paper_information/ and .paperforge/ (bidirectional)."""
+    from paperforge.commands.sync import run
+
+    run(project_root=path.resolve(), direction=direction, force=force)
+
+
+@app.command()
+def validate(
+    path: Path = typer.Option(Path("."), "--path", "-p"),
+    output: Path | None = typer.Option(
+        None, "--output", "-o", help="Output path for VALIDATION_LOG.md"
+    ),
+) -> None:
+    """Validate all numerical claims against experiment data."""
+    from paperforge.commands.validate import run
+
+    run(project_root=path.resolve(), output=output)
+
+
 if __name__ == "__main__":
     app()
-

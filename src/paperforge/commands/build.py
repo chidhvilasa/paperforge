@@ -14,7 +14,7 @@ from rich.panel import Panel
 from rich.text import Text
 
 from paperforge.commands.doctor import collect_issues
-from paperforge.core.project import Affiliation, PaperForgeProject, ProjectConfig
+from paperforge.core.project import Affiliation, Biography, PaperForgeProject, ProjectConfig
 from paperforge.models.claim import Claim
 from paperforge.models.figure import Figure
 from paperforge.models.table import Table
@@ -839,6 +839,25 @@ def _bib_has_real_entries(bib_path: Path) -> bool:
     return False
 
 
+def _generate_biographies(biographies: list[Biography]) -> str:
+    """Return the biography block LaTeX or empty string."""
+    if not biographies:
+        return ""
+    parts = [b.to_latex() for b in biographies]
+    return "\n\n".join(parts)
+
+
+def _generate_ai_disclosure(text: str) -> str:
+    """Return the AI disclosure section or empty string."""
+    if not text:
+        return ""
+    from paperforge.utils.latex import escape_latex_safe
+    return (
+        "\\subsection*{Use of Artificial Intelligence Tools}\n"
+        + escape_latex_safe(text)
+    )
+
+
 def _generate_latex_conference(
     project: PaperForgeProject, plugin: VenuePlugin
 ) -> str:
@@ -883,6 +902,14 @@ def _generate_latex_conference(
     if statements_block:
         statements_block = "\n\n" + statements_block
 
+    ai_disclosure = _generate_ai_disclosure(project.config.ai_disclosure)
+    if ai_disclosure:
+        statements_block += "\n\n" + ai_disclosure
+
+    bio_block = _generate_biographies(project.config.biographies)
+    if bio_block:
+        bio_block = "\n\n\\vfill\n\\newpage\n\n" + bio_block
+
     return f"""{plugin.latex_documentclass}
 
 {preamble}
@@ -901,7 +928,7 @@ def _generate_latex_conference(
 
 {sections}{statements_block}
 
-{bibliography}
+{bibliography}{bio_block}
 
 \\end{{document}}
 """
@@ -963,6 +990,14 @@ def _generate_latex_journal(
     if statements_block:
         statements_block = "\n\n" + statements_block
 
+    ai_disclosure = _generate_ai_disclosure(project.config.ai_disclosure)
+    if ai_disclosure:
+        statements_block += "\n\n" + ai_disclosure
+
+    bio_block = _generate_biographies(project.config.biographies)
+    if bio_block:
+        bio_block = "\n\n\\vfill\n\\newpage\n\n" + bio_block
+
     return f"""{plugin.latex_documentclass}
 
 {preamble}
@@ -993,7 +1028,7 @@ def _generate_latex_journal(
 
 {acknowledgment}{statements_block}
 
-{bibliography}
+{bibliography}{bio_block}
 
 \\end{{document}}
 """
@@ -1445,8 +1480,6 @@ def run(
             console.print(
                 f"[red]LaTeX compilation failed. Check {rel_output}/paper.log[/red]"
             )
-            if not no_reveal:
-                _reveal_output(tex_path)
 
     unique_citations = {c for claim in project.claims for c in claim.citations}
 
