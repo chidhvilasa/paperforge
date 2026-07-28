@@ -11,6 +11,7 @@ from paperforge.commands.add_table import run as run_add_table
 from paperforge.commands.build import run as run_build
 from paperforge.commands.export import run as run_export
 from paperforge.commands.init import run as run_init
+from paperforge.core.project import PaperForgeProject
 from paperforge.graph.dependency import ResearchGraph
 from paperforge.models.citation import Citation
 from paperforge.models.claim import Claim
@@ -192,6 +193,11 @@ def test_get_affected_primary_still_works() -> None:
     assert "c1" in affected.claims
 
 
+def _get_overleaf_zip(tmp_path: Path) -> Path:
+    project = PaperForgeProject.load(tmp_path)
+    return tmp_path / project.config.build_output_dir / "paper_overleaf.zip"
+
+
 def test_overleaf_export_creates_zip(tmp_path: Path) -> None:
     run_init(tmp_path)
     # Fix placeholder claim text so build succeeds
@@ -201,7 +207,7 @@ def test_overleaf_export_creates_zip(tmp_path: Path) -> None:
     )
     run_build(tmp_path, no_reveal=True)
     run_export(tmp_path, fmt="overleaf", output=None)
-    assert (tmp_path / "paper_overleaf.zip").exists()
+    assert _get_overleaf_zip(tmp_path).exists()
 
 
 def test_overleaf_zip_contains_paper_tex(tmp_path: Path) -> None:
@@ -212,7 +218,7 @@ def test_overleaf_zip_contains_paper_tex(tmp_path: Path) -> None:
     )
     run_build(tmp_path, no_reveal=True)
     run_export(tmp_path, fmt="overleaf", output=None)
-    with zipfile.ZipFile(tmp_path / "paper_overleaf.zip") as z:
+    with zipfile.ZipFile(_get_overleaf_zip(tmp_path)) as z:
         assert "paper.tex" in z.namelist()
 
 
@@ -224,7 +230,7 @@ def test_overleaf_zip_contains_readme(tmp_path: Path) -> None:
     )
     run_build(tmp_path, no_reveal=True)
     run_export(tmp_path, fmt="overleaf", output=None)
-    with zipfile.ZipFile(tmp_path / "paper_overleaf.zip") as z:
+    with zipfile.ZipFile(_get_overleaf_zip(tmp_path)) as z:
         assert "README.txt" in z.namelist()
 
 

@@ -384,12 +384,6 @@ def _generate_overleaf_zip(
     project: PaperForgeProject,
     output_dir: Path | None = None,
 ) -> Path:
-    base_dir = project.config.base_dir or ""
-    if base_dir:
-        zip_path = project.root / base_dir / "paper_overleaf.zip"
-    else:
-        zip_path = project.root / "paper_overleaf.zip"
-
     paper_dir = project.root / project.config.build_output_dir
     tex_path = paper_dir / "paper.tex"
     if not tex_path.exists():
@@ -398,6 +392,8 @@ def _generate_overleaf_zip(
         )
         sys.exit(1)
 
+    # Zip lives in the same directory as paper.tex (the build output dir)
+    zip_path = paper_dir / "paper_overleaf.zip"
     zip_path.parent.mkdir(parents=True, exist_ok=True)
 
     with _zipfile.ZipFile(zip_path, "w", compression=_zipfile.ZIP_DEFLATED) as zf:
@@ -537,9 +533,10 @@ def run(project_root: Path, fmt: str, output: Path | None) -> None:
         (output_dir / "traceability.csv").write_text(csv_content, encoding="utf-8")
         (output_dir / "traceability.tex").write_text(tex_content, encoding="utf-8")
 
-        paper_dir = project_root / "paper"
-        if paper_dir.exists() and output_dir != paper_dir:
-            (paper_dir / "traceability.tex").write_text(tex_content, encoding="utf-8")
+        # Also write to build output dir so it can be included in overleaf zip
+        build_out = project_root / project.config.build_output_dir
+        if build_out.exists() and output_dir != build_out:
+            (build_out / "traceability.tex").write_text(tex_content, encoding="utf-8")
 
         body = Text()
         body.append(f"Format:      {fmt}\n")

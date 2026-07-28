@@ -260,7 +260,7 @@ def run(
 
                 if h in existing_hashes:
                     # MERGE: claim already exists
-                    existing_cid, existing_cf = existing_hashes[h]
+                    _existing_cid, existing_cf = existing_hashes[h]
                     if force:
                         # --force: UPDATE the matched claim's text and metadata
                         existing_cdata = yaml.safe_load(

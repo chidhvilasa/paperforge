@@ -565,3 +565,104 @@ def test_stale_pdf_deleted_before_rebuild(tmp_path: Path, monkeypatch) -> None:
 
     assert not pdf_path.exists() or pdf_path.read_text(encoding="utf-8") != "old fake pdf content"
 
+
+# --- Test 31: Aux files deleted after build ---
+
+def test_aux_files_deleted_after_build(tmp_path: Path, monkeypatch) -> None:
+    """After build, no .aux .log .fls .out .bbl .blg files should remain in output_dir."""
+    write_journal_project(tmp_path)
+
+    # Monkeypatch shutil.which so pdflatex is "found" but fails silently
+    monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/pdflatex" if name in ("pdflatex", "latexmk") else None)
+
+    # Also monkeypatch subprocess.run so compilation appears to happen but produces no PDF
+    # This exercises the cleanup path after failed compilation
+    import subprocess as _subprocess_mod
+    original_run = _subprocess_mod.run
+
+    def mock_run(args, **kwargs):
+        # Intercept pdflatex calls; create fake aux files to simulate compilation
+        if args and isinstance(args, list) and any("pdflatex" in str(a) or "latexmk" in str(a) for a in args):
+            # Find output_dir from args
+            cwd = kwargs.get("cwd")
+            if cwd:
+                from pathlib import Path as _P
+                cwd_path = _P(cwd)
+                for ext in [".aux", ".log", ".fls", ".out", ".bbl"]:
+                    try:
+                        (cwd_path / f"paper{ext}").write_text(f"fake {ext} content", encoding="utf-8")
+                    except OSError:
+                        pass
+            result = _subprocess_mod.CompletedProcess(args, returncode=1)
+            return result
+        return original_run(args, **kwargs)
+
+    monkeypatch.setattr(_subprocess_mod, "run", mock_run)
+    build.run(tmp_path, target="ieee-access", force_anyway=True)
+
+    # Find the output directory
+    from paperforge.core.project import PaperForgeProject
+    project = PaperForgeProject.load(tmp_path)
+    output_dir = tmp_path / project.config.build_output_dir
+
+    if output_dir.exists():
+        aux_exts = {".aux", ".log", ".fls", ".out", ".bbl", ".blg"}
+        remaining_aux = [f for f in output_dir.glob("*") if f.suffix in aux_exts]
+        assert remaining_aux == [], f"Aux files remain after build: {[f.name for f in remaining_aux]}"
+
+
+# --- Test 32: Rotation keeps only key files ---
+
+def test_rotation_keeps_only_key_files(tmp_path: Path, monkeypatch) -> None:
+    """previous/ should only contain meaningful files, never aux files."""
+    write_journal_project(tmp_path)
+    monkeypatch.setattr("shutil.which", lambda name: None)
+
+    # First build — creates current/
+    build.run(tmp_path, target="ieee-access", force_anyway=True)
+
+    from paperforge.core.project import PaperForgeProject
+    project = PaperForgeProject.load(tmp_path)
+    output_dir = tmp_path / project.config.build_output_dir
+
+    # Manually plant a fake aux file in current/ to simulate leftover
+    if output_dir.exists():
+        (output_dir / "paper.aux").write_text("fake aux", encoding="utf-8")
+        (output_dir / "paper.log").write_text("fake log", encoding="utf-8")
+
+    # Second build — triggers rotation of current/ → previous/
+    build.run(tmp_path, target="ieee-access", force=True, force_anyway=True)
+
+    previous_dir = output_dir.parent / "previous"
+    if previous_dir.exists():
+        prev_files = {f.name for f in previous_dir.iterdir() if f.is_file()}
+        allowed = {
+            "paper.pdf", "paper.tex", "references.bib",
+            "paper_overleaf.zip", "paper.docx", "traceability.tex",
+        }
+        unexpected = prev_files - allowed
+        assert unexpected == set(), f"Unexpected files in previous/: {unexpected}"
+
+
+# --- Test 33: Clean command removes aux files ---
+
+def test_clean_command_runs(tmp_path: Path, monkeypatch) -> None:
+    """paperforge clean should remove manually-placed aux files from paper_generated/."""
+    from paperforge.commands import clean
+
+    write_journal_project(tmp_path)
+    monkeypatch.setattr("shutil.which", lambda name: None)
+    build.run(tmp_path, target="ieee-access", force_anyway=True)
+
+    from paperforge.core.project import PaperForgeProject
+    project = PaperForgeProject.load(tmp_path)
+    output_dir = tmp_path / project.config.build_output_dir
+
+    # Plant a fake aux file
+    if output_dir.exists():
+        aux_file = output_dir / "paper.aux"
+        aux_file.write_text("aux content", encoding="utf-8")
+        assert aux_file.exists(), "Failed to create test aux file"
+
+        clean.run(tmp_path)
+        assert not aux_file.exists(), "clean.run() did not remove paper.aux"

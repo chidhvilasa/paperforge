@@ -1310,7 +1310,7 @@ def collect_issues(project: PaperForgeProject) -> list[Issue]:
     return issues
 
 
-def _print_fix_hint(issue: "Issue", project: "PaperForgeProject") -> None:
+def _print_fix_hint(issue: Issue, project: PaperForgeProject) -> None:
     """Print a concrete fix hint for an issue when --fix-hints is active."""
     hints: dict[str, str] = {
         "ORPHAN_CLAIM": "Edit the claim YAML and set 'experiment: exp_XX'.",
@@ -1340,7 +1340,6 @@ def _print_fix_hint(issue: "Issue", project: "PaperForgeProject") -> None:
         "ABSTRACT_TOO_LONG": "Shorten abstract claims. IEEE recommends under 250 words.",
         "ABSTRACT_TOO_SHORT": "Expand abstract claims to at least 150 words.",
         "ABSTRACT_HAS_CITATION": "Remove citations from abstract claims — move them to introduction.",
-        "DUPLICATE_CLAIM_TEXT": "Delete one of the duplicate claim YAML files from .paperforge/claims/.",
     }
     hint = hints.get(issue.code)
 

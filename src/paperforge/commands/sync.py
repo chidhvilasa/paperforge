@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
-import yaml
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -75,7 +74,7 @@ def _sync_to_md(project_root: Path, project: PaperForgeProject, force: bool) -> 
         md_path.write_text("".join(lines), encoding="utf-8")
         written.append(section)
 
-    body_lines = [Text(f"Sections written to paper_information/content/:")]
+    body_lines = [Text("Sections written to paper_information/content/:")]
     for sec in written:
         body_lines.append(Text(f"  {sec}.md ✓"))
     if not written:
@@ -125,7 +124,7 @@ def _sync_status(project_root: Path, project: PaperForgeProject) -> None:
 
         md_mtime_str = "—"
         if md_path and md_path.exists():
-            md_mtime = datetime.fromtimestamp(md_path.stat().st_mtime)
+            md_mtime = datetime.fromtimestamp(md_path.stat().st_mtime, tz=UTC)
             md_mtime_str = md_mtime.strftime("%Y-%m-%d %H:%M")
 
         claim_mtime_str = "—"
@@ -134,10 +133,9 @@ def _sync_status(project_root: Path, project: PaperForgeProject) -> None:
             cp = claims_dir / f"{cid}.yaml"
             if cp.exists():
                 mt = cp.stat().st_mtime
-                if mt > claims_newest:
-                    claims_newest = mt
+                claims_newest = max(claims_newest, mt)
         if claims_newest > 0:
-            claim_mtime_str = datetime.fromtimestamp(claims_newest).strftime(
+            claim_mtime_str = datetime.fromtimestamp(claims_newest, tz=UTC).strftime(
                 "%Y-%m-%d %H:%M"
             )
 

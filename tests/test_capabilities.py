@@ -5,15 +5,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 import yaml
 
 from paperforge.commands import init
 from paperforge.commands.doctor import collect_issues
-from paperforge.core.project import Biography, PaperForgeProject
+from paperforge.core.project import PaperForgeProject
 from paperforge.models.claim import Claim
 from paperforge.models.experiment import Experiment
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -205,7 +203,6 @@ def test_biography_emits_ieeebio_nophoto(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     build_run(project_root=tmp_path, force_anyway=True, no_reveal=True)
-    output_dir = tmp_path / ".paperforge" / "output"
     # Find the generated paper.tex in any output directory
     tex_files = list(tmp_path.rglob("paper.tex"))
     assert tex_files, "paper.tex not generated"

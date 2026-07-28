@@ -14,7 +14,12 @@ from rich.panel import Panel
 from rich.text import Text
 
 from paperforge.commands.doctor import collect_issues
-from paperforge.core.project import Affiliation, Biography, PaperForgeProject, ProjectConfig
+from paperforge.core.project import (
+    Affiliation,
+    Biography,
+    PaperForgeProject,
+    ProjectConfig,
+)
 from paperforge.models.claim import Claim
 from paperforge.models.figure import Figure
 from paperforge.models.table import Table
@@ -1311,10 +1316,25 @@ def _reveal_output(path: Path) -> None:
         pass  # Never crash the build over a reveal failure
 
 
+def _cleanup_aux_files(output_dir: Path) -> None:
+    """Remove LaTeX auxiliary files after compilation."""
+    aux_extensions = {
+        ".aux", ".log", ".fls", ".fdb_latexmk",
+        ".out", ".bbl", ".blg", ".synctex.gz",
+        ".toc", ".lof", ".lot",
+    }
+    for f in output_dir.iterdir():
+        if f.is_file() and f.suffix in aux_extensions:
+            try:
+                f.unlink()
+            except OSError:
+                pass
+
+
 def _rotate_output(project_root: Path, output_dir: Path | None = None) -> None:
     """
     Before each build, copy current/ to previous/.
-    This preserves the last successful build for comparison.
+    Only copies meaningful files — never aux files.
     """
     if output_dir is None:
         project = PaperForgeProject.load(project_root)
@@ -1326,20 +1346,19 @@ def _rotate_output(project_root: Path, output_dir: Path | None = None) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     previous_dir.mkdir(parents=True, exist_ok=True)
 
-    rotatable = [
-        "paper.tex",
+    keep_files = [
         "paper.pdf",
-        "paper.docx",
+        "paper_overleaf.zip",
+        "paper.tex",
         "references.bib",
+        "paper.docx",
         "traceability.tex",
     ]
 
-    for filename in rotatable:
+    for filename in keep_files:
         src = output_dir / filename
         dst = previous_dir / filename
         if src.exists():
-            import shutil
-
             shutil.copy2(str(src), str(dst))
 
 
@@ -1398,6 +1417,18 @@ def run(
 
     rel_output = project.config.build_output_dir or "paper/paper_generated/current"
     output_dir = project_root / rel_output
+
+    # Warn if a stale paper_generated/ exists at project root when output is configured elsewhere
+    stale_root = project_root / "paper_generated"
+    try:
+        if stale_root.exists() and not output_dir.is_relative_to(stale_root):
+            console.print(
+                "[yellow]Found stale paper_generated/ at project root. "
+                "Run `paperforge clean` to remove it.[/yellow]"
+            )
+    except (AttributeError, TypeError):
+        pass
+
     _rotate_output(project_root, output_dir)
     pdf_path = output_dir / "paper.pdf"
 
@@ -1461,6 +1492,9 @@ def run(
             bib_status = "references.bib    (stubs generated — fill in real entries)"
 
     _pdf_ok, compiler = _compile_pdf_full(tex_path, output_dir)
+
+    # Always clean aux files after compilation (success or failure)
+    _cleanup_aux_files(output_dir)
 
     if compiler == "none":
         console.print(

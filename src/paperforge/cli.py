@@ -504,5 +504,15 @@ def validate(
     run(project_root=path.resolve(), output=output)
 
 
+@app.command()
+def clean(
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+) -> None:
+    """Remove stale build artifacts and LaTeX aux files."""
+    from paperforge.commands.clean import run
+
+    run(project_root=path.resolve())
+
+
 if __name__ == "__main__":
     app()

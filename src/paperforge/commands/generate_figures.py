@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import Any
 
 import yaml
 from rich.console import Console
@@ -17,7 +18,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 console = Console()
 
-IEEE_STYLE = {
+IEEE_STYLE: dict[str, Any] = {
     "font.family": "serif",
     "font.serif": ["Times New Roman", "Times", "DejaVu Serif"],
     "font.size": 8,
@@ -67,7 +68,7 @@ def _generate_bar_chart(
     matplotlib.use("Agg")  # non-interactive backend
     import matplotlib.pyplot as plt
 
-    plt.rcParams.update(IEEE_STYLE)
+    plt.rcParams.update(IEEE_STYLE)  # type: ignore[arg-type]
 
     metrics = experiment.metrics
     if not metrics:
@@ -165,7 +166,7 @@ def _generate_grouped_bar_chart(
     import matplotlib.pyplot as plt
     import numpy as np
 
-    plt.rcParams.update(IEEE_STYLE)
+    plt.rcParams.update(IEEE_STYLE)  # type: ignore[arg-type]
 
     if not experiments:
         return
@@ -251,19 +252,10 @@ def _generate_line_chart(
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    plt.rcParams.update(IEEE_STYLE)
+    plt.rcParams.update(IEEE_STYLE)  # type: ignore[arg-type]
 
     markers = ["o", "s", "^", "D", "v", "x", "+"]
     linestyles = ["-", "--", "-.", ":", "-", "--", "-."]
-    colors = [
-        "#1f77b4",
-        "#ff7f0e",
-        "#2ca02c",
-        "#d62728",
-        "#9467bd",
-        "#8c564b",
-        "#e377c2",
-    ]
 
     fig_width = figure.width_inches if figure.width_inches else 3.5
     _fig, ax = plt.subplots(figsize=(fig_width, fig_width * 0.75))

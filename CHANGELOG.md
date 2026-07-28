@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+### Fixed
+- Build `current/` now contains only `paper.pdf`, `paper.tex`, `references.bib`,
+  `paper_overleaf.zip` — all LaTeX aux files (`.aux` `.log` `.fls` `.bbl` `.blg`
+  `.out` `.synctex.gz` `.toc` `.lof` `.lot` `.fdb_latexmk`) are deleted
+  automatically after every compilation (success or failure)
+- `_rotate_output` (current → previous) copies only meaningful files —
+  `paper.pdf`, `paper_overleaf.zip`, `paper.tex`, `references.bib`, `paper.docx`,
+  `traceability.tex` — aux files are never propagated to `previous/`
+- Overleaf zip now written to configured `build_output_dir` only;
+  old fallback to project root or `base_dir` removed
+- Duplicate `paper_generated/` at project root is detected and warned at build time
+- Traceability export now writes the `.tex` copy to `build_output_dir`, not `paper/`
+
+### Added
+- `paperforge clean` command: removes stale `paper_generated/` at project root
+  and all LaTeX aux files from `paper_generated/` subdirectories
+
 ## [1.3.0] — 2026-07-29
 
 ### Fixed (Phase 33)
