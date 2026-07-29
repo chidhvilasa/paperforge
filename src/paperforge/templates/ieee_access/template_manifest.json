@@ -1,0 +1,29 @@
+{
+  "venue_id": "ieee-access",
+  "template_name": "IEEE Access Official Template",
+  "template_version": "1.0.0",
+  "paperforge_compatibility_version": "1.5.0",
+  "date_added": "2026-07-30",
+  "source_url": "https://ieeeaccess.ieee.org/submitting-an-article/refine-a-submission/",
+  "expected_documentclass": "IEEEtran",
+  "approved_class_options": ["journal", "transmag", "conference", "onecolumn", "twocolumn", "access"],
+  "required_markers": [
+    "\\documentclass",
+    "\\journalid",
+    "\\title",
+    "\\author",
+    "\\begin{abstract}",
+    "\\begin{keywords}"
+  ],
+  "optional_markers": [
+    "\\IEEEmembership",
+    "\\begin{IEEEbiography}",
+    "\\hypersetup"
+  ],
+  "forbidden_markers": [
+    "\\documentclass{acmart}",
+    "\\documentclass{article}",
+    "\\usepackage{neurips}"
+  ],
+  "required_files": ["IEEEtran.cls"]
+}

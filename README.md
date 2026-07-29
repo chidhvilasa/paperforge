@@ -162,6 +162,12 @@ paperforge improve claim_01
 
 # 11. Optional: AI-assisted review (requires llm)
 paperforge review
+
+# 12. Preflight visual rendering & visual overlap scan
+paperforge preflight --mode submission
+
+# 13. Reference & DOI verification
+paperforge references --online
 ```
 
 ## Math and Equations

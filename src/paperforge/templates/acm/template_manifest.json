@@ -1,0 +1,24 @@
+{
+  "venue_id": "acm",
+  "template_name": "ACM Master Article Template (acmart)",
+  "template_version": "1.0.0",
+  "paperforge_compatibility_version": "1.5.0",
+  "date_added": "2026-07-30",
+  "source_url": "https://www.acm.org/publications/proceedings-template",
+  "expected_documentclass": "acmart",
+  "approved_class_options": ["sigconf", "sigplan", "journal", "manuscript"],
+  "required_markers": [
+    "\\documentclass",
+    "\\title",
+    "\\author",
+    "\\begin{abstract}"
+  ],
+  "optional_markers": [
+    "\\begin{teaserfigure}",
+    "\\hypersetup"
+  ],
+  "forbidden_markers": [
+    "\\documentclass{IEEEtran}"
+  ],
+  "required_files": ["acmart.cls"]
+}

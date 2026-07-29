@@ -521,5 +521,49 @@ def clean(
     run(project_root=path.resolve())
 
 
+@app.command()
+def preflight(
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    mode: str = typer.Option("draft", "--mode", "-m", help="Build mode: draft or submission."),
+    pdf: Path | None = typer.Option(None, "--pdf", help="Custom PDF path to inspect."),
+    json_output: bool = typer.Option(False, "--json", help="Output results as JSON."),
+    open_renders: bool = typer.Option(False, "--open-renders", help="Open rendered page images folder."),
+) -> None:
+    """Run rendered PDF preflight, template fingerprinting, visual overlap & structural checks."""
+    from paperforge.commands.preflight import run
+
+    run(
+        project_root=path.resolve(),
+        mode=mode,
+        pdf_path=pdf,
+        json_output=json_output,
+        open_renders=open_renders,
+    )
+
+
+@app.command()
+def references(
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    online: bool = typer.Option(False, "--online", help="Verify DOIs against Crossref API."),
+) -> None:
+    """Verify BibTeX reference metadata and optionally check DOIs against Crossref."""
+    from paperforge.core.project import PaperForgeProject
+    from paperforge.services.reference_verifier import verify_references
+
+    project = PaperForgeProject.load(path.resolve())
+    reports_dir = (
+        project.output_dir.parent.parent / "reports"
+        if project.output_dir.parent.name == "paper_generated"
+        else project.output_dir / "reports"
+    )
+    reports_dir.mkdir(parents=True, exist_ok=True)
+
+    rep = verify_references(project, reports_dir, online=online)
+    typer.echo(
+        f"Reference verification complete. Checked {rep.total_citations} references "
+        f"(online verified: {rep.online_verified_count}). Status: {'PASSED' if rep.passed else 'ISSUES FOUND'}"
+    )
+
+
 if __name__ == "__main__":
     app()

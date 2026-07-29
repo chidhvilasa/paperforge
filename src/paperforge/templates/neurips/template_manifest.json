@@ -1,0 +1,25 @@
+{
+  "venue_id": "neurips",
+  "template_name": "NeurIPS Conference Template",
+  "template_version": "1.0.0",
+  "paperforge_compatibility_version": "1.5.0",
+  "date_added": "2026-07-30",
+  "source_url": "https://neurips.cc/Conferences/2024/CallForPapers",
+  "expected_documentclass": "article",
+  "approved_class_options": ["10pt", "letterpaper"],
+  "required_markers": [
+    "\\documentclass",
+    "\\usepackage{neurips_2024}",
+    "\\title",
+    "\\author",
+    "\\begin{abstract}"
+  ],
+  "optional_markers": [
+    "\\hypersetup"
+  ],
+  "forbidden_markers": [
+    "\\documentclass{IEEEtran}",
+    "\\documentclass{acmart}"
+  ],
+  "required_files": ["neurips_2024.sty"]
+}

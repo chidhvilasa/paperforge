@@ -1,0 +1,26 @@
+{
+  "venue_id": "ieee",
+  "template_name": "IEEEtran Conference / Journal Template",
+  "template_version": "1.0.0",
+  "paperforge_compatibility_version": "1.5.0",
+  "date_added": "2026-07-30",
+  "source_url": "https://www.ieee.org/conferences/publishing/templates.html",
+  "expected_documentclass": "IEEEtran",
+  "approved_class_options": ["conference", "journal", "transmag", "compsoc", "onecolumn", "twocolumn", "10pt", "11pt"],
+  "required_markers": [
+    "\\documentclass",
+    "\\title",
+    "\\author",
+    "\\begin{abstract}"
+  ],
+  "optional_markers": [
+    "\\begin{IEEEkeywords}",
+    "\\IEEEmembership",
+    "\\hypersetup"
+  ],
+  "forbidden_markers": [
+    "\\documentclass{acmart}",
+    "\\documentclass{article}"
+  ],
+  "required_files": ["IEEEtran.cls"]
+}

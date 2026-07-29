@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import platform
 import re
 import shutil
@@ -1471,13 +1472,13 @@ def _generate_build_reports(
     output_dir: Path,
     mode: str,
 ) -> None:
-    reports_dir = output_dir.parent.parent / "reports"
+    reports_dir = output_dir.parent.parent / "reports" if output_dir.parent.name == "paper_generated" else output_dir / "reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
 
     from datetime import datetime
     ts = datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M")
 
-    # doctor.md
+    # doctor.md & doctor.json
     errors = [i for i in issues if getattr(i, "severity", "") == "ERROR"]
     warnings = [i for i in issues if getattr(i, "severity", "") == "WARNING"]
     infos = [i for i in issues if getattr(i, "severity", "") == "INFO"]
@@ -1501,6 +1502,38 @@ def _generate_build_reports(
         doc_lines.append(f"| {i.code} | {i.message} |\n")
 
     (reports_dir / "doctor.md").write_text("".join(doc_lines), encoding="utf-8")
+    doctor_json_data = [
+        {
+            "code": getattr(i, "code", ""),
+            "severity": getattr(i, "severity", ""),
+            "message": getattr(i, "message", ""),
+            "claim_id": getattr(i, "claim_id", ""),
+        }
+        for i in issues
+    ]
+    (reports_dir / "doctor.json").write_text(json.dumps(doctor_json_data, indent=2), encoding="utf-8")
+
+    # Run services to produce remaining reports
+    from paperforge.services.pdf_preflight import run_pdf_preflight
+    from paperforge.services.reference_verifier import verify_references
+    from paperforge.services.structural_integrity import check_structural_integrity
+    from paperforge.services.template_fingerprint import verify_template_fingerprint
+
+    tex_file = output_dir / "paper.tex"
+    tex_text = tex_file.read_text(encoding="utf-8") if tex_file.exists() else ""
+    fp_res = verify_template_fingerprint(tex_text, project.config.venue or "ieee", output_dir)
+    (reports_dir / "venue_fingerprint.json").write_text(json.dumps(fp_res.to_dict(), indent=2), encoding="utf-8")
+    (reports_dir / "venue_fingerprint.md").write_text(
+        f"# Venue Fingerprint Report — {ts}\n\n- Status: {fp_res.status}\n- Venue: {fp_res.requested_venue}\n- Detected: {fp_res.detected_template}\n",
+        encoding="utf-8",
+    )
+
+    check_structural_integrity(project, reports_dir, mode=mode, tex_content=tex_text)
+    verify_references(project, reports_dir, online=False)
+
+    pdf_file = output_dir / "paper.pdf"
+    if pdf_file.exists():
+        run_pdf_preflight(pdf_file, reports_dir, mode=mode)
 
     # claim_evidence_report.md
     ev_lines = [
@@ -1555,7 +1588,7 @@ def run(
         console.print(f"[red]{exc}[/red]")
         sys.exit(1)
 
-    issues = collect_issues(project)
+    issues = collect_issues(project, mode=mode)
     venue_issues = plugin.validate(project)
 
     submission_mode = (mode == "submission")
@@ -1579,7 +1612,6 @@ def run(
     rel_output = project.config.build_output_dir or "paper/paper_generated/current"
     output_dir = project_root / rel_output
 
-    # Warn if a stale paper_generated/ exists at project root when output is configured elsewhere
     stale_root = project_root / "paper_generated"
     try:
         if stale_root.exists() and not output_dir.is_relative_to(stale_root):
@@ -1632,100 +1664,82 @@ def run(
     }
     has_citation_yamls = len(project.citations) > 0
     bib_path = output_dir / "references.bib"
-    bib_status = ""
 
     if has_citation_yamls:
-        # Always regenerate from YAML source of truth
         bib_content = _generate_bibliography_from_citations(
             project, all_claim_citation_keys
         )
         bib_path.write_text(bib_content, encoding="utf-8")
-        bib_status = f"references.bib    (generated from {len(project.citations)} citation YAML(s))"
     elif all_claim_citation_keys:
-        # Fall back to preserve-or-stub behavior
-        if _bib_has_real_entries(bib_path):
-            console.print(
-                "[dim]references.bib already contains real entries "
-                "— preserving existing file.[/dim]"
-            )
-            bib_status = "references.bib    (preserved — real entries detected)"
-        else:
+        if not _bib_has_real_entries(bib_path):
             bib_path.write_text(
                 _generate_bibliography_stubs(all_claim_citation_keys),
                 encoding="utf-8",
             )
-            console.print(
-                "[dim]references.bib: generated stubs. "
-                "Replace with real BibTeX entries.[/dim]"
-            )
-            bib_status = "references.bib    (stubs generated — fill in real entries)"
 
     _pdf_ok, compiler = _compile_pdf_full(tex_path, output_dir)
-
-    # Always clean aux files after compilation (success or failure)
     _cleanup_aux_files(output_dir)
 
     if compiler == "none":
-        console.print(
-            "[yellow]No LaTeX toolchain found. Generating DOCX instead...[/yellow]"
-        )
+        console.print("[yellow]No LaTeX toolchain found. Generating DOCX instead...[/yellow]")
         docx_path = _generate_docx(project, output_dir)
-        console.print(
-            f"[green]DOCX generated: {docx_path.relative_to(project_root)}[/green]"
-        )
+        console.print(f"[green]DOCX generated: {docx_path.relative_to(project_root)}[/green]")
     else:
-        pdf_ok_actual = pdf_path.exists()
-        if pdf_ok_actual:
+        if pdf_path.exists():
             console.print(f"[green]PDF generated: {rel_output}/paper.pdf[/green]")
             if not no_reveal:
                 _reveal_output(pdf_path)
         else:
-            console.print(
-                f"[red]LaTeX compilation failed. Check {rel_output}/paper.log[/red]"
-            )
+            console.print(f"[red]LaTeX compilation failed. Check {rel_output}/paper.log[/red]")
+
+    reports_dir = output_dir.parent.parent / "reports" if output_dir.parent.name == "paper_generated" else output_dir / "reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+
+    # Run preflight & reports
+    from paperforge.services.pdf_preflight import run_pdf_preflight
+    from paperforge.services.reference_verifier import verify_references
+    from paperforge.services.structural_integrity import check_structural_integrity
+    from paperforge.services.template_fingerprint import verify_template_fingerprint
+
+    fp_res = verify_template_fingerprint(latex, target, output_dir)
+    struct_res = check_structural_integrity(project, reports_dir, mode=mode, tex_content=latex)
+    ref_res = verify_references(project, reports_dir, online=False)
+
+    pdf_preflight_passed = False
+    overlap_passed = False
+    artifact_passed = False
+
+    if pdf_path.exists():
+        pdf_res = run_pdf_preflight(pdf_path, reports_dir, mode=mode)
+        pdf_preflight_passed = pdf_res.passed
+        overlap_passed = not any(i.get("code") == "PDF_OBJECT_OVERLAP" for i in pdf_res.issues)
+        artifact_passed = not any(i.get("code") == "PDF_TEXT_ARTIFACT" for i in pdf_res.issues)
+
+    submission_ready = _pdf_ok and pdf_preflight_passed and fp_res.passed and struct_res.passed and ref_res.passed
+
+    body_lines = [
+        Text(f"LaTeX compilation:  {'PASSED ✓' if _pdf_ok else 'FAILED ✗'} ({compiler})"),
+        Text(f"PDF rendering:      {'PASSED ✓' if pdf_path.exists() else 'FAILED ✗'}"),
+        Text(f"Visual overlap scan:{'PASSED ✓' if overlap_passed else 'FAILED ✗'}"),
+        Text(f"Text artifact scan: {'PASSED ✓' if artifact_passed else 'FAILED ✗'}"),
+        Text(f"Structural integrity:{'PASSED ✓' if struct_res.passed else 'FAILED ✗'}"),
+        Text(f"Venue fingerprint:  {'PASSED ✓' if fp_res.passed else 'FAILED ✗'}"),
+        Text(f"Submission readiness:{'PASSED ✓' if submission_ready else 'BLOCKED ✗'} ({mode} mode)"),
+        Text(""),
+        Text(f"Output directory:   {rel_output}"),
+        Text(f"Reports directory:  {reports_dir.relative_to(project_root)}"),
+    ]
 
     unique_citations = {c for claim in project.claims for c in claim.citations}
-
-    if compiler == "none":
-        body_lines = [
-            Text(f"Output:    {rel_output}/paper.docx  \u2713  (LaTeX not installed)"),
-            Text(f"Source:    {rel_output}/paper.tex"),
-            Text("Install TeX Live for PDF: https://tug.org/texlive/"),
-            Text("Or upload paper_overleaf.zip to Overleaf for free PDF"),
-        ]
-    elif pdf_path.exists():
-        body_lines = [
-            Text(f"Output:    {rel_output}/paper.pdf  \u2713"),
-            Text(f"Compiled:  {compiler}"),
-            Text(f"Source:    {rel_output}/paper.tex"),
-        ]
-    else:
-        body_lines = [
-            Text(f"Output:    {rel_output}/paper.tex  (compilation failed)"),
-            Text(f"Log:       {rel_output}/paper.log"),
-            Text("Check the log for LaTeX errors."),
-        ]
-
-    if bib_status:
-        body_lines.append(Text(f"  {bib_status}"))
-    body_lines.append(Text(""))
     body = Group(
         *body_lines,
+        Text(""),
         Text(f"Claims compiled:    {len(project.claims)}"),
         Text(f"Sections:           {len(project.config.sections)}"),
         Text(f"Citations:          {len(unique_citations)}"),
-        Text(""),
-        Text("To compile PDF manually:"),
-        Text(f"  cd {rel_output}"),
-        Text("  pdflatex paper.tex"),
-        Text(""),
-        Text(
-            "Next step: Review paper.tex and run `paperforge doctor`\n"
-            "           before submission."
-        ),
     )
 
-    console.print(Panel(body, title="Build Complete", border_style="green"))
+    console.print(Panel(body, title="Build Summary", border_style="green" if submission_ready else "red"))
 
     if venue_warnings:
         console.print()
@@ -1733,6 +1747,9 @@ def run(
         for issue in venue_warnings:
             console.print(Text(f"  [{issue.code}] {issue.message}"))
 
-    # Generate build reports
     _generate_build_reports(project, issues + venue_issues, output_dir, mode)
+
+    if submission_mode and not submission_ready and not force_anyway:
+        console.print("[red]Submission mode build blocked due to preflight/quality failures.[/red]")
+        sys.exit(1)
 

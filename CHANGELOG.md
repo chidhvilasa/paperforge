@@ -1,6 +1,29 @@
 # Changelog
 
-## [Unreleased]
+## [1.5.0] — 2026-07-30
+
+### Added (Phase 36 — Visual PDF Preflight, Template Fingerprinting, Structural Integrity, Reference Verification)
+- **Rendered PDF Preflight Suite (`paperforge preflight`)**: PyMuPDF (`fitz`) visual rendering of all PDF pages to high-resolution PNG images (`paper_generated/reports/pdf_pages/page-XXX.png`).
+- **Template Fingerprinting (`template_manifest.json`)**: Venue template manifests and verification for IEEE (`ieee`), IEEE Access (`ieee_access`), ACM (`acm`), and NeurIPS (`neurips`).
+- **Visual Overlap & Bounding Box Detection**: Bounding box geometry analysis catching overlapping headings, text-on-text overlaps, and Index Terms overlapping Introduction headings.
+- **Text Artifact & Escaping Corruption Detection**: Scans PDF text for raw LaTeX commands (`\textbf`, `\texttt`), escaping corruption (`extbf{`, `exttt{`), `[??]`, `[?]`, `undefined citation`, `TODO`, `TBD`, `[REQUIRED INFORMATION MISSING`, and malformed percentages (`73.6At`).
+- **Blank & Near-Blank Page Detection**: Detects blank pages and displaced float pages.
+- **Canonical Document Outline & Structural Integrity**: Section roadmap verification, float-after-conclusion detection (`FLOAT_AFTER_CONCLUSION`), duplicate label detection (`DUPLICATE_OR_CONFLICTING_LABEL`), and symbolic reference resolver (`{{section:id}}`, `{{figure:id}}`, `{{table:id}}`).
+- **Reference Verification & Crossref API Integration (`paperforge references verify --online`)**: BibTeX citation validation with optional Crossref API DOI lookups and local caching.
+- **13 New Doctor Checks (Checks 91–103)**:
+  - Check 91: `VENUE_TEMPLATE_MISMATCH` (ERROR)
+  - Check 92: `VENUE_TEMPLATE_UNVERIFIED` (WARNING/ERROR)
+  - Check 93: `RAW_LATEX_ESCAPE_CORRUPTION` (ERROR)
+  - Check 94: `PDF_RENDER_FAILED` (ERROR)
+  - Check 95: `PDF_TEXT_ARTIFACT` (ERROR)
+  - Check 96: `PDF_OBJECT_OVERLAP` (ERROR)
+  - Check 97: `PDF_CONTENT_OUT_OF_BOUNDS` (ERROR)
+  - Check 98: `PDF_NEAR_BLANK_PAGE` (WARNING/ERROR)
+  - Check 99: `SECTION_ROADMAP_MISMATCH` (WARNING/ERROR)
+  - Check 100: `FLOAT_AFTER_CONCLUSION` (WARNING/ERROR)
+  - Check 101: `DUPLICATE_OR_CONFLICTING_LABEL` (ERROR)
+  - Check 102: `UNRESOLVED_CROSS_REFERENCE` (ERROR)
+  - Check 103: `REFERENCE_METADATA_MISMATCH` (WARNING)
 
 ## [1.4.0] — 2026-07-30
 

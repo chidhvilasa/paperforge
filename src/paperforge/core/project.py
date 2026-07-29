@@ -344,3 +344,11 @@ class PaperForgeProject:
     @property
     def paperforge_dir(self) -> Path:
         return self.root / self.PAPERFORGE_DIR
+
+    @property
+    def project_root(self) -> Path:
+        return self.root
+
+    @property
+    def output_dir(self) -> Path:
+        return self.root / (self.config.build_output_dir or "paper_generated/current")

@@ -201,3 +201,29 @@ def test_regression_submission_mode_blocks_more(tmp_path: Path, monkeypatch) -> 
     with pytest.raises(SystemExit) as exc:
         build.run(tmp_path, mode="submission")
     assert exc.value.code == 1
+
+
+def test_regression_raw_latex_escape_corruption(tmp_path: Path) -> None:
+    """Detect malformed control sequences like extbf{Low} in claim text."""
+    _init_project(tmp_path)
+    pf = tmp_path / ".paperforge"
+    claim = Claim(
+        id="c_bad_esc",
+        text="The latency is extbf{Low} under high load.",
+        experiment="exp_01",
+        sections=["results"],
+    )
+    (pf / "claims" / "c_bad_esc.yaml").write_text(yaml.dump(claim.to_yaml()), encoding="utf-8")
+
+    project = PaperForgeProject.load(tmp_path)
+    issues = collect_issues(project)
+    assert any(i.code == "RAW_LATEX_ESCAPE_CORRUPTION" for i in issues)
+
+
+def test_regression_venue_template_mismatch(tmp_path: Path) -> None:
+    """Detect template fingerprint mismatch when wrong template class is generated."""
+    _init_project(tmp_path)
+    project = PaperForgeProject.load(tmp_path)
+    issues = collect_issues(project)
+    # Default initialized project is ieee-access but generated tex may lack IEEE Access specific markers
+    assert any(i.code in ("VENUE_TEMPLATE_MISMATCH", "VENUE_TEMPLATE_UNVERIFIED") for i in issues)

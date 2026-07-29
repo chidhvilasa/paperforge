@@ -1,4 +1,4 @@
-"""LaTeX utility functions."""
+"""LaTeX utility functions and safe escaping pipeline."""
 
 from __future__ import annotations
 
@@ -44,7 +44,7 @@ def _escape_text(text: str) -> str:
     if not text:
         return text
 
-    # Step 1: Backslash
+    # Step 1: Backslash placeholder
     text = text.replace("\\", "\x00BACKSLASH\x00")
 
     # Step 2: Special LaTeX characters
@@ -97,21 +97,114 @@ def _escape_text(text: str) -> str:
     return text
 
 
+def escape_prose(text: str) -> str:
+    """Escape general prose text safely."""
+    if not text:
+        return ""
+    escaped = escape_latex(text)
+    return markdown_to_latex_inline(escaped)
+
+
+def escape_title(text: str) -> str:
+    """Escape paper or section title text."""
+    if not text:
+        return ""
+    return escape_latex(text)
+
+
+def escape_author(text: str) -> str:
+    """Escape author name or affiliation text."""
+    if not text:
+        return ""
+    return escape_latex(text)
+
+
+def escape_keywords(keywords: list[str]) -> str:
+    """Escape keywords for LaTeX output."""
+    if not keywords:
+        return ""
+    escaped = [escape_latex(k) for k in keywords]
+    return ", ".join(escaped)
+
+
+def escape_table_cell(text: str) -> str:
+    """Escape table cell contents."""
+    if not text:
+        return ""
+    return escape_latex(str(text))
+
+
+def escape_figure_caption(text: str) -> str:
+    """Escape figure caption text."""
+    if not text:
+        return ""
+    return escape_prose(text)
+
+
+def escape_url(url: str) -> str:
+    """Format URL for LaTeX using \\url{}."""
+    if not url:
+        return ""
+    clean_url = url.replace("\\", "/").replace("%", "%")
+    return f"\\url{{{clean_url}}}"
+
+
+def escape_filepath(path: str) -> str:
+    """Format file path safely for LaTeX text."""
+    if not path:
+        return ""
+    return escape_latex(path)
+
+
+def escape_code(code: str) -> str:
+    """Format code/monospace text safely."""
+    if not code:
+        return ""
+    return f"\\texttt{{{escape_latex(code)}}}"
+
+
+def escape_math(math_expr: str) -> str:
+    """Return math expression (validated or protected)."""
+    if not math_expr:
+        return ""
+    return math_expr
+
+
+def escape_bibtex(text: str) -> str:
+    """Escape BibTeX field content."""
+    if not text:
+        return ""
+    # Protect special characters in bibtex fields
+    t = text.replace("&", "\\&").replace("%", "\\%").replace("_", "\\_").replace("#", "\\#")
+    return t
+
+
+def detect_raw_latex_corruption(text: str) -> list[str]:
+    """Detect malformed control sequences or raw LaTeX in user prose."""
+    if not text:
+        return []
+    corruptions = []
+    checks = [
+        ("extbf{", "extbf{ (malformed \\textbf from tab corruption)"),
+        ("exttt{", "exttt{ (malformed \\texttt from tab corruption)"),
+        ("\\textbf", "raw \\textbf command in prose"),
+        ("\\texttt", "raw \\texttt command in prose"),
+        ("\\begin{", "\\begin{ (raw LaTeX environment command in prose)"),
+        ("\\end{", "\\end{ (raw LaTeX environment command in prose)"),
+        ("egin{", "egin{ (malformed \\begin from tab corruption)"),
+        ("nd{", "nd{ (malformed \\end from tab corruption)"),
+    ]
+    for sub, desc in checks:
+        if sub in text:
+            corruptions.append(desc)
+    return corruptions
+
+
 def markdown_to_latex_inline(text: str) -> str:
     """Convert inline Markdown formatting to LaTeX commands.
 
     Applied AFTER escape_latex() so the conversion targets
     already-escaped text where needed. Called only when is_math=False.
-
-    Handles:
-      Markdown headers (## Heading) -> \\textbf{Heading}
-      Markdown links [text](url) -> \\href{url}{text}
-      Markdown bullet lists -> \\begin{itemize}\\item ...\\end{itemize}
-      Markdown numbered lists -> \\begin{enumerate}\\item ...\\end{enumerate}
-      Bare URLs -> \\url{url}
-      **text** -> \\textbf{text}
-      *text*   -> \\textit{text}
-      `text`   -> \\texttt{text}
     """
     if not text:
         return text
@@ -136,7 +229,7 @@ def markdown_to_latex_inline(text: str) -> str:
         list_block = f"\\begin{{enumerate}}\n{items_str}\n\\end{{enumerate}}"
         text = re.sub(r"(?:^\s*\d+\.\s+.+$\n?)+", list_block + "\n", text, flags=re.MULTILINE)
 
-    # Bare URLs: http://... or https://... -> \url{...} (avoid replacing already converted \href)
+    # Bare URLs: http://... or https://... -> \url{...}
     text = re.sub(r"(?<!\\href\{)(?<!\\url\{)(https?://[^\s{}()]+)", r"\\url{\1}", text)
 
     # Bold (** must come before * to avoid partial match)

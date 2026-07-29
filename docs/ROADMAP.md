@@ -83,26 +83,18 @@ sections_overview full-sentence detection.
 Critical bug fixes: LaTeX escaping, BibTeX pipeline,
 claim deduplication, stale PDF handling.
 
-### v1.4.0 (this release)
-CRITICAL fix: figures/ copied to build dir before pdflatex.
-PDF quality verification from pdflatex log.
-Audit compliance (Phase 34): structured author fields,
-draft/submission build modes, claim constraints,
-required-information placeholders, regression fixture.
-10 new doctor checks (81-90, total 90).
-492 tests.
-
-## Planned
-
-### v1.5.0 — Template Fingerprinting + PDF Preflight
-- PF-VENUE-001: verify IEEEtran.cls version/hash in build
-- PF-PDF-001: render every compiled page to image
-- PF-PDF-002: detect text/figure/table overlap in rendered pages
-- PF-PDF-003: blank page detector (biography-only pages)
-- PF-PDF-004: text artifact scan on compiled PDF
-- PF-REF-001: optional Crossref API validation for citations
-- B3: full paper_information/ restructure with numbered
-  subdirectories (01_content/ through 12_ethics/)
+### v1.5.0 (Phase 36 — Released)
+- PyMuPDF PDF page image rendering (`pdf_pages/page-XXX.png`).
+- Template fingerprinting for IEEE, IEEE Access, ACM, NeurIPS.
+- Visual overlap & bounding box defect detection (`PDF_OBJECT_OVERLAP`).
+- Text artifact scanner (`PDF_TEXT_ARTIFACT`).
+- Blank & near-blank page detector (`PDF_NEAR_BLANK_PAGE`).
+- Structural integrity & canonical outline engine (`SECTION_ROADMAP_MISMATCH`, `FLOAT_AFTER_CONCLUSION`, `DUPLICATE_OR_CONFLICTING_LABEL`).
+- Reference verification with optional Crossref API lookups (`paperforge references verify --online`).
+- CLI command `paperforge preflight`.
+- 13 new doctor checks (91-103, total 103 doctor checks).
+- 25 CLI commands.
+- 499 tests.
 
 ## Non-Goals
 

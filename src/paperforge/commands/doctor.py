@@ -55,7 +55,7 @@ def _is_acronym_defined(acronym: str, all_texts: list[str]) -> bool:
     return False
 
 
-def collect_issues(project: PaperForgeProject) -> list[Issue]:
+def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issue]:
     issues: list[Issue] = []
 
     for claim in project.claims:
@@ -1539,6 +1539,58 @@ def collect_issues(project: PaperForgeProject) -> list[Issue]:
                             claim_id=claim.id,
                         )
                     )
+
+    # --- Phase 36 Preflight & Integrity Checks (Checks 91-103) ---
+    from paperforge.services.pdf_preflight import run_pdf_preflight
+    from paperforge.services.reference_verifier import verify_references
+    from paperforge.services.structural_integrity import check_structural_integrity
+    from paperforge.services.template_fingerprint import verify_template_fingerprint
+    from paperforge.utils.latex import detect_raw_latex_corruption
+
+    # Check 91 & 92 — VENUE_TEMPLATE_MISMATCH (ERROR) & VENUE_TEMPLATE_UNVERIFIED (WARNING/ERROR)
+    venue_target = project.config.venue or "ieee"
+    tex_file = project.output_dir / "paper.tex"
+    tex_text = tex_file.read_text(encoding="utf-8") if tex_file.exists() else ""
+    fp_res = verify_template_fingerprint(tex_text, venue_target, project.output_dir)
+    for fp_iss in fp_res.issues:
+        code = fp_iss["code"]
+        sev = fp_iss["severity"]
+        if code == "VENUE_TEMPLATE_UNVERIFIED" and mode == "submission":
+            sev = "ERROR"
+        issues.append(Issue(code=code, severity=cast(Literal["ERROR", "WARNING", "INFO"], sev), message=fp_iss["message"]))
+
+    # Check 93 — RAW_LATEX_ESCAPE_CORRUPTION (ERROR)
+    for claim in project.claims:
+        if not claim.is_math and claim.text:
+            corruptions = detect_raw_latex_corruption(claim.text)
+            for c_desc in corruptions:
+                issues.append(
+                    Issue(
+                        code="RAW_LATEX_ESCAPE_CORRUPTION",
+                        severity="ERROR",
+                        message=f"{claim.id} contains raw LaTeX/escape corruption: {c_desc}. Represent formatting semantically or enable is_math: true.",
+                        claim_id=claim.id,
+                    )
+                )
+
+    # Check 99, 100, 101, 102 — Structural Integrity
+    reports_dir = project.output_dir.parent.parent / "reports" if project.output_dir.parent.name == "paper_generated" else project.output_dir / "reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    struct_res = check_structural_integrity(project, reports_dir, mode=mode, tex_content=tex_text)
+    for s_iss in struct_res.issues:
+        issues.append(Issue(code=s_iss["code"], severity=cast(Literal["ERROR", "WARNING", "INFO"], s_iss["severity"]), message=s_iss["message"], claim_id=s_iss.get("claim_id", "")))
+
+    # Check 103 — REFERENCE_METADATA_MISMATCH (WARNING)
+    ref_res = verify_references(project, reports_dir, online=False)
+    for r_iss in ref_res.issues:
+        issues.append(Issue(code=r_iss["code"], severity=cast(Literal["ERROR", "WARNING", "INFO"], r_iss["severity"]), message=r_iss["message"]))
+
+    # Checks 94-98 — PDF Preflight (if PDF exists)
+    pdf_file = project.output_dir / "paper.pdf"
+    if pdf_file.exists():
+        pdf_res = run_pdf_preflight(pdf_file, reports_dir, mode=mode)
+        for p_iss in pdf_res.issues:
+            issues.append(Issue(code=p_iss["code"], severity=cast(Literal["ERROR", "WARNING", "INFO"], p_iss["severity"]), message=p_iss["message"]))
 
     return issues
 
