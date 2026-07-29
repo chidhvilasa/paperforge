@@ -77,7 +77,7 @@ See [CONSTITUTION.md](CONSTITUTION.md).
 ## Install
 
 ```bash
-pip install paperforge-research==1.2.0
+pip install paperforge-research==1.4.0
 # or always latest:
 pip install paperforge-research
 ```
@@ -299,6 +299,21 @@ LaTeX auxiliary files (`*.aux`, `*.log`, etc.) are gitignored automatically.
 
 After a successful PDF compilation, PaperForge opens the `paper/` folder automatically. Use `--no-reveal` to suppress this.
 
+## Build Modes
+
+```bash
+paperforge build --target ieee-access            # draft mode (default)
+paperforge build --target ieee-access --mode submission  # strict
+```
+
+**Draft mode** blocks on critical errors only
+(empty claims, missing captions, LaTeX artifacts).
+
+**Submission mode** adds additional blocking checks:
+metric mismatches, abstract/intro overlap, duplicate claims,
+author identity inconsistencies, citation internal notes,
+and claim constraint violations.
+
 ## Data Objects
 
 PaperForge tracks three types of structured research data
@@ -429,6 +444,16 @@ paperforge review --model gpt-4o
 
 AI output is advisory only. It is never a source of truth.
 Review output is saved locally and never committed to git.
+
+## What Was Fixed in v1.4.0
+
+**Critical:** Every PDF generated before v1.4.0 had blank
+figure boxes and `[?]` citation placeholders because pdflatex
+ran from the build directory where `figures/` did not exist.
+The tool reported "PDF generated ✓" anyway by only checking
+that the PDF file existed. This is fixed: figures are now
+copied into the build directory before compilation, and the
+pdflatex log is parsed to detect broken compilations.
 
 ## Contributing
 

@@ -1,6 +1,6 @@
 [project]
 name = "paperforge-research"
-version = "1.3.0"
+version = "1.4.0"
 description = "A research dependency engine that tracks the graph between experiments and scientific claims so your paper is always internally consistent."
 readme = "README.md"
 license = { text = "MIT" }

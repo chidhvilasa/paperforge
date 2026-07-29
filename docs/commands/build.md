@@ -89,10 +89,35 @@ theorem-type claim exists.
 Inline math `$...$` in regular claims is automatically
 protected from escaping.
 
+## Build Modes
+
+```bash
+paperforge build --mode draft         # default: blocks on critical P0 errors only
+paperforge build --mode submission    # strict: blocks on extended set of errors & warnings
+paperforge build --force-anyway       # overrides all blocking checks (NOT recommended for submission)
+```
+
+- **`--mode draft` (default)**: blocks only on critical structural P0 errors (`ORPHAN_CLAIM`, `EMPTY_CLAIM_TEXT`, `LATEX_ARTIFACT_IN_CLAIM`, `REQUIRED_PLACEHOLDER_IN_CLAIM`, etc.).
+- **`--mode submission`**: strict mode for final paper submission. Blocks on extended check set including metric claim mismatches, abstract/intro overlap, author identity inconsistencies, claim constraint violations, and citation internal notes.
+- **`--force-anyway`**: forces compilation even if doctor checks fail. Useful during early draft preparation.
+
+## Figure Path Resolution
+
+Figures referenced in YAML metadata are automatically resolved and copied into the build directory before `pdflatex` compilation runs:
+- Resolves paths from `figures/`, `paper_information/figures/`, and `paper_information/05_figures/generated/`.
+- Prevents `pdflatex` from falling back to draft placeholder boxes when compilation runs inside `paper_generated/current/`.
+
+## PDF Quality & Compilation Verification
+
+After compilation, PaperForge inspects the `pdflatex` / `latexmk` log output:
+- Detects undefined citation references (`[?]`), missing figure files, LaTeX syntax errors, and draft fallback mode.
+- Emits Doctor check 90 (`BUILD_PDF_INCOMPLETE`, WARNING) when quality flaws are detected in the log.
+- Displays build status as "complete" or "may be incomplete" in the final output panel.
+
 ## Notes
 
-- **Runs doctor checks first.** Any ERROR-severity issue blocks the build. Fix issues with `paperforge doctor` before building.
-- WARNINGs do not block the build.
+- **Runs doctor checks first.** Blocking checks block the build according to selected `--mode`.
+- WARNINGs do not block draft builds.
 - `--target` selects the venue plugin: `ieee` (default), `acm`, `neurips`, etc. Each sets the correct LaTeX document class, preamble, and author block.
 - `paper_type` in `paper.yaml` controls template selection ("conference" default, "journal" for transactions).
 - `keywords` field in `paper.yaml` used in `\IEEEkeywords` block.
@@ -105,7 +130,7 @@ protected from escaping.
 - `affiliations` in `paper.yaml` improve author block for journals.
 - `hyperref` and `microtype` now included in all IEEE preambles.
 - `wide: true` on Figure or Table YAMLs generates `figure*` / `table*` environments for two-column spanning in IEEE layout.
-- Output goes to `paper/` at project root by default (configured in `paper.yaml`).
+- Output goes to `paper_generated/current/` by default (configured in `paper.yaml`).
 - Creates `paper/.gitignore` automatically to exclude auxiliary build files.
 - Automatically opens/selects the generated PDF in OS file explorer via `_reveal_output` behavior unless `--no-reveal` is passed.
 - Use `paperforge venues` to see all available targets.

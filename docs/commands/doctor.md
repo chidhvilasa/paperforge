@@ -119,6 +119,17 @@ On a project with issues, each issue is printed with its code and severity:
 | 49 | `MULTI_EXPERIMENT_CLAIM` | INFO | Claim links to additional experiments beyond primary |
 | 75 | `MATH_CLAIM_MISSING_FLAG` | WARNING | Claim text contains LaTeX math commands but is_math: false |
 | 76 | `PROOF_WITHOUT_THEOREM` | WARNING | Proof claim has no preceding theorem/lemma |
+| 81 | `AUTHOR_IDENTITY_INCONSISTENT` | ERROR | Author family name inconsistent across biography, metadata, or title |
+| 81 | `AUTHOR_NAME_INCOMPLETE` | ERROR | Author entry missing given_name, family_name, or display_name |
+| 82 | `MISSING_PDF_METADATA` | WARNING | paper.yaml missing title, keywords, or author email for PDF metadata |
+| 83 | `LATEX_ARTIFACT_IN_CLAIM` | ERROR | Claim text contains unresolved markdown/LaTeX artifacts |
+| 84 | `REQUIRED_PLACEHOLDER_IN_CLAIM` | ERROR | Claim text contains required-information missing placeholder |
+| 85 | `CLAIM_CONSTRAINT_VIOLATED` | ERROR | Claim permitted_only_if condition violated by experiment metrics |
+| 86 | `PVALUE_AMBIGUOUS` | WARNING | Single p-value reported for multiple metrics in claim text |
+| 87 | `SIGNIFICANCE_LANGUAGE_MISMATCH` | WARNING | Non-significant language combined with positive claim framing |
+| 88 | `CITATION_HAS_INTERNAL_NOTE` | ERROR | Citation notes contain internal research commentary |
+| 89 | `NUMERIC_VALUE_UNSOURCED` | WARNING | Claim contains numeric value not traceable to experiments or citations |
+| 90 | `BUILD_PDF_INCOMPLETE` | WARNING | PDF compilation log contains warnings, missing files, or draft fallback |
 
 ## Self-Check
 
@@ -133,15 +144,19 @@ without requiring a PaperForge project. Checks:
 
 These checks are always run by `collect_issues()`, independent of `--target`.
 
-### Severity Breakdown (49 Checks Total)
-- **8 ERRORs**: `ORPHAN_CLAIM`, `MISSING_EXPERIMENT`, `STALE_CLAIM`, `EMPTY_CLAIM_TEXT`, `METRIC_CLAIM_MISMATCH`, `RESULTS_SECTION_EMPTY`, `TABLE_NO_CAPTION`, `CITATION_NO_TITLE` (blocks build and git hook).
-- **39 WARNINGs**: advisory issues that report potential problems but do not block commands.
+### Severity Breakdown (90 Checks Total)
+- **14 ERRORs**: `ORPHAN_CLAIM`, `MISSING_EXPERIMENT`, `STALE_CLAIM`, `EMPTY_CLAIM_TEXT`, `METRIC_CLAIM_MISMATCH`, `RESULTS_SECTION_EMPTY`, `TABLE_NO_CAPTION`, `CITATION_NO_TITLE`, `AUTHOR_IDENTITY_INCONSISTENT`, `AUTHOR_NAME_INCOMPLETE`, `LATEX_ARTIFACT_IN_CLAIM`, `REQUIRED_PLACEHOLDER_IN_CLAIM`, `CLAIM_CONSTRAINT_VIOLATED`, `CITATION_HAS_INTERNAL_NOTE` (blocks build and git hook).
+- **74 WARNINGs**: advisory issues that report potential problems but do not block draft builds.
 - **2 INFOs**: `EVIDENCE_COVERAGE` score, `MULTI_EXPERIMENT_CLAIM` notice, informational only.
+
+### Build Modes (--mode)
+- **Draft mode (`--mode draft`, default)**: blocks only on critical P0 structural errors.
+- **Submission mode (`--mode submission`)**: strict mode, blocks on extended set including metric mismatches, abstract/intro overlap, author identity inconsistencies, claim constraint violations, and internal citation notes.
 
 Note on `TABLE_NO_CAPTION` vs `FIGURE_NO_CAPTION`: `TABLE_NO_CAPTION` is an **ERROR** (unlike `FIGURE_NO_CAPTION` which is a WARNING) because a table without a caption cannot appear in any IEEE submission, whereas figures may occasionally be used inline or in draft contexts without captions.
 
 - `--fix` only auto-resolves `UNVERIFIED_CLAIM` by setting those claims to `stale`.
-- `--target` runs the venue plugin's own `validate()` on top of these 49 checks and
+- `--target` runs the venue plugin's own `validate()` on top of these 90 checks and
   prints the results under a separate `VENUE (<display name>)` heading. Venue checks
   include things like `UNCITED_CLAIM` (IEEE), `MISSING_SEED`/`MISSING_DATASET` (NeurIPS),
   and `MISSING_RELATED_WORK` (ACM) — see `paperforge venues` and each plugin's source

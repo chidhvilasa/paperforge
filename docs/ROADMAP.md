@@ -83,30 +83,26 @@ sections_overview full-sentence detection.
 Critical bug fixes: LaTeX escaping, BibTeX pipeline,
 claim deduplication, stale PDF handling.
 
-### v1.2.0 (this release)
-Critical production fixes from real IEEE paper use.
-Math mode: is_math/raw_latex fields, inline math protection.
-claim_type: theorem/lemma/definition/proof environments.
-Markdown bold/italic/code in claim text.
-Configurable paths: all directories read from paper.yaml.
-Citations rendered inline as \cite{key1,key2}.
-Import parses subsections and [citation-key] notation.
-Multi-series line charts in generate-figures.
-Shared author affiliations and IEEE membership grades.
-doctor --self-check installation health command.
-441 tests. 76 doctor checks.
+### v1.4.0 (this release)
+CRITICAL fix: figures/ copied to build dir before pdflatex.
+PDF quality verification from pdflatex log.
+Audit compliance (Phase 34): structured author fields,
+draft/submission build modes, claim constraints,
+required-information placeholders, regression fixture.
+10 new doctor checks (81-90, total 90).
+492 tests.
 
 ## Planned
 
-### v1.3.0 — Multi-Experiment Comparison
-- paperforge compare-experiments: grouped bar/line chart
-  across multiple experiments with significance markers
-- Significance annotation: *, **, *** on bars from
-  linked Wilcoxon p-values in experiment YAML
-- Notation table auto-generation from tracked symbols
-- Definition list / \textbf{Term:} paragraph support
-- paperforge doctor --full: run all 76 checks plus
-  style checks (passive voice count, sentence length)
+### v1.5.0 — Template Fingerprinting + PDF Preflight
+- PF-VENUE-001: verify IEEEtran.cls version/hash in build
+- PF-PDF-001: render every compiled page to image
+- PF-PDF-002: detect text/figure/table overlap in rendered pages
+- PF-PDF-003: blank page detector (biography-only pages)
+- PF-PDF-004: text artifact scan on compiled PDF
+- PF-REF-001: optional Crossref API validation for citations
+- B3: full paper_information/ restructure with numbered
+  subdirectories (01_content/ through 12_ethics/)
 
 ## Non-Goals
 
