@@ -2,22 +2,38 @@
 
 ## [Unreleased]
 
+### Added (Phase 34 — Audit Compliance)
+- Structured author fields: given_name, family_name, display_name, citation_name, ieee_membership_grade, affiliation_ids; never derive surname by heuristic splitting
+- affiliations: dict/list in paper.yaml (separate from authors list)
+- PDF metadata via \hypersetup (pdftitle, pdfauthor, pdfsubject, pdfkeywords) in all build output
+- Draft vs submission build modes (--mode draft/submission); submission mode blocks on extended set of P0 failures
+- --force-anyway flag to override blocking checks
+- paper_generated/reports/ directory with doctor.md, claim_evidence_report.md, submission_checklist.md
+- Claim.permitted_only_if field: conditions evaluated against experiment metrics, violations block build
+- tests/fixtures/failed_builds/vanet_2026_07/ regression fixture
+- REQUIRED_PLACEHOLDER_PATTERN: emit structured placeholder when required info missing; blocks build
+
 ### Fixed
-- Build `current/` now contains only `paper.pdf`, `paper.tex`, `references.bib`,
-  `paper_overleaf.zip` — all LaTeX aux files (`.aux` `.log` `.fls` `.bbl` `.blg`
-  `.out` `.synctex.gz` `.toc` `.lof` `.lot` `.fdb_latexmk`) are deleted
-  automatically after every compilation (success or failure)
-- `_rotate_output` (current → previous) copies only meaningful files —
-  `paper.pdf`, `paper_overleaf.zip`, `paper.tex`, `references.bib`, `paper.docx`,
-  `traceability.tex` — aux files are never propagated to `previous/`
-- Overleaf zip now written to configured `build_output_dir` only;
-  old fallback to project root or `base_dir` removed
+- Author block never emits \IEEEmembership{} unless ieee_membership_grade is explicitly set to a valid grade
+- IEEE_membership null/Student Member suppressed
+- Build `current/` now contains only `paper.pdf`, `paper.tex`, `references.bib`, `paper_overleaf.zip` — all LaTeX aux files are deleted automatically after compilation
+- `_rotate_output` (current → previous) copies only meaningful files, aux files are never propagated to `previous/`
+- Overleaf zip now written to configured `build_output_dir` only
 - Duplicate `paper_generated/` at project root is detected and warned at build time
-- Traceability export now writes the `.tex` copy to `build_output_dir`, not `paper/`
+- Traceability export now writes `.tex` copy to `build_output_dir`
 
 ### Added
-- `paperforge clean` command: removes stale `paper_generated/` at project root
-  and all LaTeX aux files from `paper_generated/` subdirectories
+- `paperforge clean` command: removes stale `paper_generated/` at project root and all LaTeX aux files from `paper_generated/` subdirectories
+- Doctor Checks 81-89:
+  - 81 AUTHOR_IDENTITY_INCONSISTENT (ERROR) & AUTHOR_NAME_INCOMPLETE (ERROR)
+  - 82 MISSING_PDF_METADATA (WARNING)
+  - 83 LATEX_ARTIFACT_IN_CLAIM (ERROR)
+  - 84 REQUIRED_PLACEHOLDER_IN_CLAIM (ERROR)
+  - 85 CLAIM_CONSTRAINT_VIOLATED (ERROR)
+  - 86 PVALUE_AMBIGUOUS (WARNING)
+  - 87 SIGNIFICANCE_LANGUAGE_MISMATCH (WARNING)
+  - 88 CITATION_HAS_INTERNAL_NOTE (ERROR)
+  - 89 NUMERIC_VALUE_UNSOURCED (WARNING)
 
 ## [1.3.0] — 2026-07-29
 

@@ -29,6 +29,7 @@ class Claim:
     raw_latex: bool = False
     claim_type: str = "claim"  # claim, theorem, lemma, definition, proof, corollary, remark
     import_hash: str = ""
+    permitted_only_if: list[str] = field(default_factory=list)
 
     @classmethod
     def from_yaml(cls, data: dict) -> Claim:
@@ -54,6 +55,7 @@ class Claim:
             raw_latex=bool(data.get("raw_latex", False)),
             claim_type=str(data.get("claim_type", "claim")),
             import_hash=str(data.get("import_hash", "")),
+            permitted_only_if=data.get("permitted_only_if", []) or [],
         )
 
     def to_yaml(self) -> dict:
@@ -78,4 +80,5 @@ class Claim:
             "raw_latex": self.raw_latex,
             "claim_type": self.claim_type,
             "import_hash": self.import_hash,
+            "permitted_only_if": self.permitted_only_if,
         }

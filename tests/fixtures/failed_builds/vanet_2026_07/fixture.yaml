@@ -1,0 +1,20 @@
+description: "VANET 2026-07 failed build fixture"
+source: "Adaptive_Context_Aware_Batch_Verification paper"
+date: "2026-07-29"
+issues_to_detect:
+  - code: AUTHOR_IDENTITY_INCONSISTENT
+    description: "wrong family name (Vilasa vs Yepuri)"
+  - code: LATEX_ARTIFACT_IN_CLAIM
+    description: "isolated I and II artifacts"
+  - code: CITATION_HAS_INTERNAL_NOTE
+    description: "editorial comments in references"
+  - code: PVALUE_AMBIGUOUS
+    description: "one p-value attached to two metrics"
+  - code: CLAIM_CONSTRAINT_VIOLATED
+    description: "scalability claim with negative high-density"
+  - code: SIGNIFICANCE_LANGUAGE_MISMATCH
+    description: "statistically indistinguishable framed as improvement"
+  - code: REQUIRED_PLACEHOLDER_IN_CLAIM
+    description: "missing batch timeout placeholder"
+  - code: NUMERIC_VALUE_UNSOURCED
+    description: "unsupported cryptographic timing values"

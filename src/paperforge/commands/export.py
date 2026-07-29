@@ -75,7 +75,7 @@ def _generate_json(project: PaperForgeProject) -> str:
         "exported_at": datetime.now(tz=UTC).isoformat(),
         "project": {
             "title": project.config.title,
-            "authors": project.config.authors,
+            "authors": [a.full_name if hasattr(a, "full_name") else str(a) for a in project.config.authors],
             "venue": project.config.venue,
             "status": project.config.status,
             "sections": project.config.sections,
@@ -124,7 +124,7 @@ def _generate_json(project: PaperForgeProject) -> str:
 def _generate_markdown(project: PaperForgeProject) -> str:
     now = datetime.now(tz=UTC).isoformat(timespec="seconds")
     title = project.config.title or "Untitled Paper"
-    authors = ", ".join(project.config.authors) if project.config.authors else "TBD"
+    authors = ", ".join(str(a) for a in project.config.authors) if project.config.authors else "TBD"
     venue = project.config.venue or "Not specified"
     status = project.config.status
 

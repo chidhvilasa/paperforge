@@ -91,7 +91,7 @@ def _build_dashboard(
     proj_table.add_row("Title:", project.config.title or "(not set)")
     proj_table.add_row(
         "Authors:",
-        ", ".join(project.config.authors) if project.config.authors else "(not set)",
+        ", ".join(str(a) for a in project.config.authors) if project.config.authors else "(not set)",
     )
     proj_table.add_row("Venue:", project.config.venue or "(not set)")
     proj_table.add_row("Status:", project.config.status)

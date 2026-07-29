@@ -54,7 +54,61 @@ class Biography:
 
 
 @dataclass
+class Author:
+    given_name: str = ""
+    family_name: str = ""
+    display_name: str = ""
+    citation_name: str = ""
+    email: str = ""
+    affiliation_ids: list[str] = field(default_factory=list)
+    corresponding: bool = False
+    ieee_membership_grade: str | None = None
+    orcid: str | None = None
+    biography: str = ""
+
+    @property
+    def full_name(self) -> str:
+        if self.display_name:
+            return self.display_name
+        parts = [self.given_name, self.family_name]
+        res = " ".join(p for p in parts if p)
+        return res
+
+    @property
+    def cite_name(self) -> str:
+        if self.citation_name:
+            return self.citation_name
+        if self.given_name and self.family_name:
+            return f"{self.given_name[0]}. {self.family_name}"
+        return self.full_name
+
+    def __str__(self) -> str:
+        return self.full_name
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any] | str) -> Author:
+        if isinstance(data, str):
+            return cls(display_name=data)
+        aff_ids = data.get("affiliation_ids") or []
+        if not aff_ids and data.get("affiliation"):
+            aff_ids = [str(data.get("affiliation"))]
+        return cls(
+            given_name=str(data.get("given_name", "") or ""),
+            family_name=str(data.get("family_name", "") or ""),
+            display_name=str(data.get("display_name", "") or data.get("name", "") or ""),
+            citation_name=str(data.get("citation_name", "") or ""),
+            email=str(data.get("email", "") or ""),
+            affiliation_ids=[str(x) for x in aff_ids],
+            corresponding=bool(data.get("corresponding", False)),
+            ieee_membership_grade=data.get("ieee_membership_grade") or data.get("membership"),
+            orcid=data.get("orcid"),
+            biography=str(data.get("biography", "") or ""),
+        )
+
+
+@dataclass
 class Affiliation:
+    id: str = ""
     name: str = ""
     institution: str = ""
     department: str = ""
@@ -65,16 +119,19 @@ class Affiliation:
     shared_with: list[str] = field(default_factory=list)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> Affiliation:
+    def from_dict(cls, data: dict[str, Any] | str, key: str = "") -> Affiliation:
+        if isinstance(data, str):
+            return cls(id=key, name=data, institution=data)
         return cls(
-            name=data.get("name", ""),
-            institution=data.get("institution", ""),
-            department=data.get("department", ""),
-            city=data.get("city", ""),
-            country=data.get("country", ""),
-            email=data.get("email", ""),
-            membership=data.get("membership", ""),
-            shared_with=data.get("shared_with") or [],
+            id=key or str(data.get("id", "") or ""),
+            name=str(data.get("name", "") or data.get("institution", "") or ""),
+            institution=str(data.get("institution", "") or ""),
+            department=str(data.get("department", "") or ""),
+            city=str(data.get("city", "") or ""),
+            country=str(data.get("country", "") or ""),
+            email=str(data.get("email", "") or ""),
+            membership=str(data.get("membership", "") or ""),
+            shared_with=[str(x) for x in (data.get("shared_with") or [])],
         )
 
 
@@ -82,7 +139,7 @@ class Affiliation:
 class ProjectConfig:
     version: str
     title: str
-    authors: list[str]
+    authors: list[Author]
     venue: str
     status: str
     sections: list[str]
@@ -110,10 +167,27 @@ class ProjectConfig:
     @classmethod
     def from_yaml(cls, data: dict) -> ProjectConfig:
         build = data.get("build", {})
+        raw_authors = data.get("authors", [])
+        authors = [Author.from_dict(a) for a in raw_authors]
+
+        raw_affs = data.get("affiliations")
+        affiliations: list[Affiliation] = []
+        if isinstance(raw_affs, dict):
+            affiliations = [Affiliation.from_dict(v, key=k) for k, v in raw_affs.items()]
+        elif isinstance(raw_affs, list):
+            affiliations = [Affiliation.from_dict(a) for a in raw_affs]
+
+        bios = [Biography.from_dict(b) for b in data.get("biographies", [])]
+        # Supplement biographies from author biographies if not explicitly listed
+        existing_bio_authors = {b.author for b in bios}
+        for a in authors:
+            if a.biography and a.full_name not in existing_bio_authors:
+                bios.append(Biography(author=a.full_name, text=a.biography))
+
         return cls(
             version=data.get("version", "0.1"),
             title=data.get("title", ""),
-            authors=data.get("authors", []),
+            authors=authors,
             venue=data.get("venue", ""),
             status=data.get("status", "draft"),
             sections=data.get("sections", []),
@@ -123,7 +197,7 @@ class ProjectConfig:
             latex_template=build.get("latex_template", "ieee"),
             paper_type=data.get("paper_type", "conference"),
             keywords=data.get("keywords", []),
-            affiliations=[Affiliation.from_dict(a) for a in data.get("affiliations", [])],
+            affiliations=affiliations,
             acknowledgment=data.get("acknowledgment", ""),
             email=data.get("email", ""),
             orcid=data.get("orcid", ""),
@@ -135,7 +209,7 @@ class ProjectConfig:
             publisher_id=data.get("publisher_id", ""),
             sections_overview=data.get("sections_overview", ""),
             theorem_packages=bool(build.get("theorem_packages", True)),
-            biographies=[Biography.from_dict(b) for b in data.get("biographies", [])],
+            biographies=bios,
             ai_disclosure=data.get("ai_disclosure", ""),
         )
 

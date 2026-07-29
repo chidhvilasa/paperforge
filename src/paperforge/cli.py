@@ -130,6 +130,12 @@ def build(
     force_anyway: bool = typer.Option(
         False, "--force-anyway", help="Build even if doctor checks fail. NOT recommended for submission."
     ),
+    mode: str = typer.Option(
+        "draft",
+        "--mode",
+        "-m",
+        help="Build mode: draft or submission. Submission mode blocks on all P0 failures.",
+    ),
 ) -> None:
     """Compile research data into an IEEE LaTeX paper."""
     from paperforge.commands.build import run
@@ -140,6 +146,7 @@ def build(
         no_reveal=no_reveal,
         force=force,
         force_anyway=force_anyway,
+        mode=mode,
     )
 
 

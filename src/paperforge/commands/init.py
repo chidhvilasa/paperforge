@@ -20,7 +20,7 @@ PAPER_YAML = """\
 version: "0.1"
 title: ""              # Title case. Under 15 words. No period.
 authors:
-  - ""                 # Full name, e.g. "Alice Smith"
+  - display_name: "Author Name" # Full name, e.g. "Alice Smith"
 venue: ""              # e.g. "IEEE Access"
 status: "draft"        # draft | submitted | accepted | published
 paper_type: "journal"  # conference | journal
@@ -205,19 +205,25 @@ CONCLUSION_MD = """\
 
 AUTHOR_YAML = """\
 # Author information
-# One entry per author. Mark corresponding: true for the
-# corresponding author.
+# One entry per author. Mark corresponding: true for the corresponding author.
 authors:
-  - name: "Your Name"
-    affiliation: "Your Institution"
-    department: "Your Department"
-    city: "Your City"
-    country: "Your Country"
-    email: "your@email.com"
-    membership: "Member"    # Member, Senior Member, Fellow
-    shared_with: []         # other authors sharing this footnote
-    orcid: ""
-    corresponding: true
+  - given_name: ""
+    family_name: ""
+    display_name: ""       # full display: "Chidhvilasa Yepuri"
+    citation_name: ""      # abbreviated: "C. Yepuri"
+    email: ""
+    affiliation_ids: []    # list of affiliation keys
+    corresponding: false
+    ieee_membership_grade: null  # null unless verified
+    orcid: null            # null until set
+    biography: ""          # text for IEEEbiography block
+
+affiliations:
+  vit_scse:
+    institution: "Vellore Institute of Technology"
+    department: "School of Computer Science and Engineering"
+    city: "Vellore"
+    country: "India"
 """
 
 METADATA_YAML = """\

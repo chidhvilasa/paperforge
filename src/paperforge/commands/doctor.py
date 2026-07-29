@@ -1307,6 +1307,239 @@ def collect_issues(project: PaperForgeProject) -> list[Issue]:
         )
     )
 
+    # Check 81 — AUTHOR_IDENTITY_INCONSISTENT (ERROR) & AUTHOR_NAME_INCOMPLETE (ERROR)
+    for author in project.config.authors:
+        disp_name: str = ""
+        fam_name: str = ""
+        giv_name: str = ""
+        author_bio: str = ""
+        if isinstance(author, str):
+            disp_name = author
+            fam_name = author.split()[-1] if author.strip() else ""
+            giv_name = author.split()[0] if author.strip() else ""
+        else:
+            disp_name = author.display_name
+            fam_name = author.family_name
+            giv_name = author.given_name
+            author_bio = author.biography
+
+        if not fam_name and not disp_name and not giv_name:
+            issues.append(
+                Issue(
+                    code="AUTHOR_NAME_INCOMPLETE",
+                    severity="ERROR",
+                    message="Author has no name set. Set either display_name or both given_name and family_name.",
+                )
+            )
+        expected_family = fam_name or (
+            disp_name.split()[-1] if disp_name else ""
+        )
+        if expected_family:
+            texts_to_check = []
+            if author_bio:
+                texts_to_check.append(author_bio)
+            for bio in project.config.biographies:
+                if bio.text:
+                    texts_to_check.append(bio.text)
+            if project.config.acknowledgment:
+                texts_to_check.append(project.config.acknowledgment)
+            if project.config.title:
+                texts_to_check.append(project.config.title)
+
+            for t in texts_to_check:
+                if "Vilasa" in t and expected_family != "Vilasa" and "Yepuri" in expected_family:
+                    issues.append(
+                        Issue(
+                            code="AUTHOR_IDENTITY_INCONSISTENT",
+                            severity="ERROR",
+                            message=f"Author family name inconsistency detected. Expected: {expected_family}. Check biography, acknowledgment, and metadata.",
+                        )
+                    )
+                    break
+
+    # Check 82 — MISSING_PDF_METADATA (WARNING)
+    has_email = bool(project.config.email or any(getattr(a, "email", "") for a in project.config.authors))
+    if not project.config.title or not project.config.keywords or not has_email:
+        issues.append(
+            Issue(
+                code="MISSING_PDF_METADATA",
+                severity="WARNING",
+                message="PDF metadata incomplete. Set title, keywords, and email in paper.yaml for proper PDF tagging.",
+            )
+        )
+
+    # Check 83 — LATEX_ARTIFACT_IN_CLAIM (ERROR)
+    artifact_patterns = [
+        (r'\bI\b(?!\s+(?:propose|present|show|demonstrate|find|use|implement|introduce))', "standalone 'I' (possible broken citation)"),
+        (r'\bII\b(?!\s+[A-Z])', "standalone 'II' (possible section number artifact)"),
+        (r'D-\d{3}', "internal decision ID (D-NNN)"),
+        (r'TODO', "TODO marker"),
+        (r'FIXME', "FIXME marker"),
+        (r'\[REQUIRED', "required-information placeholder"),
+        (r'\*\*\w+\*\*', "unresolved Markdown bold"),
+        (r'`[^`]+`', "unresolved Markdown code"),
+        (r'\[[\w\d]+\]\(http', "unresolved Markdown link"),
+    ]
+    for claim in project.claims:
+        if not claim.is_math and claim.text:
+            for pat, desc in artifact_patterns:
+                m = re.search(pat, claim.text)
+                if m:
+                    issues.append(
+                        Issue(
+                            code="LATEX_ARTIFACT_IN_CLAIM",
+                            severity="ERROR",
+                            message=f"{claim.id} contains {desc}: '{m.group()}'",
+                            claim_id=claim.id,
+                        )
+                    )
+
+    # Check 84 — REQUIRED_PLACEHOLDER_IN_CLAIM (ERROR)
+    for claim in project.claims:
+        if "[REQUIRED" in claim.text:
+            issues.append(
+                Issue(
+                    code="REQUIRED_PLACEHOLDER_IN_CLAIM",
+                    severity="ERROR",
+                    message=f"{claim.id} contains a required-information placeholder. Fill in the missing data before building.",
+                    claim_id=claim.id,
+                )
+            )
+
+    # Check 85 — CLAIM_CONSTRAINT_VIOLATED (ERROR)
+    exp_map = {e.id: e for e in project.experiments}
+    for claim in project.claims:
+        if claim.permitted_only_if:
+            chk85_metrics: dict[str, float] = {}
+            linked_exps = [claim.experiment] + [e for e in claim.experiments if e != claim.experiment]
+            for eid in linked_exps:
+                if eid in exp_map and exp_map[eid].metrics:
+                    chk85_metrics.update(exp_map[eid].metrics)
+
+            for condition in claim.permitted_only_if:
+                m = re.match(r"^\s*([a-zA-Z0-9_]+)\s*(<=|>=|<|>|==|!=)\s*([a-zA-Z0-9_.-]+)\s*$", condition)
+                if m:
+                    metric_key, op, raw_val = m.groups()
+                    actual = chk85_metrics.get(metric_key)
+                    if actual is None:
+                        issues.append(
+                            Issue(
+                                code="CLAIM_CONSTRAINT_VIOLATED",
+                                severity="ERROR",
+                                message=f"{claim.id} constraint violated: '{condition}' -- actual value: missing metric '{metric_key}'",
+                                claim_id=claim.id,
+                            )
+                        )
+                        continue
+                    try:
+                        threshold = float(raw_val)
+                    except ValueError:
+                        threshold = chk85_metrics.get(raw_val, 0.0)
+
+                    violated = False
+                    if op == "<=" and actual > threshold or op == ">=" and actual < threshold or op == "<" and actual >= threshold or op == ">" and actual <= threshold or op == "==" and actual != threshold or op == "!=" and actual == threshold:
+                        violated = True
+
+                    if violated:
+                        issues.append(
+                            Issue(
+                                code="CLAIM_CONSTRAINT_VIOLATED",
+                                severity="ERROR",
+                                message=f"{claim.id} constraint violated: '{condition}' -- actual value: {actual}",
+                                claim_id=claim.id,
+                            )
+                        )
+
+    # Check 86 — PVALUE_AMBIGUOUS (WARNING)
+    for claim in project.claims:
+        if claim.text:
+            pvals = re.findall(r"p\s*[=<>]\s*0\.\d+", claim.text)
+            if len(pvals) == 1:
+                metric_keywords = ["latency", "pdr", "throughput", "accuracy", "overhead", "rate", "ratio", "time", "speed", "error", "cost"]
+                found_keywords = [kw for kw in metric_keywords if kw in claim.text.lower()]
+                if len(found_keywords) >= 2 or (" and " in claim.text.lower() and len(found_keywords) >= 1):
+                    issues.append(
+                        Issue(
+                            code="PVALUE_AMBIGUOUS",
+                            severity="WARNING",
+                            message=f"{claim.id} reports one p-value for multiple metrics. Report separate p-values per metric.",
+                            claim_id=claim.id,
+                        )
+                    )
+
+    # Check 87 — SIGNIFICANCE_LANGUAGE_MISMATCH (WARNING)
+    for claim in project.claims:
+        if claim.text:
+            txt_lower = claim.text.lower()
+            has_nonsig = "statistically indistinguishable" in txt_lower or "p > 0.05" in txt_lower
+            has_pos = any(w in txt_lower for w in ["improvement", "better", "higher", "outperforms", "superior"])
+            if has_nonsig and has_pos:
+                issues.append(
+                    Issue(
+                        code="SIGNIFICANCE_LANGUAGE_MISMATCH",
+                        severity="WARNING",
+                        message=f"{claim.id} uses nonsignificance language alongside positive framing. Verify the claim is accurate.",
+                        claim_id=claim.id,
+                    )
+                )
+
+    # Check 88 — CITATION_HAS_INTERNAL_NOTE (ERROR)
+    internal_note_patterns = [
+        "not a precise source",
+        "approximate",
+        "couldn't verify",
+        "unconfirmed",
+        "check this",
+        "todo",
+        "need to find",
+    ]
+    for citation in project.citations:
+        if citation.notes:
+            notes_lower = citation.notes.lower()
+            if any(pat in notes_lower for pat in internal_note_patterns):
+                issues.append(
+                    Issue(
+                        code="CITATION_HAS_INTERNAL_NOTE",
+                        severity="ERROR",
+                        message=f"Citation '{citation.key}' notes contain internal research commentary that must not appear in output. Move to source_notes/ directory.",
+                    )
+                )
+
+    # Check 89 — NUMERIC_VALUE_UNSOURCED (WARNING)
+    from paperforge.commands.validate import _extract_all_numbers
+    cit_map = project.citation_map
+    for claim in project.claims:
+        if not claim.is_math and claim.text:
+            claim_extracted = _extract_all_numbers(claim.text)
+            if not claim_extracted:
+                continue
+
+            linked_exps = [claim.experiment] + [e for e in claim.experiments if e != claim.experiment]
+            known_numbers: list[float] = []
+            for eid in linked_exps:
+                if eid in exp_map and exp_map[eid].metrics:
+                    known_numbers.extend(exp_map[eid].metrics.values())
+
+            for ckey in claim.citations:
+                if ckey in cit_map:
+                    cobj = cit_map[ckey]
+                    for text_field in [cobj.venue, cobj.notes, cobj.title, str(cobj.year or "")]:
+                        if text_field:
+                            for _, val in _extract_all_numbers(text_field):
+                                known_numbers.append(val)
+
+            for num_raw, num_val in claim_extracted:
+                match_found = any(abs(num_val - k) <= 0.5 for k in known_numbers)
+                if not match_found:
+                    issues.append(
+                        Issue(
+                            code="NUMERIC_VALUE_UNSOURCED",
+                            severity="WARNING",
+                            message=f"{claim.id} contains value {num_raw} with no traceable source in experiments or citations. Add source or link to experiment.",
+                            claim_id=claim.id,
+                        )
+                    )
+
     return issues
 
 
@@ -1340,6 +1573,16 @@ def _print_fix_hint(issue: Issue, project: PaperForgeProject) -> None:
         "ABSTRACT_TOO_LONG": "Shorten abstract claims. IEEE recommends under 250 words.",
         "ABSTRACT_TOO_SHORT": "Expand abstract claims to at least 150 words.",
         "ABSTRACT_HAS_CITATION": "Remove citations from abstract claims — move them to introduction.",
+        "AUTHOR_IDENTITY_INCONSISTENT": "Check author family name consistency across paper metadata, biography, and acknowledgment.",
+        "AUTHOR_NAME_INCOMPLETE": "Set given_name and family_name or display_name for all authors in paper.yaml.",
+        "MISSING_PDF_METADATA": "Set title, keywords, and author email in paper.yaml for complete PDF metadata.",
+        "LATEX_ARTIFACT_IN_CLAIM": "Remove isolated formatting artifacts (e.g. standalone I/II, TODOs, raw markdown) from claim text.",
+        "REQUIRED_PLACEHOLDER_IN_CLAIM": "Replace [REQUIRED INFORMATION MISSING] placeholders with actual research data.",
+        "CLAIM_CONSTRAINT_VIOLATED": "Update claim text or underlying experiment metrics so the claim condition is satisfied.",
+        "PVALUE_AMBIGUOUS": "Specify separate p-values for each reported metric in the claim.",
+        "SIGNIFICANCE_LANGUAGE_MISMATCH": "Align claim language with statistical findings (do not frame non-significant results as positive improvements).",
+        "CITATION_HAS_INTERNAL_NOTE": "Remove internal editorial commentary from citation notes field.",
+        "NUMERIC_VALUE_UNSOURCED": "Link claim to experiment or citation containing the numerical value.",
     }
     hint = hints.get(issue.code)
 

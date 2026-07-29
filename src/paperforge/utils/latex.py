@@ -148,4 +148,14 @@ def markdown_to_latex_inline(text: str) -> str:
     return text
 
 
+REQUIRED_PLACEHOLDER_PATTERN = r"\[REQUIRED[^\]]*\]"
+
+
+def emit_required_placeholder(field_name: str) -> str:
+    """Emit a structured placeholder for missing required info.
+    These are caught by the artifact check and block build.
+    """
+    return f"[REQUIRED INFORMATION MISSING: {field_name}]"
+
+
 convert_markdown_to_latex = markdown_to_latex_inline

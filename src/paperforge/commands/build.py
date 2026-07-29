@@ -7,7 +7,9 @@ import re
 import shutil
 import subprocess
 import sys
+from datetime import UTC
 from pathlib import Path
+from typing import Any
 
 from rich.console import Console, Group
 from rich.panel import Panel
@@ -593,19 +595,32 @@ def _generate_journal_sections(
 
 
 def _get_membership_tag(membership: str | None) -> str:
-    if not membership or membership.strip().lower() in ("", "student member"):
+    if not membership:
         return ""
     mem = membership.strip()
+    valid_grades = {
+        "Member",
+        "Senior Member",
+        "Fellow",
+        "Life Member",
+        "Life Fellow",
+        "Life Senior Member",
+    }
+    if mem not in valid_grades:
+        return ""
     return f",~\\IEEEmembership{{{mem},~IEEE}}"
 
 
 def _generate_author_block_journal(
-    authors: list[str],
+    authors: list[Any],
     affiliations: list[Affiliation],
     config: ProjectConfig | None = None,
     compsoc: bool = False,
 ) -> str:
-    escaped_authors = [escape_latex(a) for a in authors]
+    escaped_authors = [
+        escape_latex(a.full_name if hasattr(a, "full_name") else str(a))
+        for a in authors
+    ]
     if not authors:
         return "Author(s) TBD"
 
@@ -613,7 +628,12 @@ def _generate_author_block_journal(
         lines = []
         for i, author in enumerate(escaped_authors):
             aff = affiliations[i] if i < len(affiliations) else None
-            mem_tag = _get_membership_tag(aff.membership if aff else None)
+            author_obj = authors[i] if i < len(authors) else None
+            mem_grade = (
+                getattr(author_obj, "ieee_membership_grade", None)
+                or (aff.membership if aff else None)
+            )
+            mem_tag = _get_membership_tag(mem_grade)
             if aff:
                 aff_str = ", ".join(
                     filter(
@@ -656,7 +676,12 @@ def _generate_author_block_journal(
         author_parts = []
         for i, author in enumerate(escaped_authors):
             aff = affiliations[i] if i < len(affiliations) else None
-            mem_tag = _get_membership_tag(aff.membership if aff else None)
+            author_obj = authors[i] if i < len(authors) else None
+            mem_grade = (
+                getattr(author_obj, "ieee_membership_grade", None)
+                or (aff.membership if aff else None)
+            )
+            mem_tag = _get_membership_tag(mem_grade)
             if config and config.orcid:
                 author_parts.append(
                     f"{author}{mem_tag}~\\orcidlink{{{escape_latex(config.orcid)}}}"
@@ -718,7 +743,12 @@ def _generate_author_block_journal(
         parts = []
         for i, author in enumerate(escaped_authors):
             aff = affiliations[i] if i < len(affiliations) else None
-            mem_tag = _get_membership_tag(aff.membership if aff else None)
+            author_obj = authors[i] if i < len(authors) else None
+            mem_grade = (
+                getattr(author_obj, "ieee_membership_grade", None)
+                or (aff.membership if aff else None)
+            )
+            mem_tag = _get_membership_tag(mem_grade)
             if config and config.orcid:
                 author_fmt = f"{author}~\\orcidlink{{{escape_latex(config.orcid)}}}"
             else:
@@ -743,8 +773,6 @@ def _generate_author_block_journal(
             else:
                 parts.append(f"{author_fmt}{mem_tag}")
         return " \\and\n".join(parts)
-
-    return author_str
 
 
 def _generate_acknowledgment(project: PaperForgeProject) -> str:
@@ -785,7 +813,6 @@ def _generate_bibliography_from_citations(
         if key in cit_map:
             lines.append(cit_map[key].to_bibtex())
         else:
-            # Stub for keys without a YAML file
             lines.append(
                 f"@article{{{key},\n"
                 f"  author  = {{Author, A.}},\n"
@@ -868,7 +895,10 @@ def _generate_latex_conference(
 ) -> str:
     """Generate LaTeX for a conference-style IEEE/ACM/NeurIPS paper."""
     title = escape_latex(project.config.title or "Untitled Paper")
-    escaped_authors = [escape_latex(a) for a in project.config.authors]
+    escaped_authors = [
+        escape_latex(a.full_name if hasattr(a, "full_name") else str(a))
+        for a in project.config.authors
+    ]
     author_block = plugin.generate_author_block(escaped_authors)
     abstract_content = _generate_abstract(project.claims)
     sections = _generate_sections(project.config.sections, project)
@@ -889,6 +919,21 @@ def _generate_latex_conference(
             "\\newtheorem{remark}{Remark}\n"
             "\\theoremstyle{remark}"
         )
+
+    first_author = project.config.authors[0] if project.config.authors else None
+    author_str = (
+        first_author.cite_name
+        if first_author and hasattr(first_author, "cite_name")
+        else (str(first_author) if first_author else "")
+    )
+    hypersetup_block = f"""\\hypersetup{{
+    pdftitle={{{escape_latex(project.config.title)}}},
+    pdfauthor={{{escape_latex(author_str)}}},
+    pdfsubject={{{escape_latex(project.config.venue)}}},
+    pdfkeywords={{{escape_latex(', '.join(project.config.keywords))}}},
+    hidelinks
+}}"""
+    preamble += "\n" + hypersetup_block
 
     statements = []
     if project.config.data_availability:
@@ -973,6 +1018,21 @@ def _generate_latex_journal(
             "\\newtheorem{remark}{Remark}\n"
             "\\theoremstyle{remark}"
         )
+
+    first_author = project.config.authors[0] if project.config.authors else None
+    author_str = (
+        first_author.cite_name
+        if first_author and hasattr(first_author, "cite_name")
+        else (str(first_author) if first_author else "")
+    )
+    hypersetup_block = f"""\\hypersetup{{
+    pdftitle={{{escape_latex(project.config.title)}}},
+    pdfauthor={{{escape_latex(author_str)}}},
+    pdfsubject={{{escape_latex(project.config.venue)}}},
+    pdfkeywords={{{escape_latex(', '.join(project.config.keywords))}}},
+    hidelinks
+}}"""
+    preamble += "\n" + hypersetup_block
 
     publisher_id_block = ""
     if project.config.publisher_id:
@@ -1158,7 +1218,7 @@ def _generate_docx(
     # Authors
     authors_para = doc.add_paragraph()
     authors_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    authors_para.add_run(", ".join(project.config.authors) or "Author TBD")
+    authors_para.add_run(", ".join(str(a) for a in project.config.authors) or "Author TBD")
 
     # Affiliations
     for aff in project.config.affiliations:
@@ -1362,19 +1422,117 @@ def _rotate_output(project_root: Path, output_dir: Path | None = None) -> None:
             shutil.copy2(str(src), str(dst))
 
 
-BLOCKING_CHECKS = {
+DRAFT_BLOCKING = {
     "ORPHAN_CLAIM",
-    "MISSING_EXPERIMENT",
-    "STALE_CLAIM",
     "EMPTY_CLAIM_TEXT",
     "RESULTS_SECTION_EMPTY",
     "TABLE_NO_CAPTION",
-    "METRIC_CLAIM_MISMATCH",
     "CITATION_NO_TITLE",
+    "LATEX_ARTIFACT_IN_CLAIM",
+    "REQUIRED_PLACEHOLDER_IN_CLAIM",
+    "AUTHOR_NAME_INCOMPLETE",
+}
+
+SUBMISSION_BLOCKING = DRAFT_BLOCKING | {
+    "METRIC_CLAIM_MISMATCH",
     "ABSTRACT_HAS_CITATION",
     "ABSTRACT_INTRO_OVERLAP",
     "DUPLICATE_CLAIM_TEXT",
+    "AUTHOR_IDENTITY_INCONSISTENT",
+    "CITATION_HAS_INTERNAL_NOTE",
+    "CLAIM_CONSTRAINT_VIOLATED",
+    "PVALUE_AMBIGUOUS",
 }
+
+
+def _check_latex_artifacts(content: str) -> list[str]:
+    """Scan generated LaTeX for artifacts that should not appear in final output."""
+    issues = []
+    patterns = [
+        (r"\*\*\w[^*]*\*\*", "unresolved **bold** markdown"),
+        (r"`[^`\n]+`", "unresolved `code` markdown"),
+        (r"\[[\w\s]+\]\(https?://", "unresolved [link](url) markdown"),
+        (r"(?<!\{)TODO(?!\})", "TODO placeholder in output"),
+        (r"D-\d{3}", "internal decision ID in output"),
+    ]
+    lines = content.split("\n")
+    for i, line in enumerate(lines, 1):
+        if line.strip().startswith("%"):
+            continue  # skip LaTeX comments
+        for pattern, desc in patterns:
+            if re.search(pattern, line):
+                issues.append(f"Line {i}: {desc}: {line.strip()[:60]}")
+    return issues
+
+
+def _generate_build_reports(
+    project: PaperForgeProject,
+    issues: list[Any],
+    output_dir: Path,
+    mode: str,
+) -> None:
+    reports_dir = output_dir.parent.parent / "reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+
+    from datetime import datetime
+    ts = datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M")
+
+    # doctor.md
+    errors = [i for i in issues if getattr(i, "severity", "") == "ERROR"]
+    warnings = [i for i in issues if getattr(i, "severity", "") == "WARNING"]
+    infos = [i for i in issues if getattr(i, "severity", "") == "INFO"]
+
+    doc_lines = [
+        f"# Doctor Report — {ts}\n\n",
+        f"Mode: {mode}\n",
+        f"Total issues: {len(issues)}\n\n",
+        f"## Errors ({len(errors)})\n\n",
+        "| Code | Message |\n|------|---------|\n",
+    ]
+    for i in errors:
+        doc_lines.append(f"| {i.code} | {i.message} |\n")
+
+    doc_lines.append(f"\n## Warnings ({len(warnings)})\n\n| Code | Message |\n|------|---------|\n")
+    for i in warnings:
+        doc_lines.append(f"| {i.code} | {i.message} |\n")
+
+    doc_lines.append(f"\n## Info ({len(infos)})\n\n| Code | Message |\n|------|---------|\n")
+    for i in infos:
+        doc_lines.append(f"| {i.code} | {i.message} |\n")
+
+    (reports_dir / "doctor.md").write_text("".join(doc_lines), encoding="utf-8")
+
+    # claim_evidence_report.md
+    ev_lines = [
+        f"# Claim Evidence Report — {ts}\n\n",
+        "| Claim ID | Text (60 chars) | Experiment | Verified |\n",
+        "|----------|-----------------|------------|---------|\n",
+    ]
+    for c in sorted(project.claims, key=lambda claim: claim.id):
+        txt = (c.text[:57] + "...") if len(c.text) > 60 else c.text
+        verified = "Yes" if c.status == "verified" else "No"
+        exp = c.experiment or ", ".join(c.experiments) or "None"
+        ev_lines.append(f"| {c.id} | {txt} | {exp} | {verified} |\n")
+
+    (reports_dir / "claim_evidence_report.md").write_text("".join(ev_lines), encoding="utf-8")
+
+    # submission_checklist.md
+    issue_codes = {getattr(i, "code", "") for i in issues}
+    chk_lines = [
+        f"# Submission Checklist — {ts}\n\n",
+        "## Critical (must pass for submission mode)\n\n",
+    ]
+    for code in sorted(SUBMISSION_BLOCKING):
+        status = "[ ]" if code in issue_codes else "[x]"
+        chk_lines.append(f"- {status} {code}\n")
+
+    chk_lines.append("\n## Warnings (review before submission)\n\n")
+    for i in warnings:
+        chk_lines.append(f"- [ ] {i.code}: {i.message}\n")
+    if not warnings:
+        chk_lines.append("- [x] No warnings found\n")
+
+    (reports_dir / "submission_checklist.md").write_text("".join(chk_lines), encoding="utf-8")
 
 
 def run(
@@ -1383,6 +1541,7 @@ def run(
     no_reveal: bool = False,
     force: bool = False,
     force_anyway: bool = False,
+    mode: str = "draft",
 ) -> None:
     if not (project_root / ".paperforge").exists():
         console.print("[red]Not a PaperForge project. Run `paperforge init` first.[/red]")
@@ -1399,14 +1558,16 @@ def run(
     issues = collect_issues(project)
     venue_issues = plugin.validate(project)
 
+    submission_mode = (mode == "submission")
+    blocking_codes = SUBMISSION_BLOCKING if submission_mode else DRAFT_BLOCKING
     blocking_issues = [
         issue for issue in issues
-        if issue.severity == "ERROR" or issue.code in BLOCKING_CHECKS
+        if issue.code in blocking_codes
     ]
     venue_errors = [issue for issue in venue_issues if issue.severity == "ERROR"]
     if (blocking_issues or venue_errors) and not force_anyway:
         body = Group(
-            Text("Build blocked. Fix all ERRORs and blocking checks before building."),
+            Text(f"Build blocked ({mode} mode). Fix all ERRORs and blocking checks before building."),
             *(Text(f"  [{issue.code}] {issue.message}") for issue in blocking_issues),
             *(Text(f"  [{issue.code}] {issue.message}") for issue in venue_errors),
             Text("Run `paperforge doctor` for full details."),
@@ -1457,6 +1618,14 @@ def run(
         latex = _generate_latex_conference(project, plugin)
     tex_path = output_dir / "paper.tex"
     tex_path.write_text(latex, encoding="utf-8")
+
+    artifacts = _check_latex_artifacts(latex)
+    if artifacts and not force_anyway:
+        console.print("[red]LaTeX artifact check failed:[/red]")
+        for a in artifacts[:10]:
+            console.print(f"  {a}")
+        console.print("Fix these before building. Use --force-anyway to override.")
+        sys.exit(1)
 
     all_claim_citation_keys = {
         key for claim in project.claims for key in claim.citations
@@ -1563,3 +1732,7 @@ def run(
         console.print(Text(f"VENUE ({plugin.display_name})", style="bold yellow"))
         for issue in venue_warnings:
             console.print(Text(f"  [{issue.code}] {issue.message}"))
+
+    # Generate build reports
+    _generate_build_reports(project, issues + venue_issues, output_dir, mode)
+

@@ -100,7 +100,7 @@ def _build_context(project: PaperForgeProject) -> str:
 
         lines = [
             f"PAPER TITLE: {project.config.title}",
-            f"AUTHORS: {', '.join(project.config.authors)}",
+            f"AUTHORS: {', '.join(str(a) for a in project.config.authors)}",
             f"VENUE: {project.config.venue or 'Not specified'}",
             f"SECTIONS: {', '.join(project.config.sections)}",
             "",
