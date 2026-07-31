@@ -72,11 +72,14 @@ def _claim_paragraph(claim: Claim, project: PaperForgeProject) -> str:
         if fig_obj and not first_figure_yaml:
             first_figure_yaml = fig_obj
 
+    refs = []
     if first_figure_yaml:
-        paragraph += f" (see Fig.~\\ref{{fig:{first_figure_yaml.id}}})"
-
+        refs.append(f"Fig.~\\ref{{fig:{first_figure_yaml.id}}}")
     for table in claim.tables:
-        paragraph += f" \\ref{{tab:{table}}}"
+        refs.append(f"Table~\\ref{{tab:{table}}}")
+    
+    if refs:
+        paragraph += f" (see {', and '.join(refs) if len(refs) > 2 else ' and '.join(refs)})"
 
     if claim.claim_type == "proof":
         paragraph = f"\\begin{{proof}}\n{paragraph}\n\\end{{proof}}"
@@ -1064,13 +1067,21 @@ def _generate_latex_journal(
     if bio_block:
         bio_block = "\n\n\\vfill\n\\newpage\n\n" + bio_block
 
+    is_ieee_access = (project.config.venue or "").lower() == "ieee access"
+    journal_id_cmd = "\\journalid{IEEE Access}" if is_ieee_access else ""
+    kw_env = "keywords" if is_ieee_access else "IEEEkeywords"
+
     return f"""{plugin.latex_documentclass}
 
 {preamble}
 
+\\providecommand{{\\journalid}}[1]{{}}
+\\newenvironment{{keywords}}{{\\begin{{IEEEkeywords}}}}{{\\end{{IEEEkeywords}}}}
+
 \\hyphenation{{op-tical net-works semi-conduc-tor}}
 
 \\begin{{document}}
+{journal_id_cmd}
 
 \\title{{{title}}}
 
@@ -1081,9 +1092,9 @@ def _generate_latex_journal(
 {abstract_content}
 \\end{{abstract}}
 
-\\begin{{IEEEkeywords}}
+\\begin{{{kw_env}}}
 {keywords}
-\\end{{IEEEkeywords}}}}
+\\end{{{kw_env}}}}}
 
 \\maketitle
 {publisher_id_block}
@@ -1129,7 +1140,7 @@ def _compile_pdf_full(
     tex_path: Path,
     output_dir: Path,
 ) -> tuple[bool, str]:
-    latexmk = shutil.which("latexmk")
+    latexmk = None
     pdflatex = shutil.which("pdflatex")
     bibtex = shutil.which("bibtex")
 
