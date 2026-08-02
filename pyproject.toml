@@ -1,6 +1,6 @@
 [project]
 name = "paperforge-research"
-version = "1.5.0"
+version = "1.5.1"
 description = "A research dependency engine that tracks the graph between experiments and scientific claims so your paper is always internally consistent."
 readme = "README.md"
 license = { text = "MIT" }
@@ -51,6 +51,16 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/paperforge"]
 
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src/paperforge",
+    "/tests",
+    "/README.md",
+    "/LICENSE",
+    "/CHANGELOG.md",
+    "/pyproject.toml",
+]
+
 [dependency-groups]
 dev = [
     "build>=1.5.0",
@@ -60,9 +70,16 @@ dev = [
     "twine>=6.2.0",
 ]
 
+[tool.ruff]
+extend-exclude = ["backups", "audit_output", "dist", "build"]
+
 [tool.ruff.lint.per-file-ignores]
 "src/paperforge/cli.py" = ["B008"]
 
 [[tool.mypy.overrides]]
 module = "yaml"
 ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+norecursedirs = ['backups', 'audit_output', 'dist', 'build', '.venv', 'venv']
+testpaths = ['tests']

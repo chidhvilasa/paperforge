@@ -1,5 +1,48 @@
 # Changelog
 
+## [1.5.1] — 2026-08-03
+
+### Fixed
+- **Pytest collection**: canonical `testpaths`/`norecursedirs` in
+  `pyproject.toml` so backup, audit-output, dist, build, and venv
+  directories are never discovered as duplicate test modules.
+- **`paperforge build`**: `_compile_pdf_full` no longer hardcodes
+  `latexmk = None` — latexmk is now correctly detected via `shutil.which`
+  and preferred over the raw `pdflatex+bibtex` pipeline when available.
+- **`AUTHOR_IDENTITY_INCONSISTENT` doctor check**: previously matched a
+  single hardcoded name and was effectively dead code for any other
+  project; rewritten as a generic given-name/surname mismatch detector
+  that works for any author, and no longer scans the paper title (which
+  produced false positives against ordinary prose).
+- **`PVALUE_AMBIGUOUS` doctor check**: previously relied on a fixed,
+  networking/ML-biased metric-keyword list (`latency`, `pdr`, `throughput`,
+  `accuracy`, ...); rewritten as a domain-independent heuristic that counts
+  distinct numeric quantities in the claim text instead.
+- **Structural-reference exclusion**: scientific-number extraction now
+  strips `Figure N` / `Section N` / `Table N` / `Eq. N` and `{{figure:id}}`
+  -style symbolic references before flagging unsourced numeric claims.
+- **Numeric tolerance**: claim-vs-evidence numeric matching tightened from
+  a flat `0.5` tolerance to `1e-4`.
+- **Citation evidence**: `Citation` now supports a structured
+  `evidence: dict[str, float]` field (optional, backward compatible).
+- **Test hygiene**: tests no longer trigger real OS side effects
+  (`build.run()`'s reveal-in-file-explorer step is now disabled by default
+  for the whole test session via an autouse fixture in `tests/conftest.py`,
+  regardless of whether a real LaTeX toolchain happens to be installed on
+  the machine running the tests).
+
+### Changed — generalization and privacy hardening
+- `paperforge init`'s generated project template no longer scaffolds a
+  default affiliation with a real institution; the affiliation block is now
+  blank/user-fillable with fictional examples in comments only.
+- Removed a real person's name, a real email address, and a real
+  institution name that had leaked into a doctor-check implementation, the
+  `init` template, the README, the full CLI command-reference docs, and
+  several test fixtures. Replaced throughout with fictional neutral
+  examples (e.g. "Alex Example", "Example Institute of Technology").
+- Crossref User-Agent string now derives its version from
+  `paperforge.__version__` instead of a separately hardcoded literal.
+
 ## [1.5.0] — 2026-07-30
 
 ### Added (Phase 36 — Visual PDF Preflight, Template Fingerprinting, Structural Integrity, Reference Verification)
