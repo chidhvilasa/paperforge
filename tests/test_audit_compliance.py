@@ -26,20 +26,20 @@ def test_author_structured_fields(tmp_path: Path) -> None:
     data = yaml.safe_load(paper_yaml.read_text(encoding="utf-8")) or {}
     data["authors"] = [
         {
-            "given_name": "Chidhvilasa",
-            "family_name": "Yepuri",
-            "display_name": "Chidhvilasa Yepuri",
-            "citation_name": "C. Yepuri",
-            "email": "chidhvilasa2004@gmail.com",
+            "given_name": "Alex",
+            "family_name": "Example",
+            "display_name": "Alex Example",
+            "citation_name": "A. Example",
+            "email": "alex.example@example.org",
         }
     ]
     paper_yaml.write_text(yaml.dump(data), encoding="utf-8")
 
     project = PaperForgeProject.load(tmp_path)
     author = project.config.authors[0]
-    assert author.family_name == "Yepuri"
-    assert author.cite_name == "C. Yepuri"
-    assert author.full_name == "Chidhvilasa Yepuri"
+    assert author.family_name == "Example"
+    assert author.cite_name == "A. Example"
+    assert author.full_name == "Alex Example"
 
 
 def test_author_no_membership_when_null(tmp_path: Path, monkeypatch) -> None:

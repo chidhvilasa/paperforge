@@ -1334,7 +1334,17 @@ def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issu
         expected_family = fam_name or (
             disp_name.split()[-1] if disp_name else ""
         )
-        if expected_family:
+        expected_given = giv_name or (
+            disp_name.split()[0] if disp_name else ""
+        )
+        if expected_family and expected_given and expected_given != expected_family:
+            # Only scan text that is actually *about* author identity
+            # (biography, acknowledgment). The paper title is free-form
+            # prose about the research topic, not identity metadata, and
+            # scanning it for "<given name> <word>" patterns produces false
+            # positives whenever the title happens to start with the same
+            # word as an author's given name (e.g. title "Test Paper" vs.
+            # an author literally named "Test").
             texts_to_check = []
             if author_bio:
                 texts_to_check.append(author_bio)
@@ -1343,18 +1353,31 @@ def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issu
                     texts_to_check.append(bio.text)
             if project.config.acknowledgment:
                 texts_to_check.append(project.config.acknowledgment)
-            if project.config.title:
-                texts_to_check.append(project.config.title)
 
+            # Generic check: does any text mention "<given name> <other surname>"
+            # where the surname differs from the author's declared family name?
+            name_mismatch_re = re.compile(
+                rf"\b{re.escape(expected_given)}\s+([A-Z][A-Za-z'\-]+)\b"
+            )
+            found_mismatch = False
             for t in texts_to_check:
-                if "Vilasa" in t and expected_family != "Vilasa" and "Yepuri" in expected_family:
-                    issues.append(
-                        Issue(
-                            code="AUTHOR_IDENTITY_INCONSISTENT",
-                            severity="ERROR",
-                            message=f"Author family name inconsistency detected. Expected: {expected_family}. Check biography, acknowledgment, and metadata.",
+                for name_match in name_mismatch_re.finditer(t):
+                    found_family = name_match.group(1)
+                    if found_family != expected_family:
+                        issues.append(
+                            Issue(
+                                code="AUTHOR_IDENTITY_INCONSISTENT",
+                                severity="ERROR",
+                                message=(
+                                    f"Author family name inconsistency detected: text mentions "
+                                    f"'{expected_given} {found_family}' but declared family name is "
+                                    f"'{expected_family}'. Check biography, acknowledgment, and metadata."
+                                ),
+                            )
                         )
-                    )
+                        found_mismatch = True
+                        break
+                if found_mismatch:
                     break
 
     # Check 82 — MISSING_PDF_METADATA (WARNING)
@@ -1453,11 +1476,17 @@ def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issu
     # Check 86 — PVALUE_AMBIGUOUS (WARNING)
     for claim in project.claims:
         if claim.text:
-            pvals = re.findall(r"p\s*[=<>]\s*0\.\d+", claim.text)
+            pvalue_re = re.compile(r"p\s*[=<>]\s*0\.\d+")
+            pvals = pvalue_re.findall(claim.text)
             if len(pvals) == 1:
-                metric_keywords = ["latency", "pdr", "throughput", "accuracy", "overhead", "rate", "ratio", "time", "speed", "error", "cost"]
-                found_keywords = [kw for kw in metric_keywords if kw in claim.text.lower()]
-                if len(found_keywords) >= 2 or (" and " in claim.text.lower() and len(found_keywords) >= 1):
+                # Generic, domain-independent heuristic: count distinct
+                # measured quantities in the claim (excluding the p-value
+                # itself). Two or more quantities sharing a single p-value
+                # is inherently ambiguous, regardless of what those
+                # quantities are named.
+                text_wo_pvalue = pvalue_re.sub("", claim.text)
+                quantities = extract_numbers(text_wo_pvalue)
+                if len(quantities) >= 2:
                     issues.append(
                         Issue(
                             code="PVALUE_AMBIGUOUS",
@@ -1523,13 +1552,19 @@ def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issu
             for ckey in claim.citations:
                 if ckey in cit_map:
                     cobj = cit_map[ckey]
-                    for text_field in [cobj.venue, cobj.notes, cobj.title, str(cobj.year or "")]:
-                        if text_field:
-                            for _, val in _extract_all_numbers(text_field):
-                                known_numbers.append(val)
+                    # Process structured citation evidence
+                    if hasattr(cobj, "evidence") and cobj.evidence:
+                        for ev_val in cobj.evidence.values():
+                            known_numbers.append(float(ev_val))
+                    else:
+                        for text_field in [cobj.venue, cobj.notes, cobj.title, str(cobj.year or "")]:
+                            if text_field:
+                                for _, val in _extract_all_numbers(text_field):
+                                    known_numbers.append(val)
 
             for num_raw, num_val in claim_extracted:
-                match_found = any(abs(num_val - k) <= 0.5 for k in known_numbers)
+                # Use strict numerical equality check (1e-4 tolerance)
+                match_found = any(abs(num_val - k) <= 1e-4 for k in known_numbers)
                 if not match_found:
                     issues.append(
                         Issue(

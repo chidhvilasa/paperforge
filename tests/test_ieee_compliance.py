@@ -67,8 +67,8 @@ def test_email_in_author_block(tmp_path: Path) -> None:
     data = yaml.safe_load(paper_yaml.read_text(encoding="utf-8"))
     data["title"] = "Valid Title"
     data["authors"] = ["Bob Jones"]
-    data["email"] = "test@vit.ac.in"
-    data["affiliations"] = [{"name": "CSE", "institution": "VIT", "city": "Vellore", "country": "India"}]
+    data["email"] = "test@example.edu"
+    data["affiliations"] = [{"name": "CSE", "institution": "Example Institute", "city": "Example City", "country": "Exampleland"}]
     data["conflict_of_interest"] = "None."
     data["data_availability"] = "Available."
     data["keywords"] = ["a", "b", "c", "d"]
@@ -90,7 +90,7 @@ def test_email_in_author_block(tmp_path: Path) -> None:
 
     build.run(tmp_path, target="ieee-access", no_reveal=True)
     content = _read_tex(tmp_path)
-    assert "test@vit.ac.in" in content
+    assert "test@example.edu" in content
 
 
 def test_conflict_of_interest_emitted(tmp_path: Path) -> None:

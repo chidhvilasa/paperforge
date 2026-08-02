@@ -209,21 +209,22 @@ AUTHOR_YAML = """\
 authors:
   - given_name: ""
     family_name: ""
-    display_name: ""       # full display: "Chidhvilasa Yepuri"
-    citation_name: ""      # abbreviated: "C. Yepuri"
+    display_name: ""       # full display, e.g. "Alex Example"
+    citation_name: ""      # abbreviated, e.g. "A. Example"
     email: ""
-    affiliation_ids: []    # list of affiliation keys
+    affiliation_ids: []    # list of affiliation keys defined below
     corresponding: false
     ieee_membership_grade: null  # null unless verified
     orcid: null            # null until set
     biography: ""          # text for IEEEbiography block
 
 affiliations:
-  vit_scse:
-    institution: "Vellore Institute of Technology"
-    department: "School of Computer Science and Engineering"
-    city: "Vellore"
-    country: "India"
+  affiliation_1:
+    institution: ""        # e.g. "Example Institute of Technology"
+    department: ""         # e.g. "Department of Computer Science"
+    city: ""
+    region: ""
+    country: ""
 """
 
 METADATA_YAML = """\

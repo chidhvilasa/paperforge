@@ -35,7 +35,7 @@ paperforge diff claim_01 --against HEAD~1
 paperforge diff claim_01 --against experiment
 
 # Diff a claim in a different project
-paperforge diff claim_02 --path ~/papers/vanet-paper
+paperforge diff claim_02 --path ~/papers/my-paper
 ```
 
 ## Output

@@ -32,7 +32,7 @@ paperforge capture results/exp_01/metrics.json --experiment exp_01
 paperforge capture training_output.json --experiment exp_27
 
 # Specify project root explicitly
-paperforge capture metrics.json --experiment exp_03 --path ~/papers/vanet
+paperforge capture metrics.json --experiment exp_03 --path ~/papers/my-paper
 ```
 
 ## Output

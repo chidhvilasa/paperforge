@@ -28,7 +28,7 @@ cd my-research-project
 paperforge init
 
 # Initialize in a specific directory
-paperforge init ~/papers/vanet-paper
+paperforge init ~/papers/my-paper
 ```
 
 ## Output

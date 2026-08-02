@@ -32,7 +32,7 @@ paperforge install-hooks
 paperforge install-hooks --uninstall
 
 # Install in a project in another directory
-paperforge install-hooks --path ~/papers/vanet-paper
+paperforge install-hooks --path ~/papers/my-paper
 ```
 
 ## Output

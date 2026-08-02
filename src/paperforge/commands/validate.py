@@ -33,6 +33,9 @@ _NUMBER_RE = re.compile(
 
 def _extract_all_numbers(text: str) -> list[tuple[str, float]]:
     """Return list of (raw_string, float_value) tuples from claim text."""
+    # Exclude structural references
+    text = re.sub(r'(?i)\b(?:Figure|Fig\.|Section|Sec\.|Table|Eq\.|Equation|Algorithm)\s+\d+', '', text)
+    text = re.sub(r'\{\{[^}]+\}\}', '', text)
     results: list[tuple[str, float]] = []
     for m in _NUMBER_RE.finditer(text):
         raw = m.group(1)
@@ -44,7 +47,7 @@ def _extract_all_numbers(text: str) -> list[tuple[str, float]]:
     return results
 
 
-def _numbers_match_loose(val: float, metric_val: float, tolerance: float = 0.5) -> bool:
+def _numbers_match_loose(val: float, metric_val: float, tolerance: float = 1e-4) -> bool:
     """Returns True if val is within tolerance of metric_val."""
     return abs(val - metric_val) <= tolerance
 

@@ -113,7 +113,7 @@ def test_import_force_updates_not_appends(tmp_path: Path) -> None:
     _init_project(tmp_path)
     md_path = tmp_path / "paper_information" / "content" / "abstract.md"
     # Use content that is well-known
-    _write_md(md_path, "This paper presents a novel routing protocol for VANET.\n")
+    _write_md(md_path, "This paper presents a novel method for the example domain.\n")
 
     import_run(project_root=tmp_path, section=None, force=False)
     claims_after_first = list((tmp_path / ".paperforge" / "claims").glob("*.yaml"))

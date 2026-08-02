@@ -35,7 +35,7 @@ paperforge review --model gpt-4o
 paperforge review --model mistral-7b-instruct-v0.1
 
 # Review a project in another directory
-paperforge review --path ~/papers/vanet-paper --model claude-3-5-sonnet
+paperforge review --path ~/papers/my-paper --model claude-3-5-sonnet
 ```
 
 ## Output

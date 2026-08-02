@@ -110,10 +110,10 @@ authors: ["A. Author"]
 paper_type: "journal"
 keywords: ["security", "IoT"]
 affiliations:
-  - institution: "VIT Vellore"
+  - institution: "Example Institute of Technology"
     department: "Dept. of CSE"
-    city: "Vellore"
-    country: "India"
+    city: "Example City"
+    country: "Exampleland"
 ```
 
 # 2. Capture experiment results

@@ -31,6 +31,7 @@ class Citation:
     publisher: str = ""  # for books
     institution: str = ""  # for techreports
     notes: str = ""
+    evidence: dict[str, float] = field(default_factory=dict)
 
     @classmethod
     def from_yaml(cls, data: dict[str, Any]) -> Citation:
@@ -53,6 +54,7 @@ class Citation:
             publisher=data.get("publisher", ""),
             institution=data.get("institution", ""),
             notes=data.get("notes", ""),
+            evidence=data.get("evidence", {}),
         )
 
     def to_yaml(self) -> dict[str, Any]:

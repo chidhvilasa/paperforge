@@ -37,7 +37,7 @@ paperforge doctor --fix
 paperforge doctor --target ieee
 
 # Check a project in a different directory
-paperforge doctor --path ~/papers/vanet-paper
+paperforge doctor --path ~/papers/my-paper
 ```
 
 ## Output

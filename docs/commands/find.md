@@ -38,7 +38,7 @@ paperforge find "CICDDoS" --field experiments
 paperforge find "smith2024" --field claims
 
 # Search in a specific project
-paperforge find "neural network" --path ~/papers/vanet-paper
+paperforge find "neural network" --path ~/papers/my-paper
 ```
 
 ## Output

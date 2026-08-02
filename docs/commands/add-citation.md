@@ -56,7 +56,7 @@ type: article
 authors:
   - "Smith, Alice"
   - "Jones, Bob"
-title: "Adaptive Authentication in VANETs"
+title: "A Sample Study of Example Systems"
 year: 2024
 venue: "IEEE Access"
 volume: "12"

@@ -32,7 +32,7 @@ paperforge log claim_01
 paperforge log claim_01 --limit 3
 
 # Check history in a different project
-paperforge log claim_02 --path ~/papers/vanet-paper
+paperforge log claim_02 --path ~/papers/my-paper
 ```
 
 ## Output

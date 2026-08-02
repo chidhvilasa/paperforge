@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from paperforge import __version__
 from paperforge.core.project import PaperForgeProject
 
 
@@ -79,7 +80,10 @@ def verify_references(
             else:
                 try:
                     url = f"https://api.crossref.org/works/{urllib.parse.quote(clean_doi)}"
-                    req = urllib.request.Request(url, headers={"User-Agent": "PaperForge/1.5.0 (mailto:academic@paperforge.org)"})
+                    req = urllib.request.Request(
+                        url,
+                        headers={"User-Agent": f"PaperForge/{__version__} (mailto:academic@paperforge.org)"},
+                    )
                     with urllib.request.urlopen(req, timeout=5) as resp:
                         if resp.status == 200:
                             data = json.loads(resp.read().decode("utf-8"))

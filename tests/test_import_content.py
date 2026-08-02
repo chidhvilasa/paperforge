@@ -71,7 +71,7 @@ def test_import_metadata_updates_paper_yaml(tmp_path: Path) -> None:
     meta_data = {
         "title": "Imported Paper Title",
         "venue": "IEEE Access",
-        "keywords": ["vanet", "security"],
+        "keywords": ["example-topic", "security"],
     }
     meta_path.write_text(yaml.dump(meta_data), encoding="utf-8")
 

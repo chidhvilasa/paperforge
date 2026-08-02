@@ -1,9 +1,9 @@
-description: "VANET 2026-07 failed build fixture"
-source: "Adaptive_Context_Aware_Batch_Verification paper"
+description: "Synthetic networking-domain failed build fixture (regression reference, historical)"
+source: "synthetic fixture — fictional project"
 date: "2026-07-29"
 issues_to_detect:
   - code: AUTHOR_IDENTITY_INCONSISTENT
-    description: "wrong family name (Vilasa vs Yepuri)"
+    description: "biography mentions a surname that does not match the declared family name"
   - code: LATEX_ARTIFACT_IN_CLAIM
     description: "isolated I and II artifacts"
   - code: CITATION_HAS_INTERNAL_NOTE

@@ -28,7 +28,7 @@ paperforge status [OPTIONS]
 paperforge status
 
 # Show status for a project in another directory
-paperforge status --path ~/papers/vanet-paper
+paperforge status --path ~/papers/my-paper
 ```
 
 ## Output
@@ -36,10 +36,10 @@ paperforge status --path ~/papers/vanet-paper
 Prints a rich panel with five sections:
 
 ```
-╭─ PaperForge Status — Adaptive Authentication for VANETs ──╮
+╭─ PaperForge Status — Example Paper Title ──────────────────╮
 │ Project                                                     │
-│   Title:    Adaptive Authentication for VANETs              │
-│   Authors:  Chid V.                                         │
+│   Title:    Example Paper Title                             │
+│   Authors:  A. Example                                      │
 │   Venue:    IEEE                                            │
 │   Status:   draft                                           │
 │                                                             │

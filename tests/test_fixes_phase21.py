@@ -91,26 +91,26 @@ def test_acknowledgment_field_in_config(tmp_path: Path) -> None:
     init.run(tmp_path)
     paper_yaml = tmp_path / ".paperforge" / "paper.yaml"
     data = yaml.safe_load(paper_yaml.read_text(encoding="utf-8"))
-    data["acknowledgment"] = "This work was supported by VIT Vellore."
+    data["acknowledgment"] = "This work was supported by the Example Research Foundation."
     paper_yaml.write_text(yaml.dump(data, default_flow_style=False), encoding="utf-8")
 
     project = PaperForgeProject.load(tmp_path)
 
-    assert project.config.acknowledgment == "This work was supported by VIT Vellore."
+    assert project.config.acknowledgment == "This work was supported by the Example Research Foundation."
 
 
 def test_build_uses_acknowledgment_from_config(tmp_path: Path) -> None:
     _fix_all_errors(tmp_path)
     paper_yaml = tmp_path / ".paperforge" / "paper.yaml"
     data = yaml.safe_load(paper_yaml.read_text(encoding="utf-8"))
-    data["acknowledgment"] = "This work was supported by VIT Vellore."
+    data["acknowledgment"] = "This work was supported by the Example Research Foundation."
     data["paper_type"] = "journal"
     paper_yaml.write_text(yaml.dump(data, default_flow_style=False), encoding="utf-8")
 
     build.run(tmp_path, target="ieee-journal")
 
     content = _read_tex(tmp_path)
-    assert "This work was supported by VIT Vellore." in content
+    assert "This work was supported by the Example Research Foundation." in content
 
 
 def test_acknowledgment_missing_fires_warning(tmp_path: Path) -> None:

@@ -28,7 +28,7 @@ paperforge impact EXPERIMENT_ID [OPTIONS]
 paperforge impact exp_01
 
 # Check impact in a different project
-paperforge impact exp_27 --path ~/papers/vanet-paper
+paperforge impact exp_27 --path ~/papers/my-paper
 ```
 
 ## Output

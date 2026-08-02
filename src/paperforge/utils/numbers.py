@@ -17,7 +17,7 @@ def extract_numbers(text: str) -> list[ExtractedNumber]:
     """Extract all numeric values from a string.
 
     Handles: integers, decimals, percentages.
-    Examples: "98.4%", "12,421", "0.953", "14.2%", "500 vehicles"
+    Examples: "98.4%", "12,421", "0.953", "14.2%", "500 samples"
     Strips commas from numbers like "12,421" -> 12421.0
     Returns list of ExtractedNumber, empty list if none found.
     """

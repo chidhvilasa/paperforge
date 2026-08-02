@@ -28,7 +28,7 @@ paperforge add-claim [OPTIONS]
 paperforge add-claim
 
 # Create a claim in a different project
-paperforge add-claim --path ~/papers/vanet-paper
+paperforge add-claim --path ~/papers/my-paper
 ```
 
 ## Output

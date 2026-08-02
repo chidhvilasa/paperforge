@@ -71,8 +71,11 @@ def test_build_tex_not_in_paperforge_output(tmp_path: Path) -> None:
     assert not (tmp_path / ".paperforge" / "output" / "paper.tex").exists()
 
 
-def test_reveal_not_called_when_no_pdf(tmp_path: Path) -> None:
+def test_reveal_not_called_when_no_pdf(tmp_path: Path, monkeypatch) -> None:
     _fix_all_errors(tmp_path)
+    # Simulate an environment with no LaTeX toolchain installed, regardless of
+    # what is actually on PATH on the machine running the tests.
+    monkeypatch.setattr("shutil.which", lambda name: None)
     mock_reveal = MagicMock()
     with patch("paperforge.commands.build._reveal_output", mock_reveal):
         build.run(tmp_path, target="ieee")

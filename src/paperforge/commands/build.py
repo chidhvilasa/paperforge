@@ -1140,7 +1140,7 @@ def _compile_pdf_full(
     tex_path: Path,
     output_dir: Path,
 ) -> tuple[bool, str]:
-    latexmk = None
+    latexmk = shutil.which("latexmk")
     pdflatex = shutil.which("pdflatex")
     bibtex = shutil.which("bibtex")
 

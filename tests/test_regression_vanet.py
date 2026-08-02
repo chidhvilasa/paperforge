@@ -24,10 +24,10 @@ def test_regression_author_identity_inconsistent(tmp_path: Path) -> None:
     data = yaml.safe_load(paper_yaml.read_text(encoding="utf-8")) or {}
     data["authors"] = [
         {
-            "given_name": "Chidhvilasa",
-            "family_name": "Yepuri",
-            "display_name": "Chidhvilasa Yepuri",
-            "biography": "Chidhvilasa Vilasa received the B.Tech degree.",
+            "given_name": "Alex",
+            "family_name": "Example",
+            "display_name": "Alex Example",
+            "biography": "Alex Sample received the B.Tech degree.",
         }
     ]
     paper_yaml.write_text(yaml.dump(data), encoding="utf-8")
