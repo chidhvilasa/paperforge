@@ -143,11 +143,24 @@ def run_pdf_preflight(
         (r"\bundefined citation\b", "Undefined citation warning in text", "ERROR"),
         (r"\bTODO\b", "Unresolved TODO marker", "ERROR"),
         (r"\bTBD\b", "Unresolved TBD marker", "ERROR"),
-        (r"\[REQUIRED INFORMATION MISSING", "Required placeholder syntax in text", "ERROR"),
+        (
+            r"\[REQUIRED INFORMATION MISSING",
+            "Required placeholder syntax in text",
+            "ERROR",
+        ),
         (r"\b\d+\.\d+At\b", "Malformed percentage (e.g. 73.6At)", "ERROR"),
-        (r"\(see Fig\. \d+\)\s+[I|V|X]+", "Orphan reference numeral (e.g. (see Fig. 1) I)", "ERROR"),
+        (
+            r"\(see Fig\. \d+\)\s+[I|V|X]+",
+            "Orphan reference numeral (e.g. (see Fig. 1) I)",
+            "ERROR",
+        ),
         (r"\*\*", "Raw Markdown bold ** token", "ERROR"),
         (r"\?\?", "Unresolved reference ?? in text", "ERROR"),
+        (
+            r"\bFigure placeholder\b",
+            "Missing figure asset placeholder reached the PDF",
+            "ERROR",
+        ),
     ]
 
     for pno in range(total_pages):
@@ -178,7 +191,11 @@ def run_pdf_preflight(
             matches = re.findall(pat, page_text, flags=re.IGNORECASE)
             if matches:
                 msg = f"Page {page_num}: Found artifact '{matches[0]}' -- {desc}."
-                sev = "ERROR" if (mode == "submission" or default_sev == "ERROR") else "WARNING"
+                sev = (
+                    "ERROR"
+                    if (mode == "submission" or default_sev == "ERROR")
+                    else "WARNING"
+                )
                 page_errors.append(msg) if sev == "ERROR" else page_warnings.append(msg)
                 issues.append(
                     {
@@ -227,7 +244,9 @@ def run_pdf_preflight(
                         txt1 = b1[4].replace("\n", " ").strip()[:40]
                         txt2 = b2[4].replace("\n", " ").strip()[:40]
                         # Special check: Index Terms overlapping Introduction
-                        is_index_intro = ("Index Terms" in txt1 or "Index Terms" in txt2) and ("INTRODUCTION" in txt1 or "INTRODUCTION" in txt2)
+                        is_index_intro = (
+                            "Index Terms" in txt1 or "Index Terms" in txt2
+                        ) and ("INTRODUCTION" in txt1 or "INTRODUCTION" in txt2)
                         msg = f"Page {page_num}: Overlap detected between '{txt1}' and '{txt2}' (overlap area: {overlap_area:.1f}pt²)"
                         page_errors.append(msg)
                         issues.append(
@@ -315,13 +334,17 @@ def run_pdf_preflight(
         md_lines.append("✓ No preflight issues detected.")
     else:
         for iss in issues:
-            md_lines.append(f"- **[{iss['severity']}]** `{iss['code']}`: {iss['message']}")
+            md_lines.append(
+                f"- **[{iss['severity']}]** `{iss['code']}`: {iss['message']}"
+            )
 
     md_lines.extend(["", "## Page Manifest", ""])
     for pm in page_manifests:
         md_lines.append(f"### Page {pm.page_number}")
         md_lines.append(f"- Dimensions: {pm.width:.1f} x {pm.height:.1f} pt")
-        md_lines.append(f"- Characters: {pm.char_count}, Images: {pm.image_count}, Captions: {pm.caption_count}")
+        md_lines.append(
+            f"- Characters: {pm.char_count}, Images: {pm.image_count}, Captions: {pm.caption_count}"
+        )
         if pm.errors:
             md_lines.append(f"- Errors: {', '.join(pm.errors)}")
         if pm.warnings:

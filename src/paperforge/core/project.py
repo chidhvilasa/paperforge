@@ -33,6 +33,7 @@ class Biography:
 
     def to_latex(self) -> str:
         from paperforge.utils.latex import escape_latex_safe
+
         text = escape_latex_safe(self.text)
         author_escaped = escape_latex_safe(self.author)
         if self.photo_path:
@@ -95,12 +96,15 @@ class Author:
         return cls(
             given_name=str(data.get("given_name", "") or ""),
             family_name=str(data.get("family_name", "") or ""),
-            display_name=str(data.get("display_name", "") or data.get("name", "") or ""),
+            display_name=str(
+                data.get("display_name", "") or data.get("name", "") or ""
+            ),
             citation_name=str(data.get("citation_name", "") or ""),
             email=str(data.get("email", "") or ""),
             affiliation_ids=[str(x) for x in aff_ids],
             corresponding=bool(data.get("corresponding", False)),
-            ieee_membership_grade=data.get("ieee_membership_grade") or data.get("membership"),
+            ieee_membership_grade=data.get("ieee_membership_grade")
+            or data.get("membership"),
             orcid=data.get("orcid"),
             biography=str(data.get("biography", "") or ""),
         )
@@ -163,6 +167,8 @@ class ProjectConfig:
     theorem_packages: bool = True
     biographies: list[Biography] = field(default_factory=list)
     ai_disclosure: str = ""
+    output_rotation: str = "preserve_previous"
+    output_rotation_archive_dir: str = ""
 
     @classmethod
     def from_yaml(cls, data: dict) -> ProjectConfig:
@@ -173,7 +179,9 @@ class ProjectConfig:
         raw_affs = data.get("affiliations")
         affiliations: list[Affiliation] = []
         if isinstance(raw_affs, dict):
-            affiliations = [Affiliation.from_dict(v, key=k) for k, v in raw_affs.items()]
+            affiliations = [
+                Affiliation.from_dict(v, key=k) for k, v in raw_affs.items()
+            ]
         elif isinstance(raw_affs, list):
             affiliations = [Affiliation.from_dict(a) for a in raw_affs]
 
@@ -192,7 +200,9 @@ class ProjectConfig:
             status=data.get("status", "draft"),
             sections=data.get("sections", []),
             build_output_dir=build.get("output_dir", ".paperforge/output"),
-            paper_information_dir=build.get("paper_information_dir", "paper_information"),
+            paper_information_dir=build.get(
+                "paper_information_dir", "paper_information"
+            ),
             base_dir=build.get("base_dir", ""),
             latex_template=build.get("latex_template", "ieee"),
             paper_type=data.get("paper_type", "conference"),
@@ -211,6 +221,8 @@ class ProjectConfig:
             theorem_packages=bool(build.get("theorem_packages", True)),
             biographies=bios,
             ai_disclosure=data.get("ai_disclosure", ""),
+            output_rotation=build.get("rotation", "preserve_previous"),
+            output_rotation_archive_dir=build.get("rotation_archive_dir", ""),
         )
 
 

@@ -38,6 +38,7 @@ def _default_output_path(project_root: Path, fmt: str) -> Path:
 
 # --- BibTeX ---
 
+
 def _generate_bibtex(project: PaperForgeProject) -> str:
     all_keys = sorted({key for claim in project.claims for key in claim.citations})
     if not all_keys:
@@ -64,6 +65,7 @@ def _generate_bibtex(project: PaperForgeProject) -> str:
 
 # --- JSON ---
 
+
 def _generate_json(project: PaperForgeProject) -> str:
     edges = [
         {"claim": c.id, "experiment": c.experiment}
@@ -75,7 +77,10 @@ def _generate_json(project: PaperForgeProject) -> str:
         "exported_at": datetime.now(tz=UTC).isoformat(),
         "project": {
             "title": project.config.title,
-            "authors": [a.full_name if hasattr(a, "full_name") else str(a) for a in project.config.authors],
+            "authors": [
+                a.full_name if hasattr(a, "full_name") else str(a)
+                for a in project.config.authors
+            ],
             "venue": project.config.venue,
             "status": project.config.status,
             "sections": project.config.sections,
@@ -121,10 +126,15 @@ def _generate_json(project: PaperForgeProject) -> str:
 
 # --- Markdown ---
 
+
 def _generate_markdown(project: PaperForgeProject) -> str:
     now = datetime.now(tz=UTC).isoformat(timespec="seconds")
     title = project.config.title or "Untitled Paper"
-    authors = ", ".join(str(a) for a in project.config.authors) if project.config.authors else "TBD"
+    authors = (
+        ", ".join(str(a) for a in project.config.authors)
+        if project.config.authors
+        else "TBD"
+    )
     venue = project.config.venue or "Not specified"
     status = project.config.status
 
@@ -168,15 +178,13 @@ def _generate_markdown(project: PaperForgeProject) -> str:
             for claim in section_claims:
                 figs = ", ".join(claim.figures) if claim.figures else "none"
                 tbls = ", ".join(claim.tables) if claim.tables else "none"
-                all_exps = [claim.experiment] + [e for e in claim.experiments if e != claim.experiment]
+                all_exps = [claim.experiment] + [
+                    e for e in claim.experiments if e != claim.experiment
+                ]
                 exps_str = ", ".join([e for e in all_exps if e]) or "none"
+                lines.append(f"- **{claim.id}** ({claim.status}): {claim.text}")
                 lines.append(
-                    f"- **{claim.id}** ({claim.status}): {claim.text}"
-                )
-                lines.append(
-                    f"  *Evidence:* {exps_str} | "
-                    f"*Figures:* {figs} | "
-                    f"*Tables:* {tbls}"
+                    f"  *Evidence:* {exps_str} | *Figures:* {figs} | *Tables:* {tbls}"
                 )
         else:
             lines.append("*(No claims in this section)*")
@@ -192,7 +200,9 @@ def _generate_markdown(project: PaperForgeProject) -> str:
         lines.append(f"- **Description:** {exp.description or 'none'}")
         lines.append(f"- **Dataset:** {exp.dataset or 'not specified'}")
         lines.append(f"- **Hardware:** {exp.hardware or 'not specified'}")
-        lines.append(f"- **Seed:** {exp.seed if exp.seed is not None else 'not specified'}")
+        lines.append(
+            f"- **Seed:** {exp.seed if exp.seed is not None else 'not specified'}"
+        )
         if exp.metrics:
             metrics_str = ", ".join(f"{k}: {v}" for k, v in exp.metrics.items())
         else:
@@ -252,7 +262,9 @@ def _generate_traceability_md(project: PaperForgeProject) -> str:
         else:
             status_disp = claim.status
 
-        all_exps = [claim.experiment] + [e for e in claim.experiments if e != claim.experiment]
+        all_exps = [claim.experiment] + [
+            e for e in claim.experiments if e != claim.experiment
+        ]
         exp_id = ", ".join([e for e in all_exps if e]) or "none"
 
         key_metric = "none"
@@ -267,9 +279,7 @@ def _generate_traceability_md(project: PaperForgeProject) -> str:
         cits = ", ".join(claim.citations) if claim.citations else "none"
         secs = ", ".join(claim.sections) if claim.sections else "none"
         verified_date = (
-            claim.last_verified.strftime("%Y-%m-%d")
-            if claim.last_verified
-            else "never"
+            claim.last_verified.strftime("%Y-%m-%d") if claim.last_verified else "never"
         )
 
         lines.append(
@@ -283,23 +293,27 @@ def _generate_traceability_md(project: PaperForgeProject) -> str:
 def _generate_traceability_csv(project: PaperForgeProject) -> str:
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow([
-        "Claim ID",
-        "Text",
-        "Status",
-        "Experiment",
-        "Key Metric",
-        "Figures",
-        "Tables",
-        "Citations",
-        "Sections",
-        "Verified",
-    ])
+    writer.writerow(
+        [
+            "Claim ID",
+            "Text",
+            "Status",
+            "Experiment",
+            "Key Metric",
+            "Figures",
+            "Tables",
+            "Citations",
+            "Sections",
+            "Verified",
+        ]
+    )
 
     exp_map = {exp.id: exp for exp in project.experiments}
 
     for claim in sorted(project.claims, key=lambda c: c.id):
-        all_exps = [claim.experiment] + [e for e in claim.experiments if e != claim.experiment]
+        all_exps = [claim.experiment] + [
+            e for e in claim.experiments if e != claim.experiment
+        ]
         exp_id = ", ".join([e for e in all_exps if e])
         key_metric = ""
         if claim.experiment and claim.experiment in exp_map:
@@ -313,23 +327,23 @@ def _generate_traceability_csv(project: PaperForgeProject) -> str:
         cits = "|".join(claim.citations) if claim.citations else ""
         secs = "|".join(claim.sections) if claim.sections else ""
         verified_date = (
-            claim.last_verified.strftime("%Y-%m-%d")
-            if claim.last_verified
-            else ""
+            claim.last_verified.strftime("%Y-%m-%d") if claim.last_verified else ""
         )
 
-        writer.writerow([
-            claim.id,
-            claim.text,
-            claim.status,
-            exp_id,
-            key_metric,
-            figs,
-            tbls,
-            cits,
-            secs,
-            verified_date,
-        ])
+        writer.writerow(
+            [
+                claim.id,
+                claim.text,
+                claim.status,
+                exp_id,
+                key_metric,
+                figs,
+                tbls,
+                cits,
+                secs,
+                verified_date,
+            ]
+        )
 
     return output.getvalue()
 
@@ -354,7 +368,9 @@ def _generate_traceability_tex(project: PaperForgeProject) -> str:
         cid = _escape_latex(claim.id)
         ctext = _escape_latex(claim.text)
         cstatus = _escape_latex(claim.status)
-        all_exps = [claim.experiment] + [e for e in claim.experiments if e != claim.experiment]
+        all_exps = [claim.experiment] + [
+            e for e in claim.experiments if e != claim.experiment
+        ]
         cexp = _escape_latex(", ".join([e for e in all_exps if e]) or "none")
 
         evidence_items = []
@@ -379,6 +395,7 @@ def _generate_traceability_tex(project: PaperForgeProject) -> str:
 
 
 # --- Overleaf Zip Export ---
+
 
 def _generate_overleaf_zip(
     project: PaperForgeProject,
@@ -407,19 +424,21 @@ def _generate_overleaf_zip(
         if trac_path.exists():
             zf.write(trac_path, "traceability.tex")
 
-        # Figures from figures/ and paper_information/figures/
-        fig_sources = [
-            project.root / "figures",
-            project.root / project.config.paper_information_dir / "figures",
-        ]
+        # Package each figure at the same relative path the generated
+        # paper.tex references it by (via resolve_figure_asset), so the
+        # extracted zip's \includegraphics paths keep working. This must
+        # stay consistent with the resolution used at build time -- do not
+        # flatten by filename or scan hardcoded directory names, since a
+        # figure's configured path may live anywhere under the project
+        # root (e.g. "assets/plots/figure-01.pdf").
+        from paperforge.commands.build import resolve_figure_asset
+
         added_figs: set[str] = set()
-        for fdir in fig_sources:
-            if fdir.exists():
-                for fig_file in fdir.rglob("*"):
-                    if fig_file.is_file() and fig_file.name not in added_figs:
-                        added_figs.add(fig_file.name)
-                        arcname = f"figures/{fig_file.name}"
-                        zf.write(fig_file, arcname)
+        for fig_obj in project.figures:
+            rel_path = resolve_figure_asset(fig_obj, project.root)
+            if rel_path and rel_path not in added_figs:
+                added_figs.add(rel_path)
+                zf.write(project.root / rel_path, rel_path)
 
         # Include local .cls or .sty files
         for cls_file in project.root.glob("*.cls"):
@@ -453,7 +472,7 @@ def _generate_overleaf_zip(
             "OVERLEAF NOTES\n"
             "--------------\n"
             "- IEEEtran.cls is built into Overleaf (do not upload separately)\n"
-            "- If you see \"File not found: IEEEtran.cls\", go to\n"
+            '- If you see "File not found: IEEEtran.cls", go to\n'
             "  Settings -> Compiler -> pdflatex\n"
             "- references.bib must be in the same directory as paper.tex\n"
             "  (already arranged correctly in this zip)\n"
@@ -463,7 +482,7 @@ def _generate_overleaf_zip(
             "--------------\n"
             "After first compile, if citations show as [?]:\n"
             "1. Click Logs & Output Files\n"
-            "2. Look for \"Rerun to get cross-references right\"\n"
+            '2. Look for "Rerun to get cross-references right"\n'
             "3. Compile again (Overleaf may do this automatically)\n\n"
             "MISSING FEATURES IN THIS OUTPUT\n"
             "--------------------------------\n"
@@ -479,6 +498,7 @@ def _generate_overleaf_zip(
 
 
 # --- Main run ---
+
 
 def run(project_root: Path, fmt: str, output: Path | None) -> None:
     """Export research graph as BibTeX, JSON, Markdown, Traceability Matrix, or Overleaf zip."""
@@ -501,14 +521,18 @@ def run(project_root: Path, fmt: str, output: Path | None) -> None:
         zip_path = _generate_overleaf_zip(project)
 
         fig_dir = project_root / "figures"
-        fig_count = sum(1 for f in fig_dir.rglob("*") if f.is_file()) if fig_dir.exists() else 0
+        fig_count = (
+            sum(1 for f in fig_dir.rglob("*") if f.is_file()) if fig_dir.exists() else 0
+        )
 
         body = Text()
         body.append(f"{zip_path.name}\n")
         body.append("Contents:\n")
         body.append("  paper.tex\n")
         body.append("  references.bib\n")
-        if (project_root / project.config.build_output_dir / "traceability.tex").exists():
+        if (
+            project_root / project.config.build_output_dir / "traceability.tex"
+        ).exists():
             body.append("  traceability.tex\n")
         body.append(f"  figures/ ({fig_count} files)\n")
         body.append("  README.txt\n\n")
@@ -518,11 +542,15 @@ def run(project_root: Path, fmt: str, output: Path | None) -> None:
         body.append("  3. Set main file: paper.tex\n")
         body.append("  4. Compile")
 
-        console.print(Panel(body, title="Overleaf Export Complete", border_style="green"))
+        console.print(
+            Panel(body, title="Overleaf Export Complete", border_style="green")
+        )
         return
 
     if fmt == "traceability":
-        output_dir = output if output is not None else project_root / ".paperforge" / "output"
+        output_dir = (
+            output if output is not None else project_root / ".paperforge" / "output"
+        )
         output_dir.mkdir(parents=True, exist_ok=True)
 
         md_content = _generate_traceability_md(project)
@@ -541,14 +569,18 @@ def run(project_root: Path, fmt: str, output: Path | None) -> None:
         body = Text()
         body.append(f"Format:      {fmt}\n")
         body.append(f"Output:      {output_dir}\n")
-        body.append("Files:       traceability.md, traceability.csv, traceability.tex\n")
+        body.append(
+            "Files:       traceability.md, traceability.csv, traceability.tex\n"
+        )
         body.append(f"Claims:      {len(project.claims)}\n")
         body.append(f"Experiments: {len(project.experiments)}")
         console.print(Panel(body, title="Export Complete", border_style="green"))
         return
 
     # STEP 2 — Determine output path for single-file exports
-    output_path = output if output is not None else _default_output_path(project_root, fmt)
+    output_path = (
+        output if output is not None else _default_output_path(project_root, fmt)
+    )
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # STEP 3 — Generate and write

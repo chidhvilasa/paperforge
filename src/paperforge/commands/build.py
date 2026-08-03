@@ -77,9 +77,11 @@ def _claim_paragraph(claim: Claim, project: PaperForgeProject) -> str:
         refs.append(f"Fig.~\\ref{{fig:{first_figure_yaml.id}}}")
     for table in claim.tables:
         refs.append(f"Table~\\ref{{tab:{table}}}")
-    
+
     if refs:
-        paragraph += f" (see {', and '.join(refs) if len(refs) > 2 else ' and '.join(refs)})"
+        paragraph += (
+            f" (see {', and '.join(refs) if len(refs) > 2 else ' and '.join(refs)})"
+        )
 
     if claim.claim_type == "proof":
         paragraph = f"\\begin{{proof}}\n{paragraph}\n\\end{{proof}}"
@@ -104,26 +106,80 @@ def _generate_abstract(claims: list[Claim]) -> str:
     return " ".join(parts)
 
 
-def _generate_figure_latex(fig_obj: Figure, project_root: Path | None = None) -> str:
+def _normalize_asset_rel_path(raw_path: str) -> str | None:
+    """Normalize a user-configured asset path to a safe, portable,
+    forward-slash relative path.
+
+    Returns None if the path is empty, absolute (POSIX or Windows
+    drive-letter), or escapes its base directory via '..'.
+    """
+    normalized = raw_path.replace("\\", "/").strip()
+    if not normalized:
+        return None
+    if normalized.startswith("/"):
+        return None
+    if len(normalized) > 1 and normalized[1] == ":":
+        return None
+    parts = [p for p in normalized.split("/") if p not in ("", ".")]
+    if not parts or any(p == ".." for p in parts):
+        return None
+    return "/".join(parts)
+
+
+def resolve_figure_asset(
+    fig_obj: Figure, project_root: Path, output_dir: Path | None = None
+) -> str | None:
+    """Resolve a figure's configured path against the project root and,
+    if an output directory is given, materialize (copy) the asset into it
+    so that generated LaTeX can reference it with a package/output-relative
+    path -- never a path relative to project_root.
+
+    Returns the LaTeX-relative asset path (forward-slash, portable) if the
+    source asset was found and (when output_dir is given) successfully
+    copied; returns None if the source could not be resolved.
+    """
+    if not fig_obj.path:
+        return None
+    rel_path = _normalize_asset_rel_path(fig_obj.path)
+    if rel_path is None:
+        return None
+    source = project_root / rel_path
+    try:
+        if not source.is_file():
+            return None
+    except OSError:
+        return None
+    if output_dir is None:
+        return rel_path
+    dest = output_dir / rel_path
+    try:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(str(source), str(dest))
+    except OSError:
+        return None
+    return rel_path
+
+
+def _generate_figure_latex(
+    fig_obj: Figure,
+    project_root: Path | None = None,
+    output_dir: Path | None = None,
+) -> str:
     env = "figure*" if fig_obj.wide else "figure"
     escaped_caption = escape_latex_safe(fig_obj.caption or "", raw=fig_obj.is_math)
 
-    file_exists = False
-    if fig_obj.path:
-        if project_root:
-            image_file = project_root / fig_obj.path
-        else:
-            image_file = Path(fig_obj.path)
-        file_exists = image_file.exists()
+    resolved_path: str | None = None
+    if project_root is not None:
+        resolved_path = resolve_figure_asset(fig_obj, project_root, output_dir)
 
-    if file_exists and fig_obj.path:
+    if resolved_path:
         if fig_obj.width_inches:
             width = f"{fig_obj.width_inches}in"
         elif fig_obj.wide:
             width = "\\textwidth"
         else:
             width = "\\columnwidth"
-        path = fig_obj.path.replace("\\", "/")
+        path = resolved_path
         return (
             f"\\begin{{{env}}}[!t]\n"
             f"\\centering\n"
@@ -177,9 +233,10 @@ def _generate_table_latex(
         )
 
     col_spec = " ".join(["c"] * len(columns))
-    header_row = " & ".join(
-        escape_latex_safe(c, raw=table.raw_latex_rows) for c in columns
-    ) + " \\\\"
+    header_row = (
+        " & ".join(escape_latex_safe(c, raw=table.raw_latex_rows) for c in columns)
+        + " \\\\"
+    )
 
     data_rows = []
     for row in rows:
@@ -232,7 +289,9 @@ def _generate_sections_overview(overview: str) -> str:
     return f"The rest of this paper is organized as follows: {escape_latex(text)}"
 
 
-def _generate_sections(sections: list[str], project: PaperForgeProject) -> str:
+def _generate_sections(
+    sections: list[str], project: PaperForgeProject, output_dir: Path | None = None
+) -> str:
     blocks: list[str] = []
     emitted_figures: set[str] = set()
     emitted_tables: set[str] = set()
@@ -253,7 +312,11 @@ def _generate_sections(sections: list[str], project: PaperForgeProject) -> str:
             claim_blocks = []
             non_contrib = [c for c in section_claims if not c.is_contribution]
             contrib = [c for c in section_claims if c.is_contribution]
-            target_claims = non_contrib if (section == "introduction" and contrib) else section_claims
+            target_claims = (
+                non_contrib
+                if (section == "introduction" and contrib)
+                else section_claims
+            )
 
             for c in target_claims:
                 if c.id in emitted_claims:
@@ -279,7 +342,9 @@ def _generate_sections(sections: list[str], project: PaperForgeProject) -> str:
                     fig_obj = next((f for f in project.figures if f.id == fig_id), None)
                     if fig_obj and fig_id not in emitted_figures:
                         emitted_figures.add(fig_id)
-                        fig_envs.append(_generate_figure_latex(fig_obj, project.root))
+                        fig_envs.append(
+                            _generate_figure_latex(fig_obj, project.root, output_dir)
+                        )
                     elif fig_obj and fig_id in emitted_figures:
                         fig_envs.append(
                             f"% Figure~\\ref{{fig:{fig_id}}} already defined above."
@@ -342,9 +407,7 @@ def _generate_sections(sections: list[str], project: PaperForgeProject) -> str:
                         items.append(f"  \\item {_claim_paragraph(c, project)}")
                     item_block = (
                         "\\noindent The main contributions of this work are:\n"
-                        "\\begin{itemize}\n"
-                        + "\n".join(items)
-                        + "\n\\end{itemize}"
+                        "\\begin{itemize}\n" + "\n".join(items) + "\n\\end{itemize}"
                     )
                     claim_blocks.append(item_block)
 
@@ -373,7 +436,10 @@ def _ieee_parstart(text: str) -> str:
 
 
 def _generate_journal_sections(
-    sections: list[str], project: PaperForgeProject
+    sections: list[str],
+    project: PaperForgeProject,
+    output_dir: Path | None = None,
+    plugin: VenuePlugin | None = None,
 ) -> str:
     blocks: list[str] = []
     emitted_figures: set[str] = set()
@@ -392,10 +458,14 @@ def _generate_journal_sections(
         current_subsection = ""
 
         if section == "introduction":
-            heading = (
-                f"\\IEEEraisesectionheading{{\\section{{{title}}}"
-                f"\\label{{sec:introduction}}}}"
-            )
+            policy = plugin.first_section_heading_policy if plugin else "raised_section"
+            if policy == "raised_section":
+                heading = (
+                    f"\\IEEEraisesectionheading{{\\section{{{title}}}"
+                    f"\\label{{sec:introduction}}}}"
+                )
+            else:
+                heading = f"\\section{{{title}}}\\label{{sec:introduction}}"
             if section_claims:
                 paragraphs: list[str] = []
                 non_contrib = [c for c in section_claims if not c.is_contribution]
@@ -429,7 +499,11 @@ def _generate_journal_sections(
                         )
                         if fig_obj and fig_id not in emitted_figures:
                             emitted_figures.add(fig_id)
-                            first_envs.append(_generate_figure_latex(fig_obj, project.root))
+                            first_envs.append(
+                                _generate_figure_latex(
+                                    fig_obj, project.root, output_dir
+                                )
+                            )
                         elif fig_obj and fig_id in emitted_figures:
                             first_envs.append(
                                 f"% Figure~\\ref{{fig:{fig_id}}} already defined above."
@@ -449,9 +523,13 @@ def _generate_journal_sections(
                         if tbl_obj and tbl_id not in emitted_tables:
                             emitted_tables.add(tbl_id)
                             if tbl_obj.caption or tbl_obj.auto_rows_from_experiment:
-                                first_tbl_envs.append(_generate_table_latex(tbl_obj, project))
+                                first_tbl_envs.append(
+                                    _generate_table_latex(tbl_obj, project)
+                                )
                             else:
-                                caption_text = escape_latex((tbl_obj.caption or "")[:60])
+                                caption_text = escape_latex(
+                                    (tbl_obj.caption or "")[:60]
+                                )
                                 first_tbl_envs.append(
                                     f"% Table: {tbl_id} — {caption_text} (no caption set)\n"
                                     f"% \\label{{tab:{tbl_id}}}"
@@ -493,9 +571,7 @@ def _generate_journal_sections(
                         items.append(f"  \\item {_claim_paragraph(c, project)}")
                     item_block = (
                         "\\noindent The main contributions of this work are:\n"
-                        "\\begin{itemize}\n"
-                        + "\n".join(items)
-                        + "\n\\end{itemize}"
+                        "\\begin{itemize}\n" + "\n".join(items) + "\n\\end{itemize}"
                     )
                     paragraphs.append(item_block)
 
@@ -537,7 +613,9 @@ def _generate_journal_sections(
                     fig_obj = next((f for f in project.figures if f.id == fig_id), None)
                     if fig_obj and fig_id not in emitted_figures:
                         emitted_figures.add(fig_id)
-                        fig_envs.append(_generate_figure_latex(fig_obj, project.root))
+                        fig_envs.append(
+                            _generate_figure_latex(fig_obj, project.root, output_dir)
+                        )
                     elif fig_obj and fig_id in emitted_figures:
                         fig_envs.append(
                             f"% Figure~\\ref{{fig:{fig_id}}} already defined above."
@@ -633,9 +711,8 @@ def _generate_author_block_journal(
         for i, author in enumerate(escaped_authors):
             aff = affiliations[i] if i < len(affiliations) else None
             author_obj = authors[i] if i < len(authors) else None
-            mem_grade = (
-                getattr(author_obj, "ieee_membership_grade", None)
-                or (aff.membership if aff else None)
+            mem_grade = getattr(author_obj, "ieee_membership_grade", None) or (
+                aff.membership if aff else None
             )
             mem_tag = _get_membership_tag(mem_grade)
             if aff:
@@ -664,11 +741,7 @@ def _generate_author_block_journal(
     # Non-compsoc journal mode
     if not affiliations and (
         not config
-        or (
-            not config.funding
-            and not config.email
-            and not config.manuscript_received
-        )
+        or (not config.funding and not config.email and not config.manuscript_received)
     ):
         return ", ".join(escaped_authors)
 
@@ -681,9 +754,8 @@ def _generate_author_block_journal(
         for i, author in enumerate(escaped_authors):
             aff = affiliations[i] if i < len(affiliations) else None
             author_obj = authors[i] if i < len(authors) else None
-            mem_grade = (
-                getattr(author_obj, "ieee_membership_grade", None)
-                or (aff.membership if aff else None)
+            mem_grade = getattr(author_obj, "ieee_membership_grade", None) or (
+                aff.membership if aff else None
             )
             mem_tag = _get_membership_tag(mem_grade)
             if config and config.orcid:
@@ -698,9 +770,7 @@ def _generate_author_block_journal(
         elif len(author_parts) == 2:
             author_str = f"{author_parts[0]} and {author_parts[1]}"
         else:
-            author_str = (
-                ", ".join(author_parts[:-1]) + f", and {author_parts[-1]}"
-            )
+            author_str = ", ".join(author_parts[:-1]) + f", and {author_parts[-1]}"
 
         thanks_parts = []
         if config and config.funding:
@@ -723,9 +793,7 @@ def _generate_author_block_journal(
                     aff_str += f" (e-mail: {escape_latex(aff.email)})"
                 if aff_str:
                     if len(escaped_authors) > i:
-                        aff_lines.append(
-                            f"{escaped_authors[i]} is with {aff_str}."
-                        )
+                        aff_lines.append(f"{escaped_authors[i]} is with {aff_str}.")
                     else:
                         aff_lines.append(f"{aff_str}.")
             if aff_lines:
@@ -748,9 +816,8 @@ def _generate_author_block_journal(
         for i, author in enumerate(escaped_authors):
             aff = affiliations[i] if i < len(affiliations) else None
             author_obj = authors[i] if i < len(authors) else None
-            mem_grade = (
-                getattr(author_obj, "ieee_membership_grade", None)
-                or (aff.membership if aff else None)
+            mem_grade = getattr(author_obj, "ieee_membership_grade", None) or (
+                aff.membership if aff else None
             )
             mem_tag = _get_membership_tag(mem_grade)
             if config and config.orcid:
@@ -768,10 +835,7 @@ def _generate_author_block_journal(
                 if aff.email:
                     aff_str += f" (e-mail: {escape_latex(aff.email)})"
                 if aff_str:
-                    parts.append(
-                        f"{author_fmt}{mem_tag}"
-                        f"\\thanks{{{aff_str}}}"
-                    )
+                    parts.append(f"{author_fmt}{mem_tag}\\thanks{{{aff_str}}}")
                 else:
                     parts.append(f"{author_fmt}{mem_tag}")
             else:
@@ -888,14 +952,14 @@ def _generate_ai_disclosure(text: str) -> str:
     if not text:
         return ""
     from paperforge.utils.latex import escape_latex_safe
-    return (
-        "\\subsection*{Use of Artificial Intelligence Tools}\n"
-        + escape_latex_safe(text)
+
+    return "\\subsection*{Use of Artificial Intelligence Tools}\n" + escape_latex_safe(
+        text
     )
 
 
 def _generate_latex_conference(
-    project: PaperForgeProject, plugin: VenuePlugin
+    project: PaperForgeProject, plugin: VenuePlugin, output_dir: Path | None = None
 ) -> str:
     """Generate LaTeX for a conference-style IEEE/ACM/NeurIPS paper."""
     title = escape_latex(project.config.title or "Untitled Paper")
@@ -905,7 +969,7 @@ def _generate_latex_conference(
     ]
     author_block = plugin.generate_author_block(escaped_authors)
     abstract_content = _generate_abstract(project.claims)
-    sections = _generate_sections(project.config.sections, project)
+    sections = _generate_sections(project.config.sections, project, output_dir)
     bibliography = _generate_bibliography(project)
 
     preamble = plugin.generate_preamble()
@@ -934,7 +998,7 @@ def _generate_latex_conference(
     pdftitle={{{escape_latex(project.config.title)}}},
     pdfauthor={{{escape_latex(author_str)}}},
     pdfsubject={{{escape_latex(project.config.venue)}}},
-    pdfkeywords={{{escape_latex(', '.join(project.config.keywords))}}},
+    pdfkeywords={{{escape_latex(", ".join(project.config.keywords))}}},
     hidelinks
 }}"""
     preamble += "\n" + hypersetup_block
@@ -989,7 +1053,7 @@ def _generate_latex_conference(
 
 
 def _generate_latex_journal(
-    project: PaperForgeProject, plugin: VenuePlugin
+    project: PaperForgeProject, plugin: VenuePlugin, output_dir: Path | None = None
 ) -> str:
     """Generate LaTeX for an IEEE Transactions / journal paper."""
     title = escape_latex(project.config.title or "Untitled Paper")
@@ -1003,7 +1067,9 @@ def _generate_latex_journal(
     abstract_content = _generate_abstract(project.claims)
     keywords_source = project.config.keywords or project.config.sections[:6]
     keywords = ", ".join(escape_latex(k) for k in keywords_source)
-    sections = _generate_journal_sections(project.config.sections, project)
+    sections = _generate_journal_sections(
+        project.config.sections, project, output_dir, plugin
+    )
     bibliography = _generate_bibliography(project)
     acknowledgment = _generate_acknowledgment(project)
 
@@ -1033,14 +1099,16 @@ def _generate_latex_journal(
     pdftitle={{{escape_latex(project.config.title)}}},
     pdfauthor={{{escape_latex(author_str)}}},
     pdfsubject={{{escape_latex(project.config.venue)}}},
-    pdfkeywords={{{escape_latex(', '.join(project.config.keywords))}}},
+    pdfkeywords={{{escape_latex(", ".join(project.config.keywords))}}},
     hidelinks
 }}"""
     preamble += "\n" + hypersetup_block
 
     publisher_id_block = ""
     if project.config.publisher_id:
-        publisher_id_block = f"\n\\IEEEpubid{{{escape_latex(project.config.publisher_id)}}}\n"
+        publisher_id_block = (
+            f"\n\\IEEEpubid{{{escape_latex(project.config.publisher_id)}}}\n"
+        )
 
     statements = []
     if project.config.data_availability:
@@ -1119,7 +1187,10 @@ def _is_pdf_stale(project_root: Path, output_dir: Path | None = None) -> bool:
     """
     if output_dir is None:
         output_dir = project_root / "paper_generated" / "current"
-        if not (output_dir / "paper.pdf").exists() and (project_root / "paper" / "paper.pdf").exists():
+        if (
+            not (output_dir / "paper.pdf").exists()
+            and (project_root / "paper" / "paper.pdf").exists()
+        ):
             output_dir = project_root / "paper"
     pdf_path = output_dir / "paper.pdf"
     if not pdf_path.exists():
@@ -1191,10 +1262,10 @@ def _compile_pdf_full(
             return None
 
         # Full BibTeX pipeline: pdflatex -> bibtex -> pdflatex -> pdflatex
-        run_pdflatex()          # pass 1: generate .aux
-        run_bibtex()            # bibtex: process references
-        run_pdflatex()          # pass 2: resolve citations
-        result = run_pdflatex() # pass 3: resolve cross-references
+        run_pdflatex()  # pass 1: generate .aux
+        run_bibtex()  # bibtex: process references
+        run_pdflatex()  # pass 2: resolve citations
+        result = run_pdflatex()  # pass 3: resolve cross-references
         return result.returncode == 0, "pdflatex+bibtex"
 
     return False, "none"
@@ -1230,7 +1301,9 @@ def _generate_docx(
     # Authors
     authors_para = doc.add_paragraph()
     authors_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    authors_para.add_run(", ".join(str(a) for a in project.config.authors) or "Author TBD")
+    authors_para.add_run(
+        ", ".join(str(a) for a in project.config.authors) or "Author TBD"
+    )
 
     # Affiliations
     for aff in project.config.affiliations:
@@ -1285,14 +1358,10 @@ def _generate_docx(
         if section_name == "abstract":
             continue
 
-        title = section_titles.get(
-            section_name, section_name.replace("_", " ").title()
-        )
+        title = section_titles.get(section_name, section_name.replace("_", " ").title())
         doc.add_heading(title, level=1)
 
-        section_claims = [
-            c for c in project.claims if section_name in c.sections
-        ]
+        section_claims = [c for c in project.claims if section_name in c.sections]
 
         for claim in section_claims:
             if claim.id in emitted_claims:
@@ -1305,9 +1374,7 @@ def _generate_docx(
             for tbl_id in claim.tables:
                 if tbl_id in emitted_tables:
                     continue
-                tbl_obj = next(
-                    (t for t in project.tables if t.id == tbl_id), None
-                )
+                tbl_obj = next((t for t in project.tables if t.id == tbl_id), None)
                 if tbl_obj and tbl_obj.columns and tbl_obj.rows:
                     # Caption above table (IEEE style)
                     cap = doc.add_paragraph()
@@ -1350,18 +1417,13 @@ def _generate_docx(
     # References
     doc.add_heading("References", level=1)
     cit_map = project.citation_map
-    all_keys = sorted(
-        {key for claim in project.claims for key in claim.citations}
-    )
+    all_keys = sorted({key for claim in project.claims for key in claim.citations})
     for i, key in enumerate(all_keys, 1):
         cit = cit_map.get(key)
         if cit and cit.title:
-            authors_str = (
-                " and ".join(cit.authors) if cit.authors else "Author"
-            )
+            authors_str = " and ".join(cit.authors) if cit.authors else "Author"
             ref_text = (
-                f"[{i}] {authors_str}, \"{cit.title},\" "
-                f"{cit.venue}, {cit.year or 'n.d.'}"
+                f'[{i}] {authors_str}, "{cit.title}," {cit.venue}, {cit.year or "n.d."}'
             )
             if cit.doi:
                 ref_text += f", doi: {cit.doi}"
@@ -1391,9 +1453,17 @@ def _reveal_output(path: Path) -> None:
 def _cleanup_aux_files(output_dir: Path) -> None:
     """Remove LaTeX auxiliary files after compilation."""
     aux_extensions = {
-        ".aux", ".log", ".fls", ".fdb_latexmk",
-        ".out", ".bbl", ".blg", ".synctex.gz",
-        ".toc", ".lof", ".lot",
+        ".aux",
+        ".log",
+        ".fls",
+        ".fdb_latexmk",
+        ".out",
+        ".bbl",
+        ".blg",
+        ".synctex.gz",
+        ".toc",
+        ".lof",
+        ".lot",
     }
     for f in output_dir.iterdir():
         if f.is_file() and f.suffix in aux_extensions:
@@ -1403,19 +1473,81 @@ def _cleanup_aux_files(output_dir: Path) -> None:
                 pass
 
 
-def _rotate_output(project_root: Path, output_dir: Path | None = None) -> None:
+def _path_contains(parent: Path, candidate: Path) -> bool:
+    """True if candidate is parent itself or nested inside parent."""
+    return candidate == parent or parent in candidate.parents
+
+
+def _rotate_output(
+    project_root: Path,
+    output_dir: Path | None = None,
+    policy: str | None = None,
+    archive_dir: Path | None = None,
+) -> None:
+    """Archive the previous build of a single output directory before a new build.
+
+    Rotation is scoped to the selected `output_dir` only: it never touches
+    any other output directory (e.g. a sibling candidate build directory),
+    and it never guesses a shared archive location across different output
+    directory names. Only copies meaningful files -- never aux files.
     """
-    Before each build, copy current/ to previous/.
-    Only copies meaningful files — never aux files.
-    """
+    project: PaperForgeProject | None = None
     if output_dir is None:
         project = PaperForgeProject.load(project_root)
         rel_output = project.config.build_output_dir or "paper_generated/current"
         output_dir = project_root / rel_output
 
-    previous_dir = output_dir.parent / "previous"
+    if policy is None and archive_dir is None:
+        # Only consult project config when neither policy nor an explicit
+        # archive directory was given -- an explicit archive_dir is a
+        # direct instruction that should not require a project on disk.
+        if project is None:
+            project = PaperForgeProject.load(project_root)
+        policy = project.config.output_rotation or "preserve_previous"
+        if project.config.output_rotation_archive_dir:
+            archive_dir = project_root / project.config.output_rotation_archive_dir
+    elif policy is None:
+        policy = "preserve_previous"
+
+    if policy == "disabled":
+        return
 
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    if archive_dir is not None:
+        previous_dir = archive_dir
+    elif policy == "timestamped":
+        from datetime import datetime
+
+        stamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+        previous_dir = output_dir.parent / f"{output_dir.name}_archive_{stamp}"
+    else:
+        # "preserve_previous" (default): scope the archive to this output
+        # directory's own name, so sibling output directories (e.g. two
+        # different candidate build targets sharing a parent) never share
+        # -- and therefore never clobber -- each other's archive. The
+        # conventional "current" -> "previous" pairing is kept for
+        # backward compatibility.
+        archive_name = (
+            "previous"
+            if output_dir.name == "current"
+            else f"{output_dir.name}.previous"
+        )
+        previous_dir = output_dir.parent / archive_name
+
+    try:
+        output_resolved = output_dir.resolve()
+        previous_resolved = previous_dir.resolve()
+    except OSError:
+        return
+
+    # Reject unsafe rotation targets: archive nested inside output (or vice
+    # versa), or archive equal to output.
+    if _path_contains(output_resolved, previous_resolved) or _path_contains(
+        previous_resolved, output_resolved
+    ):
+        return
+
     previous_dir.mkdir(parents=True, exist_ok=True)
 
     keep_files = [
@@ -1483,10 +1615,15 @@ def _generate_build_reports(
     output_dir: Path,
     mode: str,
 ) -> None:
-    reports_dir = output_dir.parent.parent / "reports" if output_dir.parent.name == "paper_generated" else output_dir / "reports"
+    reports_dir = (
+        output_dir.parent.parent / "reports"
+        if output_dir.parent.name == "paper_generated"
+        else output_dir / "reports"
+    )
     reports_dir.mkdir(parents=True, exist_ok=True)
 
     from datetime import datetime
+
     ts = datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M")
 
     # doctor.md & doctor.json
@@ -1504,11 +1641,15 @@ def _generate_build_reports(
     for i in errors:
         doc_lines.append(f"| {i.code} | {i.message} |\n")
 
-    doc_lines.append(f"\n## Warnings ({len(warnings)})\n\n| Code | Message |\n|------|---------|\n")
+    doc_lines.append(
+        f"\n## Warnings ({len(warnings)})\n\n| Code | Message |\n|------|---------|\n"
+    )
     for i in warnings:
         doc_lines.append(f"| {i.code} | {i.message} |\n")
 
-    doc_lines.append(f"\n## Info ({len(infos)})\n\n| Code | Message |\n|------|---------|\n")
+    doc_lines.append(
+        f"\n## Info ({len(infos)})\n\n| Code | Message |\n|------|---------|\n"
+    )
     for i in infos:
         doc_lines.append(f"| {i.code} | {i.message} |\n")
 
@@ -1522,7 +1663,9 @@ def _generate_build_reports(
         }
         for i in issues
     ]
-    (reports_dir / "doctor.json").write_text(json.dumps(doctor_json_data, indent=2), encoding="utf-8")
+    (reports_dir / "doctor.json").write_text(
+        json.dumps(doctor_json_data, indent=2), encoding="utf-8"
+    )
 
     # Run services to produce remaining reports
     from paperforge.services.pdf_preflight import run_pdf_preflight
@@ -1532,8 +1675,12 @@ def _generate_build_reports(
 
     tex_file = output_dir / "paper.tex"
     tex_text = tex_file.read_text(encoding="utf-8") if tex_file.exists() else ""
-    fp_res = verify_template_fingerprint(tex_text, project.config.venue or "ieee", output_dir)
-    (reports_dir / "venue_fingerprint.json").write_text(json.dumps(fp_res.to_dict(), indent=2), encoding="utf-8")
+    fp_res = verify_template_fingerprint(
+        tex_text, project.config.venue or "ieee", output_dir
+    )
+    (reports_dir / "venue_fingerprint.json").write_text(
+        json.dumps(fp_res.to_dict(), indent=2), encoding="utf-8"
+    )
     (reports_dir / "venue_fingerprint.md").write_text(
         f"# Venue Fingerprint Report — {ts}\n\n- Status: {fp_res.status}\n- Venue: {fp_res.requested_venue}\n- Detected: {fp_res.detected_template}\n",
         encoding="utf-8",
@@ -1558,7 +1705,9 @@ def _generate_build_reports(
         exp = c.experiment or ", ".join(c.experiments) or "None"
         ev_lines.append(f"| {c.id} | {txt} | {exp} | {verified} |\n")
 
-    (reports_dir / "claim_evidence_report.md").write_text("".join(ev_lines), encoding="utf-8")
+    (reports_dir / "claim_evidence_report.md").write_text(
+        "".join(ev_lines), encoding="utf-8"
+    )
 
     # submission_checklist.md
     issue_codes = {getattr(i, "code", "") for i in issues}
@@ -1576,7 +1725,9 @@ def _generate_build_reports(
     if not warnings:
         chk_lines.append("- [x] No warnings found\n")
 
-    (reports_dir / "submission_checklist.md").write_text("".join(chk_lines), encoding="utf-8")
+    (reports_dir / "submission_checklist.md").write_text(
+        "".join(chk_lines), encoding="utf-8"
+    )
 
 
 def run(
@@ -1588,7 +1739,9 @@ def run(
     mode: str = "draft",
 ) -> None:
     if not (project_root / ".paperforge").exists():
-        console.print("[red]Not a PaperForge project. Run `paperforge init` first.[/red]")
+        console.print(
+            "[red]Not a PaperForge project. Run `paperforge init` first.[/red]"
+        )
         sys.exit(1)
 
     project = PaperForgeProject.load(project_root)
@@ -1602,16 +1755,15 @@ def run(
     issues = collect_issues(project, mode=mode)
     venue_issues = plugin.validate(project)
 
-    submission_mode = (mode == "submission")
+    submission_mode = mode == "submission"
     blocking_codes = SUBMISSION_BLOCKING if submission_mode else DRAFT_BLOCKING
-    blocking_issues = [
-        issue for issue in issues
-        if issue.code in blocking_codes
-    ]
+    blocking_issues = [issue for issue in issues if issue.code in blocking_codes]
     venue_errors = [issue for issue in venue_issues if issue.severity == "ERROR"]
     if (blocking_issues or venue_errors) and not force_anyway:
         body = Group(
-            Text(f"Build blocked ({mode} mode). Fix all ERRORs and blocking checks before building."),
+            Text(
+                f"Build blocked ({mode} mode). Fix all ERRORs and blocking checks before building."
+            ),
             *(Text(f"  [{issue.code}] {issue.message}") for issue in blocking_issues),
             *(Text(f"  [{issue.code}] {issue.message}") for issue in venue_errors),
             Text("Run `paperforge doctor` for full details."),
@@ -1655,10 +1807,42 @@ def run(
     venue_warnings = [issue for issue in venue_issues if issue.severity == "WARNING"]
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    unresolved_figures = [
+        fig_obj
+        for fig_obj in project.figures
+        if fig_obj.path and resolve_figure_asset(fig_obj, project_root) is None
+    ]
+    if unresolved_figures:
+        if submission_mode and not force_anyway:
+            body = Group(
+                Text(
+                    "Build blocked (submission mode): figure asset(s) could not be resolved."
+                ),
+                *(
+                    Text(
+                        f"  [{fig_obj.id}] configured path: '{fig_obj.path}' "
+                        f"-> not found under project root: {project_root}"
+                    )
+                    for fig_obj in unresolved_figures
+                ),
+                Text(
+                    "Fix the figure path(s) in .paperforge/figures/*.yaml, or add the missing asset file."
+                ),
+                Text("Use --force-anyway to bypass (NOT recommended for submission)."),
+            )
+            console.print(Panel(body, border_style="red"))
+            sys.exit(1)
+        for fig_obj in unresolved_figures:
+            console.print(
+                f"[yellow]Warning: figure '{fig_obj.id}' asset not found "
+                f"(configured path: '{fig_obj.path}', resolved against project root "
+                f"'{project_root}'). A placeholder will be emitted.[/yellow]"
+            )
+
     if project.config.paper_type == "journal":
-        latex = _generate_latex_journal(project, plugin)
+        latex = _generate_latex_journal(project, plugin, output_dir)
     else:
-        latex = _generate_latex_conference(project, plugin)
+        latex = _generate_latex_conference(project, plugin, output_dir)
     tex_path = output_dir / "paper.tex"
     tex_path.write_text(latex, encoding="utf-8")
 
@@ -1692,18 +1876,28 @@ def run(
     _cleanup_aux_files(output_dir)
 
     if compiler == "none":
-        console.print("[yellow]No LaTeX toolchain found. Generating DOCX instead...[/yellow]")
+        console.print(
+            "[yellow]No LaTeX toolchain found. Generating DOCX instead...[/yellow]"
+        )
         docx_path = _generate_docx(project, output_dir)
-        console.print(f"[green]DOCX generated: {docx_path.relative_to(project_root)}[/green]")
+        console.print(
+            f"[green]DOCX generated: {docx_path.relative_to(project_root)}[/green]"
+        )
     else:
         if pdf_path.exists():
             console.print(f"[green]PDF generated: {rel_output}/paper.pdf[/green]")
             if not no_reveal:
                 _reveal_output(pdf_path)
         else:
-            console.print(f"[red]LaTeX compilation failed. Check {rel_output}/paper.log[/red]")
+            console.print(
+                f"[red]LaTeX compilation failed. Check {rel_output}/paper.log[/red]"
+            )
 
-    reports_dir = output_dir.parent.parent / "reports" if output_dir.parent.name == "paper_generated" else output_dir / "reports"
+    reports_dir = (
+        output_dir.parent.parent / "reports"
+        if output_dir.parent.name == "paper_generated"
+        else output_dir / "reports"
+    )
     reports_dir.mkdir(parents=True, exist_ok=True)
 
     # Run preflight & reports
@@ -1713,7 +1907,9 @@ def run(
     from paperforge.services.template_fingerprint import verify_template_fingerprint
 
     fp_res = verify_template_fingerprint(latex, target, output_dir)
-    struct_res = check_structural_integrity(project, reports_dir, mode=mode, tex_content=latex)
+    struct_res = check_structural_integrity(
+        project, reports_dir, mode=mode, tex_content=latex
+    )
     ref_res = verify_references(project, reports_dir, online=False)
 
     pdf_preflight_passed = False
@@ -1723,19 +1919,33 @@ def run(
     if pdf_path.exists():
         pdf_res = run_pdf_preflight(pdf_path, reports_dir, mode=mode)
         pdf_preflight_passed = pdf_res.passed
-        overlap_passed = not any(i.get("code") == "PDF_OBJECT_OVERLAP" for i in pdf_res.issues)
-        artifact_passed = not any(i.get("code") == "PDF_TEXT_ARTIFACT" for i in pdf_res.issues)
+        overlap_passed = not any(
+            i.get("code") == "PDF_OBJECT_OVERLAP" for i in pdf_res.issues
+        )
+        artifact_passed = not any(
+            i.get("code") == "PDF_TEXT_ARTIFACT" for i in pdf_res.issues
+        )
 
-    submission_ready = _pdf_ok and pdf_preflight_passed and fp_res.passed and struct_res.passed and ref_res.passed
+    submission_ready = (
+        _pdf_ok
+        and pdf_preflight_passed
+        and fp_res.passed
+        and struct_res.passed
+        and ref_res.passed
+    )
 
     body_lines = [
-        Text(f"LaTeX compilation:  {'PASSED ✓' if _pdf_ok else 'FAILED ✗'} ({compiler})"),
+        Text(
+            f"LaTeX compilation:  {'PASSED ✓' if _pdf_ok else 'FAILED ✗'} ({compiler})"
+        ),
         Text(f"PDF rendering:      {'PASSED ✓' if pdf_path.exists() else 'FAILED ✗'}"),
         Text(f"Visual overlap scan:{'PASSED ✓' if overlap_passed else 'FAILED ✗'}"),
         Text(f"Text artifact scan: {'PASSED ✓' if artifact_passed else 'FAILED ✗'}"),
         Text(f"Structural integrity:{'PASSED ✓' if struct_res.passed else 'FAILED ✗'}"),
         Text(f"Venue fingerprint:  {'PASSED ✓' if fp_res.passed else 'FAILED ✗'}"),
-        Text(f"Submission readiness:{'PASSED ✓' if submission_ready else 'BLOCKED ✗'} ({mode} mode)"),
+        Text(
+            f"Submission readiness:{'PASSED ✓' if submission_ready else 'BLOCKED ✗'} ({mode} mode)"
+        ),
         Text(""),
         Text(f"Output directory:   {rel_output}"),
         Text(f"Reports directory:  {reports_dir.relative_to(project_root)}"),
@@ -1750,7 +1960,13 @@ def run(
         Text(f"Citations:          {len(unique_citations)}"),
     )
 
-    console.print(Panel(body, title="Build Summary", border_style="green" if submission_ready else "red"))
+    console.print(
+        Panel(
+            body,
+            title="Build Summary",
+            border_style="green" if submission_ready else "red",
+        )
+    )
 
     if venue_warnings:
         console.print()
@@ -1761,6 +1977,7 @@ def run(
     _generate_build_reports(project, issues + venue_issues, output_dir, mode)
 
     if submission_mode and not submission_ready and not force_anyway:
-        console.print("[red]Submission mode build blocked due to preflight/quality failures.[/red]")
+        console.print(
+            "[red]Submission mode build blocked due to preflight/quality failures.[/red]"
+        )
         sys.exit(1)
-
