@@ -85,7 +85,11 @@ def test_reveal_not_called_when_no_pdf(tmp_path: Path, monkeypatch) -> None:
 def test_no_reveal_flag_suppresses_reveal(tmp_path: Path) -> None:
     _fix_all_errors(tmp_path)
     mock_reveal = MagicMock()
-    with patch("paperforge.commands.build._reveal_output", mock_reveal), \
-         patch("paperforge.commands.build._compile_pdf", return_value=(True, "pdflatex")):
+    with (
+        patch("paperforge.commands.build._reveal_output", mock_reveal),
+        patch(
+            "paperforge.commands.build._compile_pdf", return_value=(True, "pdflatex")
+        ),
+    ):
         build.run(tmp_path, target="ieee", no_reveal=True)
     assert not mock_reveal.called
