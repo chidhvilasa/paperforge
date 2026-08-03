@@ -16,7 +16,12 @@ from rich.text import Text
 from paperforge.core.project import PaperForgeProject
 from paperforge.history import record_snapshot
 from paperforge.models.claim import Claim
-from paperforge.utils.numbers import extract_numbers, numbers_match
+from paperforge.utils.numbers import (
+    extract_numbers,
+    find_pvalue_mentions,
+    numbers_match,
+    strip_reference_and_identifier_mentions,
+)
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -33,9 +38,28 @@ class Issue:
 
 
 COMMON_ACRONYMS = {
-    "IEEE", "AI", "ML", "DL", "IoT", "API", "URL", "DOI",
-    "CPU", "GPU", "RAM", "SSD", "PDF", "TCP", "UDP", "IP",
-    "HTTP", "TLS", "SSL", "YAML", "JSON", "CLI",
+    "IEEE",
+    "AI",
+    "ML",
+    "DL",
+    "IoT",
+    "API",
+    "URL",
+    "DOI",
+    "CPU",
+    "GPU",
+    "RAM",
+    "SSD",
+    "PDF",
+    "TCP",
+    "UDP",
+    "IP",
+    "HTTP",
+    "TLS",
+    "SSL",
+    "YAML",
+    "JSON",
+    "CLI",
 }
 
 ACRONYM_PATTERN = re.compile(r"\b([A-Z]{2,5})\b")
@@ -183,21 +207,16 @@ def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issu
         if not combined_metrics:
             continue
 
-        percentage_numbers = [
-            n for n in extract_numbers(claim.text) if n.is_percentage
-        ]
+        percentage_numbers = [n for n in extract_numbers(claim.text) if n.is_percentage]
         if not percentage_numbers:
             continue
         # Only consider metrics whose values are in the 0-100 range
-        range_metrics = {
-            k: v for k, v in combined_metrics.items() if 0 <= v <= 100
-        }
+        range_metrics = {k: v for k, v in combined_metrics.items() if 0 <= v <= 100}
         if not range_metrics:
             continue
         for extracted in percentage_numbers:
             matched = any(
-                numbers_match(extracted.value, mv)
-                for mv in range_metrics.values()
+                numbers_match(extracted.value, mv) for mv in range_metrics.values()
             )
             if not matched:
                 issues.append(
@@ -226,9 +245,7 @@ def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issu
                 Issue(
                     code="DUPLICATE_CLAIM_TEXT",
                     severity="ERROR",
-                    message=(
-                        f"Identical text in {claim_ids}: '{text_key[:60]}...'"
-                    ),
+                    message=(f"Identical text in {claim_ids}: '{text_key[:60]}...'"),
                 )
             )
 
@@ -498,9 +515,7 @@ def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issu
     # --- Checks 31-35: Figure completeness ---
 
     claimed_figure_ids = {
-        fig_id
-        for claim in project.claims
-        for fig_id in claim.figures
+        fig_id for claim in project.claims for fig_id in claim.figures
     }
     existing_figure_ids = {fig.id for fig in project.figures}
 
@@ -580,11 +595,7 @@ def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issu
 
     # --- Checks 37-41: Table completeness ---
 
-    claimed_table_ids = {
-        tbl_id
-        for claim in project.claims
-        for tbl_id in claim.tables
-    }
+    claimed_table_ids = {tbl_id for claim in project.claims for tbl_id in claim.tables}
     existing_table_ids = {tbl.id for tbl in project.tables}
 
     # Check 37 — TABLE_NO_CAPTION (ERROR)
@@ -654,7 +665,7 @@ def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issu
                             severity="WARNING",
                             message=(
                                 f"{table.id} has {expected_cols} columns but "
-                                f"row {table.rows.index(row)+1} has {len(row)} "
+                                f"row {table.rows.index(row) + 1} has {len(row)} "
                                 f"cells."
                             ),
                         )
@@ -692,9 +703,7 @@ def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issu
 
     # Citation Checks 44-48
     citation_map = {c.key: c for c in project.citations}
-    all_claimed_keys = {
-        key for claim in project.claims for key in claim.citations
-    }
+    all_claimed_keys = {key for claim in project.claims for key in claim.citations}
     all_defined_keys = set(citation_map.keys())
 
     # Check 44 — CITED_KEY_NO_YAML (WARNING)
@@ -925,12 +934,8 @@ def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issu
                 )
 
     # Check 59 — ABSTRACT_INTRO_OVERLAP (ERROR)
-    claims_in_abstract_set = {
-        c.id for c in project.claims if "abstract" in c.sections
-    }
-    claims_in_intro_set = {
-        c.id for c in project.claims if "introduction" in c.sections
-    }
+    claims_in_abstract_set = {c.id for c in project.claims if "abstract" in c.sections}
+    claims_in_intro_set = {c.id for c in project.claims if "introduction" in c.sections}
     overlap_set = claims_in_abstract_set & claims_in_intro_set
     if overlap_set:
         issues.append(
@@ -946,9 +951,7 @@ def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issu
         )
 
     # Check 60 — INTRO_MISSING_MOTIVATION (WARNING)
-    claims_in_results_set = {
-        c.id for c in project.claims if "results" in c.sections
-    }
+    claims_in_results_set = {c.id for c in project.claims if "results" in c.sections}
     if claims_in_intro_set and claims_in_intro_set.issubset(
         claims_in_abstract_set | claims_in_results_set
     ):
@@ -1014,31 +1017,27 @@ def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issu
 
     # Check 64 — FIGURE_FORMAT_NOT_IEEE (WARNING)
     for figure in project.figures:
-        if (
-            figure.format
-            and figure.format.lower()
-            not in (
-                "pdf",
-                "eps",
-                "ps",
-                "png",
-                "jpg",
-                "jpeg",
-                "tiff",
-                "tif",
-            )
+        if figure.format and figure.format.lower() not in (
+            "pdf",
+            "eps",
+            "ps",
+            "png",
+            "jpg",
+            "jpeg",
+            "tiff",
+            "tif",
         ):
-                issues.append(
-                    Issue(
-                        code="FIGURE_FORMAT_NOT_IEEE",
-                        severity="WARNING",
-                        message=(
-                            f"{figure.id} format '{figure.format}' may not be "
-                            f"accepted by IEEE production. Preferred: PDF, EPS, "
-                            f"PNG (300+ DPI), TIFF (300+ DPI)."
-                        ),
-                    )
+            issues.append(
+                Issue(
+                    code="FIGURE_FORMAT_NOT_IEEE",
+                    severity="WARNING",
+                    message=(
+                        f"{figure.id} format '{figure.format}' may not be "
+                        f"accepted by IEEE production. Preferred: PDF, EPS, "
+                        f"PNG (300+ DPI), TIFF (300+ DPI)."
+                    ),
                 )
+            )
 
     # Check 65 — UNUSUAL_SECTION_ORDER (WARNING)
     expected_section_order = [
@@ -1200,7 +1199,9 @@ def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issu
             if exp and exp.metrics:
                 m_keys = [k.lower() for k in exp.metrics]
                 has_latency = any("ms" in k or "latency" in k for k in m_keys)
-                has_ratio = any("ratio" in k or "pdr" in k or "rate" in k for k in m_keys)
+                has_ratio = any(
+                    "ratio" in k or "pdr" in k or "rate" in k for k in m_keys
+                )
                 if has_latency and has_ratio:
                     issues.append(
                         Issue(
@@ -1216,8 +1217,20 @@ def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issu
 
     # Check 75 — MATH_CLAIM_MISSING_FLAG (WARNING)
     math_tokens = [
-        r"\\", r"\alpha", r"\beta", r"\gamma", r"\theta", r"\sum", r"\prod",
-        r"\frac", r"\begin{equation", r"\mathbf", r"\mathcal", r"\[", "$$", "$"
+        r"\\",
+        r"\alpha",
+        r"\beta",
+        r"\gamma",
+        r"\theta",
+        r"\sum",
+        r"\prod",
+        r"\frac",
+        r"\begin{equation",
+        r"\mathbf",
+        r"\mathcal",
+        r"\[",
+        "$$",
+        "$",
     ]
     for claim in project.claims:
         if (
@@ -1240,9 +1253,7 @@ def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issu
     # Check 76 — PROOF_WITHOUT_THEOREM (WARNING)
     for claim in project.claims:
         if claim.claim_type == "proof":
-            has_thm = any(
-                c.claim_type in ("theorem", "lemma") for c in project.claims
-            )
+            has_thm = any(c.claim_type in ("theorem", "lemma") for c in project.claims)
             if not has_thm:
                 issues.append(
                     Issue(
@@ -1331,12 +1342,8 @@ def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issu
                     message="Author has no name set. Set either display_name or both given_name and family_name.",
                 )
             )
-        expected_family = fam_name or (
-            disp_name.split()[-1] if disp_name else ""
-        )
-        expected_given = giv_name or (
-            disp_name.split()[0] if disp_name else ""
-        )
+        expected_family = fam_name or (disp_name.split()[-1] if disp_name else "")
+        expected_given = giv_name or (disp_name.split()[0] if disp_name else "")
         if expected_family and expected_given and expected_given != expected_family:
             # Only scan text that is actually *about* author identity
             # (biography, acknowledgment). The paper title is free-form
@@ -1381,7 +1388,10 @@ def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issu
                     break
 
     # Check 82 — MISSING_PDF_METADATA (WARNING)
-    has_email = bool(project.config.email or any(getattr(a, "email", "") for a in project.config.authors))
+    has_email = bool(
+        project.config.email
+        or any(getattr(a, "email", "") for a in project.config.authors)
+    )
     if not project.config.title or not project.config.keywords or not has_email:
         issues.append(
             Issue(
@@ -1393,15 +1403,18 @@ def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issu
 
     # Check 83 — LATEX_ARTIFACT_IN_CLAIM (ERROR)
     artifact_patterns = [
-        (r'\bI\b(?!\s+(?:propose|present|show|demonstrate|find|use|implement|introduce))', "standalone 'I' (possible broken citation)"),
-        (r'\bII\b(?!\s+[A-Z])', "standalone 'II' (possible section number artifact)"),
-        (r'D-\d{3}', "internal decision ID (D-NNN)"),
-        (r'TODO', "TODO marker"),
-        (r'FIXME', "FIXME marker"),
-        (r'\[REQUIRED', "required-information placeholder"),
-        (r'\*\*\w+\*\*', "unresolved Markdown bold"),
-        (r'`[^`]+`', "unresolved Markdown code"),
-        (r'\[[\w\d]+\]\(http', "unresolved Markdown link"),
+        (
+            r"\bI\b(?!\s+(?:propose|present|show|demonstrate|find|use|implement|introduce))",
+            "standalone 'I' (possible broken citation)",
+        ),
+        (r"\bII\b(?!\s+[A-Z])", "standalone 'II' (possible section number artifact)"),
+        (r"D-\d{3}", "internal decision ID (D-NNN)"),
+        (r"TODO", "TODO marker"),
+        (r"FIXME", "FIXME marker"),
+        (r"\[REQUIRED", "required-information placeholder"),
+        (r"\*\*\w+\*\*", "unresolved Markdown bold"),
+        (r"`[^`]+`", "unresolved Markdown code"),
+        (r"\[[\w\d]+\]\(http", "unresolved Markdown link"),
     ]
     for claim in project.claims:
         if not claim.is_math and claim.text:
@@ -1434,13 +1447,18 @@ def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issu
     for claim in project.claims:
         if claim.permitted_only_if:
             chk85_metrics: dict[str, float] = {}
-            linked_exps = [claim.experiment] + [e for e in claim.experiments if e != claim.experiment]
+            linked_exps = [claim.experiment] + [
+                e for e in claim.experiments if e != claim.experiment
+            ]
             for eid in linked_exps:
                 if eid in exp_map and exp_map[eid].metrics:
                     chk85_metrics.update(exp_map[eid].metrics)
 
             for condition in claim.permitted_only_if:
-                m = re.match(r"^\s*([a-zA-Z0-9_]+)\s*(<=|>=|<|>|==|!=)\s*([a-zA-Z0-9_.-]+)\s*$", condition)
+                m = re.match(
+                    r"^\s*([a-zA-Z0-9_]+)\s*(<=|>=|<|>|==|!=)\s*([a-zA-Z0-9_.-]+)\s*$",
+                    condition,
+                )
                 if m:
                     metric_key, op, raw_val = m.groups()
                     actual = chk85_metrics.get(metric_key)
@@ -1460,7 +1478,20 @@ def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issu
                         threshold = chk85_metrics.get(raw_val, 0.0)
 
                     violated = False
-                    if op == "<=" and actual > threshold or op == ">=" and actual < threshold or op == "<" and actual >= threshold or op == ">" and actual <= threshold or op == "==" and actual != threshold or op == "!=" and actual == threshold:
+                    if (
+                        op == "<="
+                        and actual > threshold
+                        or op == ">="
+                        and actual < threshold
+                        or op == "<"
+                        and actual >= threshold
+                        or op == ">"
+                        and actual <= threshold
+                        or op == "=="
+                        and actual != threshold
+                        or op == "!="
+                        and actual == threshold
+                    ):
                         violated = True
 
                     if violated:
@@ -1476,15 +1507,19 @@ def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issu
     # Check 86 — PVALUE_AMBIGUOUS (WARNING)
     for claim in project.claims:
         if claim.text:
-            pvalue_re = re.compile(r"p\s*[=<>]\s*0\.\d+")
-            pvals = pvalue_re.findall(claim.text)
-            if len(pvals) == 1:
+            pvalue_spans = find_pvalue_mentions(claim.text)
+            if len(pvalue_spans) == 1:
                 # Generic, domain-independent heuristic: count distinct
                 # measured quantities in the claim (excluding the p-value
-                # itself). Two or more quantities sharing a single p-value
-                # is inherently ambiguous, regardless of what those
-                # quantities are named.
-                text_wo_pvalue = pvalue_re.sub("", claim.text)
+                # mention itself, structural references like "Figure 1",
+                # and generic labeled identifiers like "batch-50" or
+                # "version 2", none of which are measured quantities).
+                # Two or more remaining quantities sharing a single
+                # p-value is inherently ambiguous, regardless of what
+                # those quantities are named.
+                start, end = pvalue_spans[0]
+                text_wo_pvalue = claim.text[:start] + claim.text[end:]
+                text_wo_pvalue = strip_reference_and_identifier_mentions(text_wo_pvalue)
                 quantities = extract_numbers(text_wo_pvalue)
                 if len(quantities) >= 2:
                     issues.append(
@@ -1500,8 +1535,14 @@ def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issu
     for claim in project.claims:
         if claim.text:
             txt_lower = claim.text.lower()
-            has_nonsig = "statistically indistinguishable" in txt_lower or "p > 0.05" in txt_lower
-            has_pos = any(w in txt_lower for w in ["improvement", "better", "higher", "outperforms", "superior"])
+            has_nonsig = (
+                "statistically indistinguishable" in txt_lower
+                or "p > 0.05" in txt_lower
+            )
+            has_pos = any(
+                w in txt_lower
+                for w in ["improvement", "better", "higher", "outperforms", "superior"]
+            )
             if has_nonsig and has_pos:
                 issues.append(
                     Issue(
@@ -1536,6 +1577,7 @@ def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issu
 
     # Check 89 — NUMERIC_VALUE_UNSOURCED (WARNING)
     from paperforge.commands.validate import _extract_all_numbers
+
     cit_map = project.citation_map
     for claim in project.claims:
         if not claim.is_math and claim.text:
@@ -1543,7 +1585,9 @@ def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issu
             if not claim_extracted:
                 continue
 
-            linked_exps = [claim.experiment] + [e for e in claim.experiments if e != claim.experiment]
+            linked_exps = [claim.experiment] + [
+                e for e in claim.experiments if e != claim.experiment
+            ]
             known_numbers: list[float] = []
             for eid in linked_exps:
                 if eid in exp_map and exp_map[eid].metrics:
@@ -1557,7 +1601,12 @@ def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issu
                         for ev_val in cobj.evidence.values():
                             known_numbers.append(float(ev_val))
                     else:
-                        for text_field in [cobj.venue, cobj.notes, cobj.title, str(cobj.year or "")]:
+                        for text_field in [
+                            cobj.venue,
+                            cobj.notes,
+                            cobj.title,
+                            str(cobj.year or ""),
+                        ]:
                             if text_field:
                                 for _, val in _extract_all_numbers(text_field):
                                     known_numbers.append(val)
@@ -1592,7 +1641,13 @@ def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issu
         sev = fp_iss["severity"]
         if code == "VENUE_TEMPLATE_UNVERIFIED" and mode == "submission":
             sev = "ERROR"
-        issues.append(Issue(code=code, severity=cast(Literal["ERROR", "WARNING", "INFO"], sev), message=fp_iss["message"]))
+        issues.append(
+            Issue(
+                code=code,
+                severity=cast(Literal["ERROR", "WARNING", "INFO"], sev),
+                message=fp_iss["message"],
+            )
+        )
 
     # Check 93 — RAW_LATEX_ESCAPE_CORRUPTION (ERROR)
     for claim in project.claims:
@@ -1609,23 +1664,50 @@ def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issu
                 )
 
     # Check 99, 100, 101, 102 — Structural Integrity
-    reports_dir = project.output_dir.parent.parent / "reports" if project.output_dir.parent.name == "paper_generated" else project.output_dir / "reports"
+    reports_dir = (
+        project.output_dir.parent.parent / "reports"
+        if project.output_dir.parent.name == "paper_generated"
+        else project.output_dir / "reports"
+    )
     reports_dir.mkdir(parents=True, exist_ok=True)
-    struct_res = check_structural_integrity(project, reports_dir, mode=mode, tex_content=tex_text)
+    struct_res = check_structural_integrity(
+        project, reports_dir, mode=mode, tex_content=tex_text
+    )
     for s_iss in struct_res.issues:
-        issues.append(Issue(code=s_iss["code"], severity=cast(Literal["ERROR", "WARNING", "INFO"], s_iss["severity"]), message=s_iss["message"], claim_id=s_iss.get("claim_id", "")))
+        issues.append(
+            Issue(
+                code=s_iss["code"],
+                severity=cast(Literal["ERROR", "WARNING", "INFO"], s_iss["severity"]),
+                message=s_iss["message"],
+                claim_id=s_iss.get("claim_id", ""),
+            )
+        )
 
     # Check 103 — REFERENCE_METADATA_MISMATCH (WARNING)
     ref_res = verify_references(project, reports_dir, online=False)
     for r_iss in ref_res.issues:
-        issues.append(Issue(code=r_iss["code"], severity=cast(Literal["ERROR", "WARNING", "INFO"], r_iss["severity"]), message=r_iss["message"]))
+        issues.append(
+            Issue(
+                code=r_iss["code"],
+                severity=cast(Literal["ERROR", "WARNING", "INFO"], r_iss["severity"]),
+                message=r_iss["message"],
+            )
+        )
 
     # Checks 94-98 — PDF Preflight (if PDF exists)
     pdf_file = project.output_dir / "paper.pdf"
     if pdf_file.exists():
         pdf_res = run_pdf_preflight(pdf_file, reports_dir, mode=mode)
         for p_iss in pdf_res.issues:
-            issues.append(Issue(code=p_iss["code"], severity=cast(Literal["ERROR", "WARNING", "INFO"], p_iss["severity"]), message=p_iss["message"]))
+            issues.append(
+                Issue(
+                    code=p_iss["code"],
+                    severity=cast(
+                        Literal["ERROR", "WARNING", "INFO"], p_iss["severity"]
+                    ),
+                    message=p_iss["message"],
+                )
+            )
 
     return issues
 
@@ -1692,8 +1774,6 @@ def _print_fix_hint(issue: Issue, project: PaperForgeProject) -> None:
         console.print(Text(f"    Fix hint: {hint}", style="dim cyan"))
 
 
-
-
 def _apply_fix(project_root: Path, unverified_claims: list[Claim]) -> None:
     claims_dir = project_root / ".paperforge" / "claims"
     for claim in unverified_claims:
@@ -1738,7 +1818,9 @@ def run_self_check(project_root: Path) -> None:
     llm = shutil.which("llm")
     git = shutil.which("git")
 
-    console.print(f"  {'✅' if pdflatex else '⚠️'} pdflatex: {pdflatex or 'not found (DOCX fallback)'}")
+    console.print(
+        f"  {'✅' if pdflatex else '⚠️'} pdflatex: {pdflatex or 'not found (DOCX fallback)'}"
+    )
     console.print(f"  {'✅' if latexmk else '⚠️'} latexmk: {latexmk or 'not found'}")
     console.print(f"  {'✅' if llm else 'ℹ️'} llm CLI: {llm or 'not found (optional)'}")
     console.print(f"  {'✅' if git else '⚠️'} git: {git or 'not found'}")
@@ -1750,8 +1832,12 @@ def run_self_check(project_root: Path) -> None:
         out_dir = project_root / project.config.build_output_dir
         info_dir = project_root / project.config.paper_information_dir
         console.print("  ✅ .paperforge/ present")
-        console.print(f"  {'✅' if out_dir.exists() else '⚠️'} Output dir ({project.config.build_output_dir}): {'exists' if out_dir.exists() else 'missing'}")
-        console.print(f"  {'✅' if info_dir.exists() else '⚠️'} Info dir ({project.config.paper_information_dir}): {'exists' if info_dir.exists() else 'missing'}")
+        console.print(
+            f"  {'✅' if out_dir.exists() else '⚠️'} Output dir ({project.config.build_output_dir}): {'exists' if out_dir.exists() else 'missing'}"
+        )
+        console.print(
+            f"  {'✅' if info_dir.exists() else '⚠️'} Info dir ({project.config.paper_information_dir}): {'exists' if info_dir.exists() else 'missing'}"
+        )
     else:
         console.print("  ℹ️ Not inside a PaperForge project directory")
 
@@ -1788,8 +1874,7 @@ def run_pre_submission_check(project: PaperForgeProject) -> bool:
     verified_pass = total_claims > 0 and len(verified_claims) == total_claims
 
     email_set = bool(
-        project.config.email
-        or any(a.email for a in project.config.affiliations)
+        project.config.email or any(a.email for a in project.config.affiliations)
     )
     coi_set = bool(project.config.conflict_of_interest)
     data_avail_set = bool(project.config.data_availability)
@@ -1858,7 +1943,6 @@ def run(
     if pre_submission:
         run_pre_submission_check(project)
 
-
     issues = collect_issues(project)
 
     venue_issues: list[Issue] = []
@@ -1885,8 +1969,14 @@ def run(
     # JSON output mode
     if json_output:
         import json
+
         data = [
-            {"code": i.code, "severity": i.severity, "message": i.message, "claim_id": i.claim_id}
+            {
+                "code": i.code,
+                "severity": i.severity,
+                "message": i.message,
+                "claim_id": i.claim_id,
+            }
             for i in all_issues
         ]
         console.print(json.dumps({"issues": data}, indent=2, ensure_ascii=False))
@@ -1988,9 +2078,7 @@ def run(
                 console.print(f"  {sec}: 0 issues ✓")
 
     if not fix and total_warnings:
-        console.print(
-            "Run `paperforge doctor --fix` to auto-resolve fixable warnings."
-        )
+        console.print("Run `paperforge doctor --fix` to auto-resolve fixable warnings.")
 
     if total_errors:
         sys.exit(1)
