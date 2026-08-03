@@ -15,6 +15,18 @@ class IEEEAccessPlugin(VenuePlugin):
     required_sections: ClassVar[list[str]] = ["abstract", "introduction", "conclusion"]
     max_pages: int | None = None  # IEEE Access has no page limit
 
+    @property
+    def first_section_heading_policy(self) -> str:
+        # IEEE Access papers commonly carry longer Index Terms lists than
+        # a plain IEEEtran journal assumes. \IEEEraisesectionheading raises
+        # the first section heading by a fixed amount that only clears the
+        # Index Terms block when it fits on a single line; with a longer
+        # (multi-line) Index Terms block the raised heading and drop cap
+        # collide with the tail of Index Terms. A plain section heading
+        # has no such length-dependent collision, so it is used
+        # unconditionally for this venue rather than only "sometimes".
+        return "normal_section"
+
     def validate(self, project: PaperForgeProject) -> list[VenueIssue]:
         issues = []
         section_names = {c for claim in project.claims for c in claim.sections}
@@ -47,7 +59,6 @@ class IEEEAccessPlugin(VenuePlugin):
             "\\usepackage{microtype}\n"
             "\\usepackage[hidelinks]{hyperref}"
         )
-
 
     def generate_author_block(self, authors: list[str]) -> str:
         if not authors:

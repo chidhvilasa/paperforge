@@ -52,3 +52,20 @@ class VenuePlugin(ABC):
     @abstractmethod
     def generate_author_block(self, authors: list[str]) -> str:
         """Return LaTeX author block formatted for this venue."""
+
+    @property
+    def first_section_heading_policy(self) -> str:
+        """How to render the first ("introduction") section heading.
+
+        - "raised_section": use \\IEEEraisesectionheading (the classic
+          IEEEtran two-column drop-cap layout). Only safe when the
+          Abstract/Index Terms block is short and predictable.
+        - "normal_section": use a plain \\section{...} heading. Safe
+          regardless of abstract/keyword length.
+
+        Defaults to "raised_section" for backward compatibility with
+        existing IEEEtran-based venues. Venues whose real template layout
+        makes the raised heading unsafe (e.g. IEEE Access, where Index
+        Terms commonly wraps to multiple lines) should override this.
+        """
+        return "raised_section"
