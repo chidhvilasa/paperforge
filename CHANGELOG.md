@@ -1,5 +1,65 @@
 # Changelog
 
+## [1.5.2] — 2026-08-04
+
+### Fixed
+- **Figure path resolution**: figure source paths are now resolved against
+  the project root and the resolved asset is copied into the build output
+  directory before LaTeX generation, so `\includegraphics` paths are
+  package/output-relative rather than accidentally relative to
+  project_root. Previously a figure whose asset genuinely existed on disk
+  could still be reported as missing and silently replaced with an
+  `\fbox` placeholder, because the existence check and the emitted LaTeX
+  path used inconsistent bases. Works for nested paths
+  (`assets/plots/figure-01.pdf`), custom output directories, and rejects
+  absolute or parent-escaping (`../`) configured paths. Same-basename
+  figures in different subdirectories no longer collide in the packaged
+  output, since directory structure is preserved.
+- **Submission-mode figure blocking**: a required figure whose source
+  asset cannot be resolved now blocks `paperforge build --mode submission`
+  with a specific, actionable error instead of silently emitting a
+  placeholder. Draft mode still allows a placeholder, with a clear
+  per-figure warning. PDF preflight additionally flags a "Figure
+  placeholder" string that reaches a rendered page.
+- **Overleaf zip export**: figure assets are now packaged using the same
+  path-resolution logic (and the same relative paths) as the generated
+  `paper.tex`, instead of a separate, older mechanism that only scanned
+  two hardcoded directory names and flattened files by basename —
+  which could both miss figures and desync from the actual
+  `\includegraphics` paths.
+- **IEEE Access first-page overlap**: the first ("introduction") section
+  heading is no longer unconditionally wrapped in
+  `\IEEEraisesectionheading`. That raised-heading layout only clears the
+  Index Terms block when it happens to fit on one line; with a longer
+  Index Terms list the raised heading (and drop cap) collided with it.
+  First-section heading style is now a per-venue policy
+  (`first_section_heading_policy`): IEEE Access renders a plain
+  `\section{...}` (safe regardless of content length); generic IEEE
+  journal/transactions/compsoc targets keep the existing raised-heading
+  behavior unchanged.
+- **Output rotation isolation**: `_rotate_output` no longer archives every
+  output directory into one fixed, shared `previous/` sibling. The
+  archive location is now scoped to the selected output directory's own
+  name (a candidate directory `output/candidate-a` archives to
+  `output/candidate-a.previous`, never `output/previous`), so building
+  into one output directory can no longer silently overwrite an unrelated
+  directory's preserved content. The conventional `current/` ->
+  `previous/` pairing is unchanged for backward compatibility. Rotation
+  is now configurable via `build.rotation` in `paper.yaml`
+  (`preserve_previous` [default] / `disabled` / `timestamped`) and
+  `build.rotation_archive_dir` for an explicit archive path. Rotation
+  safely no-ops (rather than corrupting data) if the computed archive
+  path would equal or nest inside the output directory.
+- **`PVALUE_AMBIGUOUS` false positives**: p-value detection now
+  recognizes explicit syntax (`p = .05`, `p<.01`, `p-value of .03`,
+  `p value was 0.04`, Unicode `≤`/`≥`) instead of a narrower fixed-format
+  regex. The "multiple quantities share one p-value" heuristic now
+  strips structural references (`Figure 1`, `Section 3`) and generic
+  labeled identifiers (`batch-50`, `model-7`, `protocol-v2`, `version 2`,
+  `sample 10`, `experiment 5`, ...) before counting candidate quantities,
+  so digit-bearing configuration/version identifiers are no longer
+  mistaken for measured metrics.
+
 ## [1.5.1] — 2026-08-03
 
 ### Fixed
