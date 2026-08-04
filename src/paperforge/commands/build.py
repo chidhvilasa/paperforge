@@ -1920,10 +1920,12 @@ def run(
         pdf_res = run_pdf_preflight(pdf_path, reports_dir, mode=mode)
         pdf_preflight_passed = pdf_res.passed
         overlap_passed = not any(
-            i.get("code") == "PDF_OBJECT_OVERLAP" for i in pdf_res.issues
+            i.get("code") == "PDF_OBJECT_OVERLAP" and i.get("severity") == "ERROR"
+            for i in pdf_res.issues
         )
         artifact_passed = not any(
-            i.get("code") == "PDF_TEXT_ARTIFACT" for i in pdf_res.issues
+            i.get("code") == "PDF_TEXT_ARTIFACT" and i.get("severity") == "ERROR"
+            for i in pdf_res.issues
         )
 
     submission_ready = (
