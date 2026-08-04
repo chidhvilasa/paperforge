@@ -1,5 +1,42 @@
 # Changelog
 
+## [1.5.3] — 2026-08-04
+
+### Fixed
+- **PDF preflight false positive — drop-cap block clustering
+  (`PDF_OBJECT_OVERLAP`)**: PyMuPDF's block extraction can split a
+  drop-cap paragraph (e.g. IEEEtran's `\IEEEPARstart`) so that a short
+  heading-sized block and the tall multi-line paragraph block beneath it
+  end up with bounding boxes that touch at their shared vertical
+  boundary, even though the rendered ink never collides. Added
+  `_classify_block_overlap()`, a geometry-based classifier (heading-sized
+  vs. multi-line block, same-column stacking, boundary-only touch) that
+  recognizes this specific pattern as `LEGITIMATE_DROPCAP_WRAP` and
+  reports it at `INFO` severity instead of blocking `ERROR`. A collision
+  involving an actual "Index Terms" block is never exempted regardless of
+  geometry, preserving the previously-tracked real defect class. Every
+  other overlap shape (real body-text collisions, an oversized glyph
+  embedded mid-paragraph, low-horizontal-overlap/cross-column cases)
+  remains a full-severity finding.
+- **PDF preflight false positive — Roman-numeral heading adjacent to a
+  figure/table citation (`PDF_TEXT_ARTIFACT`, "orphan reference
+  numeral")**: the previous detection regex (`[I|V|X]+`, a character
+  class bug that matched any run of the literal characters I, |, V, X)
+  flagged a sentence ending in `(see Fig. N)` immediately followed, in
+  flat extracted reading order, by an unrelated new section/subsection
+  heading beginning with a Roman numeral (e.g. `I. Traffic Density
+  Sweep`, `VII. Discussion`) as if it were a broken citation. Replaced
+  with `_find_orphan_reference_numerals()`, which excludes a match when
+  the trailing numeral is immediately followed by `.` and a capitalized
+  word — the signature of a genuine numbered heading — while still
+  flagging a truly dangling numeral with no such continuation.
+- **`paperforge build`'s "Visual overlap scan" / "Text artifact scan"
+  summary lines**: previously flagged FAILED whenever *any*
+  `PDF_OBJECT_OVERLAP`/`PDF_TEXT_ARTIFACT` finding existed regardless of
+  severity, which would have kept showing FAILED for a
+  correctly-downgraded `INFO`-level drop-cap finding. Now only counts
+  `ERROR`-severity findings, consistent with `PreflightReport.passed`.
+
 ## [1.5.2] — 2026-08-04
 
 ### Fixed
