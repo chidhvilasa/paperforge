@@ -74,11 +74,41 @@ AI-assisted review is one optional stage at the end.
 It never becomes the source of truth.
 See [CONSTITUTION.md](CONSTITUTION.md).
 
+## Evidence Classes and Scientific Safety
+
+PaperForge never silently invents results, statistics, or citations, and
+it never treats a hypothesis or interpretation as a finding. Every claim
+may optionally be tagged with an `evidence_class` describing what kind of
+statement it is:
+
+| Class | Meaning |
+|---|---|
+| `AUTHOR_ASSERTED` | A statement the author is making directly, not derived from data |
+| `SOURCE_SUPPORTED` | Supported by a cited external source |
+| `DIRECT_RESULT` | A directly measured/observed result from an experiment |
+| `DERIVED_RESULT` | Computed from other evidence via a formula |
+| `STATISTICAL_RESULT` | The output of a statistical test |
+| `INTERPRETATION` | The author's reading of a result, not the result itself |
+| `HYPOTHESIS` | A proposed explanation not yet established |
+| `LIMITATION` | A stated constraint or weakness of the work |
+| `FUTURE_WORK` | Planned or suggested next steps |
+| `PLACEHOLDER` | Known-incomplete text the author has explicitly flagged |
+
+`paperforge doctor` enforces this in submission mode: a claim marked
+`PLACEHOLDER`, or a claim classified `DIRECT_RESULT` / `DERIVED_RESULT` /
+`STATISTICAL_RESULT` with no linked experiment or citation to support it,
+blocks the build (`EVIDENCE_CLASS_PLACEHOLDER`,
+`EVIDENCE_CLASS_UNSUPPORTED_RESULT`). Legacy claims with no
+`evidence_class` set are unaffected — classification is opt-in and
+backward compatible.
+
+PaperForge does not guarantee publication acceptance. It helps keep
+generated prose traceable to real evidence; scientific judgment and
+responsibility remain the author's.
+
 ## Install
 
 ```bash
-pip install paperforge-research==1.4.0
-# or always latest:
 pip install paperforge-research
 ```
 
@@ -230,6 +260,7 @@ is preserved in `paper_generated/previous/` for comparison.
 
 | Command | Description |
 |---------|-------------|
+| `paperforge inspect` | Read-only reconnaissance of a directory before intake/import |
 | `paperforge init` | Initialize PaperForge in a project directory |
 | `paperforge import` | Import markdown files, CSV tables, and graph scripts from `paper_information/` |
 | `paperforge update` | Check PyPI for updates and upgrade in-place (or `--git` for dev installs) |
