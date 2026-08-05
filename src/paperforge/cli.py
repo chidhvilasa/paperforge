@@ -46,6 +46,28 @@ def init(
 
 
 @app.command()
+def inspect(
+    path: Path = typer.Argument(
+        default=Path("."),
+        help="Directory to inspect. Defaults to current directory.",
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", help="Emit machine-readable JSON instead of a console panel."
+    ),
+) -> None:
+    """Read-only reconnaissance of a directory before intake or import.
+
+    Detects existing manuscripts, bibliography, figures, tables,
+    notebooks, data files, venue template files, package managers, Git
+    state, likely secrets, and absolute local paths. Never modifies or
+    executes anything it finds.
+    """
+    from paperforge.commands.inspect import run
+
+    run(project_root=path.resolve(), json_output=json_output)
+
+
+@app.command()
 def capture(
     results: Path = typer.Argument(..., help="Path to metrics JSON file."),
     experiment: str = typer.Option(
@@ -68,9 +90,7 @@ def doctor(
     path: Path = typer.Option(
         Path("."), "--path", "-p", help="Project root. Defaults to current directory."
     ),
-    fix: bool = typer.Option(
-        False, "--fix", help="Auto-resolve fixable warnings."
-    ),
+    fix: bool = typer.Option(False, "--fix", help="Auto-resolve fixable warnings."),
     target: str | None = typer.Option(
         None,
         "--target",
@@ -128,7 +148,9 @@ def build(
         False, "--force", "-f", help="Force rebuild even if PDF is up to date."
     ),
     force_anyway: bool = typer.Option(
-        False, "--force-anyway", help="Build even if doctor checks fail. NOT recommended for submission."
+        False,
+        "--force-anyway",
+        help="Build even if doctor checks fail. NOT recommended for submission.",
     ),
     mode: str = typer.Option(
         "draft",
@@ -172,15 +194,17 @@ def improve(
         None,
         help="Specific claim ID to improve, e.g. claim_01",
     ),
-    path: Path = typer.Option(
-        Path("."), "--path", "-p", help="Project root."
-    ),
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
     model: str | None = typer.Option(
-        None, "--model", "-m",
+        None,
+        "--model",
+        "-m",
         help="llm model to use. Uses llm default if omitted.",
     ),
     all_claims: bool = typer.Option(
-        False, "--all", "-a",
+        False,
+        "--all",
+        "-a",
         help="Improve all unverified claims.",
     ),
 ) -> None:
@@ -198,14 +222,36 @@ def improve(
 @app.command(name="add-claim")
 def add_claim(
     path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
-    text: str | None = typer.Option(None, "--text", "-t", help="Claim text (non-interactive)"),
-    experiment: str | None = typer.Option(None, "--experiment", "-e", help="Experiment ID"),
-    sections: str | None = typer.Option(None, "--sections", "-s", help="Comma-separated section list, e.g. results,abstract"),
-    figures: str | None = typer.Option(None, "--figures", help="Comma-separated figure IDs, e.g. fig_01,fig_02"),
-    tables: str | None = typer.Option(None, "--tables", help="Comma-separated table IDs, e.g. tbl_01"),
-    citations: str | None = typer.Option(None, "--citations", "-c", help="Comma-separated BibTeX keys, e.g. smith2024,jones2023"),
-    status: str | None = typer.Option(None, "--status", help="Claim status: verified, unverified, stale"),
-    from_yaml: Path | None = typer.Option(None, "--from-yaml", help="Path to YAML file to import claim from"),
+    text: str | None = typer.Option(
+        None, "--text", "-t", help="Claim text (non-interactive)"
+    ),
+    experiment: str | None = typer.Option(
+        None, "--experiment", "-e", help="Experiment ID"
+    ),
+    sections: str | None = typer.Option(
+        None,
+        "--sections",
+        "-s",
+        help="Comma-separated section list, e.g. results,abstract",
+    ),
+    figures: str | None = typer.Option(
+        None, "--figures", help="Comma-separated figure IDs, e.g. fig_01,fig_02"
+    ),
+    tables: str | None = typer.Option(
+        None, "--tables", help="Comma-separated table IDs, e.g. tbl_01"
+    ),
+    citations: str | None = typer.Option(
+        None,
+        "--citations",
+        "-c",
+        help="Comma-separated BibTeX keys, e.g. smith2024,jones2023",
+    ),
+    status: str | None = typer.Option(
+        None, "--status", help="Claim status: verified, unverified, stale"
+    ),
+    from_yaml: Path | None = typer.Option(
+        None, "--from-yaml", help="Path to YAML file to import claim from"
+    ),
 ) -> None:
     """Interactively create or script a new claim linked to an experiment."""
     from paperforge.commands.add_claim import run
@@ -227,14 +273,26 @@ def add_claim(
 def add_figure(
     path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
     caption: str | None = typer.Option(None, "--caption", help="Figure caption"),
-    fig_path: str | None = typer.Option(None, "--path-file", help="Relative path to image file, e.g. figures/fig_01.png"),
-    format: str | None = typer.Option(None, "--format", help="Image format: png, pdf, eps, svg"),
-    width: float | None = typer.Option(None, "--width", help="Intended LaTeX width in inches, e.g. 3.5"),
+    fig_path: str | None = typer.Option(
+        None, "--path-file", help="Relative path to image file, e.g. figures/fig_01.png"
+    ),
+    format: str | None = typer.Option(
+        None, "--format", help="Image format: png, pdf, eps, svg"
+    ),
+    width: float | None = typer.Option(
+        None, "--width", help="Intended LaTeX width in inches, e.g. 3.5"
+    ),
     dpi: int | None = typer.Option(None, "--dpi", help="Resolution DPI, e.g. 300"),
-    section: str | None = typer.Option(None, "--section", help="First mentioned in section"),
+    section: str | None = typer.Option(
+        None, "--section", help="First mentioned in section"
+    ),
     notes: str | None = typer.Option(None, "--notes", help="Optional notes"),
-    wide: bool = typer.Option(False, "--wide", help="Spans both columns in IEEE layout"),
-    from_yaml: Path | None = typer.Option(None, "--from-yaml", help="Path to YAML file to import figure from"),
+    wide: bool = typer.Option(
+        False, "--wide", help="Spans both columns in IEEE layout"
+    ),
+    from_yaml: Path | None = typer.Option(
+        None, "--from-yaml", help="Path to YAML file to import figure from"
+    ),
 ) -> None:
     """Interactively create or script a new figure YAML file."""
     from paperforge.commands.add_figure import run
@@ -270,12 +328,22 @@ def generate_figures(
 def add_table(
     path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
     caption: str | None = typer.Option(None, "--caption", help="Table caption"),
-    experiment: str | None = typer.Option(None, "--experiment", "-e", help="Source experiment ID"),
-    columns: str | None = typer.Option(None, "--columns", help="Comma-separated column headers"),
-    section: str | None = typer.Option(None, "--section", help="First mentioned in section"),
+    experiment: str | None = typer.Option(
+        None, "--experiment", "-e", help="Source experiment ID"
+    ),
+    columns: str | None = typer.Option(
+        None, "--columns", help="Comma-separated column headers"
+    ),
+    section: str | None = typer.Option(
+        None, "--section", help="First mentioned in section"
+    ),
     notes: str | None = typer.Option(None, "--notes", help="Optional notes"),
-    wide: bool = typer.Option(False, "--wide", help="Spans both columns in IEEE layout"),
-    from_yaml: Path | None = typer.Option(None, "--from-yaml", help="Path to YAML file to import table from"),
+    wide: bool = typer.Option(
+        False, "--wide", help="Spans both columns in IEEE layout"
+    ),
+    from_yaml: Path | None = typer.Option(
+        None, "--from-yaml", help="Path to YAML file to import table from"
+    ),
 ) -> None:
     """Interactively create or script a new table YAML file."""
     from paperforge.commands.add_table import run
@@ -298,20 +366,28 @@ def add_citation(
         None,
         help="BibTeX key, e.g. smith2024. Prompted if omitted.",
     ),
-    path: Path = typer.Option(
-        Path("."), "--path", "-p", help="Project root."
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    type_str: str | None = typer.Option(
+        None, "--type", help="Citation type: article, inproceedings, book, etc."
     ),
-    type_str: str | None = typer.Option(None, "--type", help="Citation type: article, inproceedings, book, etc."),
-    authors: str | None = typer.Option(None, "--authors", help="Semicolon-separated author list, e.g. Smith, A.; Jones, B."),
+    authors: str | None = typer.Option(
+        None,
+        "--authors",
+        help="Semicolon-separated author list, e.g. Smith, A.; Jones, B.",
+    ),
     title: str | None = typer.Option(None, "--title", help="Publication title"),
     year: int | None = typer.Option(None, "--year", help="Publication year"),
     venue: str | None = typer.Option(None, "--venue", help="Venue or journal name"),
     volume: str | None = typer.Option(None, "--volume", help="Volume number"),
     number: str | None = typer.Option(None, "--number", help="Issue or number"),
     pages: str | None = typer.Option(None, "--pages", help="Page range, e.g. 123--135"),
-    doi: str | None = typer.Option(None, "--doi", help="DOI without https://doi.org/ prefix"),
+    doi: str | None = typer.Option(
+        None, "--doi", help="DOI without https://doi.org/ prefix"
+    ),
     notes: str | None = typer.Option(None, "--notes", help="Optional notes"),
-    from_yaml: Path | None = typer.Option(None, "--from-yaml", help="Path to YAML file to import citation from"),
+    from_yaml: Path | None = typer.Option(
+        None, "--from-yaml", help="Path to YAML file to import citation from"
+    ),
 ) -> None:
     """Interactively add or script citation metadata for a BibTeX key."""
     from paperforge.commands.add_citation import run
@@ -336,13 +412,11 @@ def add_citation(
 @app.command(name="import")
 def import_content(
     section: str | None = typer.Argument(
-        None,
-        help="Section to import, e.g. 'abstract'. All if omitted."
+        None, help="Section to import, e.g. 'abstract'. All if omitted."
     ),
     path: Path = typer.Option(Path("."), "--path", "-p"),
     force: bool = typer.Option(
-        False, "--force", "-f",
-        help="Overwrite existing claims with same text."
+        False, "--force", "-f", help="Overwrite existing claims with same text."
     ),
 ) -> None:
     """Import content from paper_information/ into .paperforge/."""
@@ -364,7 +438,9 @@ def install_hooks(
 
 @app.command()
 def export(
-    fmt: str = typer.Argument("json", help="Format: bibtex, json, markdown, traceability, overleaf"),
+    fmt: str = typer.Argument(
+        "json", help="Format: bibtex, json, markdown, traceability, overleaf"
+    ),
     path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
     output: Path | None = typer.Option(
         None,
@@ -468,9 +544,7 @@ def venues() -> None:
 
 @app.command()
 def update(
-    pre: bool = typer.Option(
-        False, "--pre", help="Include pre-release versions."
-    ),
+    pre: bool = typer.Option(False, "--pre", help="Include pre-release versions."),
     git: bool = typer.Option(
         False, "--git", help="Update from git (for development installs)."
     ),
@@ -524,10 +598,14 @@ def clean(
 @app.command()
 def preflight(
     path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
-    mode: str = typer.Option("draft", "--mode", "-m", help="Build mode: draft or submission."),
+    mode: str = typer.Option(
+        "draft", "--mode", "-m", help="Build mode: draft or submission."
+    ),
     pdf: Path | None = typer.Option(None, "--pdf", help="Custom PDF path to inspect."),
     json_output: bool = typer.Option(False, "--json", help="Output results as JSON."),
-    open_renders: bool = typer.Option(False, "--open-renders", help="Open rendered page images folder."),
+    open_renders: bool = typer.Option(
+        False, "--open-renders", help="Open rendered page images folder."
+    ),
 ) -> None:
     """Run rendered PDF preflight, template fingerprinting, visual overlap & structural checks."""
     from paperforge.commands.preflight import run
@@ -544,7 +622,9 @@ def preflight(
 @app.command()
 def references(
     path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
-    online: bool = typer.Option(False, "--online", help="Verify DOIs against Crossref API."),
+    online: bool = typer.Option(
+        False, "--online", help="Verify DOIs against Crossref API."
+    ),
 ) -> None:
     """Verify BibTeX reference metadata and optionally check DOIs against Crossref."""
     from paperforge.core.project import PaperForgeProject

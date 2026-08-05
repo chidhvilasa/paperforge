@@ -9,6 +9,7 @@ Defaults to the current directory.
 
 | Command | Description |
 |---------|-------------|
+| [inspect](inspect.md) | Read-only reconnaissance of a directory before intake/import |
 | [init](init.md) | Initialize PaperForge in a project |
 | [capture](capture.md) | Capture experiment results, create draft claim |
 | [add-claim](add-claim.md) | Interactively create a new claim |
