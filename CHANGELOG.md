@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.6.0] — 2026-08-06
+
+### Added
+- **`paperforge inspect`**: read-only reconnaissance of a directory
+  before running `init` or importing existing material. Detects
+  manuscripts, bibliography, figures, tables, notebooks, data files,
+  venue template files, package managers, Git state, an existing
+  PaperForge project, candidate output directories, likely secrets
+  (high-confidence patterns: private key blocks, AWS key IDs,
+  API-key-shaped tokens, GitHub tokens, hardcoded password literals),
+  and absolute local paths embedded in text files. Supports `--json` for
+  machine-readable output. Never executes or modifies anything it finds.
+- **Evidence-class taxonomy** (`Claim.evidence_class`, optional field):
+  ten explicit classes for what kind of statement a claim is
+  (`AUTHOR_ASSERTED`, `SOURCE_SUPPORTED`, `DIRECT_RESULT`,
+  `DERIVED_RESULT`, `STATISTICAL_RESULT`, `INTERPRETATION`,
+  `HYPOTHESIS`, `LIMITATION`, `FUTURE_WORK`, `PLACEHOLDER`). Three new
+  Doctor checks enforce this in submission mode:
+  `EVIDENCE_CLASS_PLACEHOLDER` (a claim explicitly flagged incomplete
+  blocks submission), `EVIDENCE_CLASS_UNSUPPORTED_RESULT` (a
+  `DIRECT_RESULT`/`DERIVED_RESULT`/`STATISTICAL_RESULT` claim with no
+  linked experiment or citation blocks submission), and
+  `EVIDENCE_CLASS_INVALID` (an unrecognized value warns). Fully optional
+  and backward compatible — an unclassified claim is unaffected. See
+  `docs/EVIDENCE_AND_PROVENANCE.md`.
+- `SECURITY.md` with vulnerability-reporting instructions.
+- README section documenting the evidence-class taxonomy and PaperForge's
+  scientific-safety commitments (does not guarantee publication
+  acceptance).
+
+### Fixed
+- README's `pip install` instructions no longer pin a stale version
+  number.
+
 ## [1.5.3] — 2026-08-04
 
 ### Fixed
