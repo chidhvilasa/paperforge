@@ -15,7 +15,7 @@ from rich.text import Text
 
 from paperforge.core.project import PaperForgeProject
 from paperforge.history import record_snapshot
-from paperforge.models.claim import Claim
+from paperforge.models.claim import EVIDENCE_CLASSES, RESULT_EVIDENCE_CLASSES, Claim
 from paperforge.utils.numbers import (
     extract_numbers,
     find_pvalue_mentions,
@@ -1709,6 +1709,64 @@ def collect_issues(project: PaperForgeProject, mode: str = "draft") -> list[Issu
                 )
             )
 
+    # Check 104 — EVIDENCE_CLASS_PLACEHOLDER (ERROR)
+    # A claim explicitly marked PLACEHOLDER is a known scientific gap the
+    # author has flagged for later completion. It must never silently
+    # reach a submission-ready build.
+    for claim in project.claims:
+        if claim.evidence_class == "PLACEHOLDER":
+            issues.append(
+                Issue(
+                    code="EVIDENCE_CLASS_PLACEHOLDER",
+                    severity="ERROR",
+                    message=(
+                        f"{claim.id} is marked evidence_class: PLACEHOLDER "
+                        "-- resolve with real evidence before submission."
+                    ),
+                    claim_id=claim.id,
+                )
+            )
+
+    # Check 105 — EVIDENCE_CLASS_UNSUPPORTED_RESULT (ERROR)
+    # A claim classified as a result (DIRECT_RESULT, DERIVED_RESULT, or
+    # STATISTICAL_RESULT) asserts something was measured or computed, so
+    # it must be linked to at least one evidence source: an experiment
+    # (for measured/computed results) or a citation (for a result
+    # attributed to prior work). Never treat an unsupported result claim
+    # as fact.
+    for claim in project.claims:
+        if claim.evidence_class in RESULT_EVIDENCE_CLASSES:
+            has_experiment = bool(claim.experiment or claim.experiments)
+            has_citation = bool(claim.citations)
+            if not has_experiment and not has_citation:
+                issues.append(
+                    Issue(
+                        code="EVIDENCE_CLASS_UNSUPPORTED_RESULT",
+                        severity="ERROR",
+                        message=(
+                            f"{claim.id} is classified {claim.evidence_class} but has no "
+                            "linked experiment or citation to support it."
+                        ),
+                        claim_id=claim.id,
+                    )
+                )
+
+    # Check 106 — EVIDENCE_CLASS_INVALID (WARNING)
+    for claim in project.claims:
+        if claim.evidence_class and claim.evidence_class not in EVIDENCE_CLASSES:
+            issues.append(
+                Issue(
+                    code="EVIDENCE_CLASS_INVALID",
+                    severity="WARNING",
+                    message=(
+                        f"{claim.id} has unrecognized evidence_class "
+                        f"'{claim.evidence_class}'. Expected one of: "
+                        f"{', '.join(sorted(EVIDENCE_CLASSES))}."
+                    ),
+                    claim_id=claim.id,
+                )
+            )
+
     return issues
 
 
@@ -1725,6 +1783,9 @@ def _print_fix_hint(issue: Issue, project: PaperForgeProject) -> None:
             "to see available metric values."
         ),
         "DUPLICATE_CLAIM_TEXT": "Delete one of the duplicate claim YAML files in .paperforge/claims/.",
+        "EVIDENCE_CLASS_PLACEHOLDER": "Replace the placeholder with real evidence, then set 'evidence_class:' to the appropriate class.",
+        "EVIDENCE_CLASS_UNSUPPORTED_RESULT": "Link an 'experiment:' or a 'citations:' entry, or reclassify as AUTHOR_ASSERTED/INTERPRETATION/HYPOTHESIS if it is not a measured result.",
+        "EVIDENCE_CLASS_INVALID": "Set 'evidence_class:' to one of the recognized values (see docs/EVIDENCE_AND_PROVENANCE.md).",
         "CLAIM_IN_NO_SECTION": "Add 'sections: [results]' (or appropriate section) to the claim YAML.",
         "MISSING_PAPER_TITLE": "Set 'title: Your Paper Title' in .paperforge/paper.yaml.",
         "MISSING_AUTHORS": "Set 'authors: [Author Name]' in .paperforge/paper.yaml.",

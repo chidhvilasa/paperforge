@@ -8,6 +8,33 @@ from typing import Literal
 
 ClaimStatus = Literal["verified", "unverified", "stale"]
 
+# Evidence-class taxonomy for a generated/authored scientific statement.
+# Independent of `claim_type` (the LaTeX environment: claim/theorem/...).
+# An empty string means "unclassified" (legacy projects; not itself an
+# error, but submission mode cannot verify support for an unclassified
+# result-shaped claim the way it can for an explicitly classified one).
+EVIDENCE_CLASSES = frozenset(
+    {
+        "AUTHOR_ASSERTED",
+        "SOURCE_SUPPORTED",
+        "DIRECT_RESULT",
+        "DERIVED_RESULT",
+        "STATISTICAL_RESULT",
+        "INTERPRETATION",
+        "HYPOTHESIS",
+        "LIMITATION",
+        "FUTURE_WORK",
+        "PLACEHOLDER",
+    }
+)
+
+# Evidence classes that assert a result and therefore require a linked
+# evidence source (an experiment and/or a citation) before they may pass
+# submission-mode validation.
+RESULT_EVIDENCE_CLASSES = frozenset(
+    {"DIRECT_RESULT", "DERIVED_RESULT", "STATISTICAL_RESULT"}
+)
+
 
 @dataclass
 class Claim:
@@ -27,9 +54,12 @@ class Claim:
     compared_work: str = ""
     is_math: bool = False
     raw_latex: bool = False
-    claim_type: str = "claim"  # claim, theorem, lemma, definition, proof, corollary, remark
+    claim_type: str = (
+        "claim"  # claim, theorem, lemma, definition, proof, corollary, remark
+    )
     import_hash: str = ""
     permitted_only_if: list[str] = field(default_factory=list)
+    evidence_class: str = ""  # one of EVIDENCE_CLASSES, or "" if unclassified
 
     @classmethod
     def from_yaml(cls, data: dict) -> Claim:
@@ -56,6 +86,7 @@ class Claim:
             claim_type=str(data.get("claim_type", "claim")),
             import_hash=str(data.get("import_hash", "")),
             permitted_only_if=data.get("permitted_only_if", []) or [],
+            evidence_class=str(data.get("evidence_class", "") or ""),
         )
 
     def to_yaml(self) -> dict:
@@ -81,4 +112,5 @@ class Claim:
             "claim_type": self.claim_type,
             "import_hash": self.import_hash,
             "permitted_only_if": self.permitted_only_if,
+            "evidence_class": self.evidence_class,
         }
