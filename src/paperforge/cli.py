@@ -140,6 +140,39 @@ def manifest_migrate(
 
 
 @app.command()
+def requirements(
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    manifest: Path | None = typer.Option(
+        None,
+        "--manifest",
+        help="Manifest path. Defaults to <path>/paperforge.project.yaml.",
+    ),
+    mode: str = typer.Option(
+        "draft", "--mode", "-m", help="outline, draft, review, or submission."
+    ),
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        help="Directory to write reports to. Defaults to <path>/.paperforge.",
+    ),
+    json_output: bool = typer.Option(False, "--json", help="Output results as JSON."),
+) -> None:
+    """Evaluate mode-aware manuscript requirements against the project manifest."""
+    from paperforge.commands.requirements_cmd import run as run_requirements
+
+    root = path.resolve()
+    raise typer.Exit(
+        code=run_requirements(
+            project_root=root,
+            manifest_path=manifest.resolve() if manifest else None,
+            mode=mode,
+            json_output=json_output,
+            output_dir=output.resolve() if output else None,
+        )
+    )
+
+
+@app.command()
 def capture(
     results: Path = typer.Argument(..., help="Path to metrics JSON file."),
     experiment: str = typer.Option(
