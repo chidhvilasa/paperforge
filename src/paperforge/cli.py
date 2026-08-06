@@ -67,6 +67,78 @@ def inspect(
     run(project_root=path.resolve(), json_output=json_output)
 
 
+manifest_app = typer.Typer(
+    name="manifest",
+    help="Work with the canonical paperforge.project.yaml manifest.",
+)
+app.add_typer(manifest_app, name="manifest")
+
+
+@manifest_app.command("schema")
+def manifest_schema(
+    output: Path | None = typer.Option(
+        None, "--output", help="Write the JSON Schema document to this path."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", help="Wrap the schema in the standard JSON result envelope."
+    ),
+) -> None:
+    """Print (or save) the JSON Schema for paperforge.project.yaml."""
+    from paperforge.commands.manifest_cmd import run_schema
+
+    raise typer.Exit(code=run_schema(output=output, json_output=json_output))
+
+
+@manifest_app.command("validate")
+def manifest_validate(
+    path: Path = typer.Argument(
+        default=Path("paperforge.project.yaml"), help="Path to the manifest file."
+    ),
+    mode: str = typer.Option(
+        "draft", "--mode", "-m", help="Validation mode: draft, review, or submission."
+    ),
+    json_output: bool = typer.Option(False, "--json", help="Output results as JSON."),
+) -> None:
+    """Validate a manifest file (safe YAML, structure, unknown fields)."""
+    from paperforge.commands.manifest_cmd import run_validate
+
+    raise typer.Exit(
+        code=run_validate(path.resolve(), mode=mode, json_output=json_output)
+    )
+
+
+@manifest_app.command("migrate")
+def manifest_migrate(
+    input_path: Path = typer.Option(
+        Path("paperforge.project.yaml"), "--input", help="Manifest file to migrate."
+    ),
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        help="Write the migrated manifest here instead of overwriting --input.",
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Report what would change without writing."
+    ),
+    yes: bool = typer.Option(
+        False, "--yes", help="Do not prompt before overwriting in place."
+    ),
+    json_output: bool = typer.Option(False, "--json", help="Output results as JSON."),
+) -> None:
+    """Migrate a manifest to the current schema version."""
+    from paperforge.commands.manifest_cmd import run_migrate
+
+    raise typer.Exit(
+        code=run_migrate(
+            input_path=input_path.resolve(),
+            output_path=output.resolve() if output else None,
+            dry_run=dry_run,
+            yes=yes,
+            json_output=json_output,
+        )
+    )
+
+
 @app.command()
 def capture(
     results: Path = typer.Argument(..., help="Path to metrics JSON file."),

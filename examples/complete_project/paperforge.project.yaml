@@ -1,0 +1,46 @@
+schema_version: "1.0"
+project:
+  title: "A Complete Study on Advanced Network Topologies"
+  short_title: "Advanced Networks"
+  research_domain: "Computer Networking"
+  study_type: "Experimental"
+  language: "English"
+  target_venue: "ieee"
+  project_status: "draft"
+authors:
+  - id: "author_1"
+    name: "John Smith"
+    email: "john@example.com"
+    orcid: "0000-0000-0000-0000"
+    corresponding: true
+research:
+  problem_statement: "Network latency is too high under bursty load."
+  primary_question: "Does the proposed scheduling policy reduce tail latency?"
+methodology:
+  study_design: "Controlled testbed experiment"
+  datasets:
+    - "data/network_logs.csv"
+evidence:
+  raw_data:
+    - "data/network_logs.csv"
+literature:
+  bibliography:
+    - "references.bib"
+claims:
+  - id: "c1"
+    text: "The proposed policy reduces p99 latency relative to the baseline."
+    evidence_class: "DIRECT_RESULT"
+    evidence_refs:
+      - "data/network_logs.csv"
+manuscript:
+  generation_policy: "outline_only"
+  required_sections:
+    - abstract
+    - introduction
+    - methodology
+    - results
+    - discussion
+    - conclusion
+declarations:
+  funding: "Supported by a fictional example grant, no. EX-12345."
+  conflicts_of_interest: "The authors declare no conflicts of interest."

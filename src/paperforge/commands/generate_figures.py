@@ -212,7 +212,7 @@ def _generate_grouped_bar_chart(
     ax.set_xticks(x)
     ax.set_xticklabels(
         tick_labels,
-        rotation=30 if any(len(str(l)) > 8 for l in tick_labels) else 0,
+        rotation=30 if any(len(str(label)) > 8 for label in tick_labels) else 0,
         fontsize=8,
     )
     ax.legend(fontsize=7, framealpha=0.9)

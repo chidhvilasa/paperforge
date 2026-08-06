@@ -1,0 +1,22 @@
+schema_version: "1.0"
+project:
+  title: "Minimal Example Paper"
+  research_domain: "Computer Science"
+  study_type: "Experimental"
+  language: "English"
+  target_venue: "generic"
+authors:
+  - id: "author_1"
+    name: "Jane Doe"
+    email: "jane@example.com"
+research:
+  primary_question: "Does the proposed method outperform the baseline?"
+manuscript:
+  generation_policy: "validation_only"
+  required_sections:
+    - abstract
+    - introduction
+    - methodology
+    - results
+    - discussion
+    - conclusion

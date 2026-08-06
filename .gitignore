@@ -48,6 +48,10 @@ ENV/
 Thumbs.db
 desktop.ini
 
+# Local audit/report output and safety backups (never committed)
+audit_output/
+/backups/
+
 # Coverage
 .coverage
 .coverage.*
