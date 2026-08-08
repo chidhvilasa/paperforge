@@ -1,5 +1,110 @@
 # Changelog
 
+## [1.7.0] — 2026-08-09
+
+A second, optional workflow built around a canonical `paperforge.project.yaml`
+manifest, alongside the existing `.paperforge/paper.yaml` workflow (which
+is entirely unchanged). See `docs/PROJECT_MANIFEST.md` and the README's
+new "Canonical Manifest, Planning, and Evidence-Safe Generation" section.
+
+### Added
+
+- **Canonical project manifest** (`paperforge.project.yaml`, schema
+  version `1.0`): typed models for project identity, authors, research
+  basis, methodology, evidence inventory, literature, claims, manuscript
+  plan, declarations, submission packaging, and free-form extensions.
+  `paperforge manifest schema|validate|migrate`. Safe-YAML loading (no
+  arbitrary object tags, no duplicate keys, bounded size/depth/collection/
+  scalar-length, recursive-alias rejection) and project-local path-field
+  security (`..` traversal, external absolute paths, Windows drive
+  escapes, UNC paths, symlink escapes all rejected). JSON Schema exported
+  directly from the Python model. Migration registry with atomic writes,
+  backups, and hash-verified reports.
+- **Mode-aware requirements engine** (`paperforge requirements`):
+  evaluates manifest structure, repository content, study-type
+  conditions, and declarations against outline/draft/review/submission
+  modes. Funding/ethics/consent/DOI/ORCID/statistics/datasets/figures/
+  code-availability are never universally mandatory — each rule states
+  its own applicability condition.
+- **Approval-gated generation planning** (`paperforge plan`): a purely
+  structural plan (section order, in-scope claims/evidence/citations per
+  section, unresolved questions, prohibited claims, venue constraints,
+  validation gates) with a four-hash approval record
+  (manifest/evidence/claim-set/plan) that auto-invalidates on any
+  relevant change.
+- **Deterministic, evidence-safe generation** (`paperforge generate`):
+  outline-only, draft-with-placeholders (watermarked), and validated
+  (approval-required) modes. The only shipped provider (`no_ai`) wraps
+  each claim's own author-written text in a neutral, evidence-class-aware
+  template sentence — it never invents facts, numbers, or citations. A
+  documented `GenerationProvider` interface exists for future real AI
+  integrations; none ships in this release, and no test requires an API
+  key.
+- **Provenance sidecars** (`paperforge provenance show|validate|export`):
+  one record per generated sentence (section, sentence hash, evidence
+  class, claim/evidence/citation refs, generation method, provider,
+  model, confidence, timestamp, author-review status, warnings).
+  Validation catches staleness, missing claims/evidence, unreviewed
+  generated results, and placeholder provenance.
+- **Output lifecycle** (`paperforge outputs list|verify`, `promote`,
+  `rollback`): artifact-completeness verification (required files,
+  non-trivial size, valid PDF header) independent of Doctor/preflight
+  content checks; promotion that refuses (leaving `current`/`previous`
+  untouched) on failed verification; resumable atomic rollback via a
+  3-step rename sequence with a crash-recovery marker.
+- **Centralized, timeout-safe subprocess execution**
+  (`paperforge.utils.subprocess_runner`): every `latexmk`/`pdflatex`/
+  `bibtex` invocation now has a 300s ceiling with full process-tree
+  cleanup (`taskkill /T` on Windows, `os.killpg(SIGKILL)` on POSIX) —
+  fixes a real, previously observed failure mode where a stuck MiKTeX
+  prompt could hang an entire build indefinitely.
+- `paperforge references --json`.
+- `examples/agent_project/`, `docs/AGENT_PROTOCOL.md`,
+  `docs/AGENT_INTEGRATION.md`: the JSON envelope/exit-code contract and a
+  verified, worked agent workflow.
+- `docs/SECURITY_MODEL.md`, `docs/SECURITY_AUDIT.md`, `docs/PRIVACY.md`,
+  `docs/PROJECT_MANIFEST.md`, `docs/REQUIREMENTS_ENGINE.md`,
+  `docs/GENERATION_PLANNING.md`, `docs/GENERATION.md`,
+  `docs/AI_PROVIDERS.md`, `docs/OUTPUT_LIFECYCLE.md`, `docs/MIGRATION.md`,
+  `docs/TROUBLESHOOTING.md`, `docs/RELEASE_CHECKLIST.md`,
+  `docs/REPOSITORY_CLEANUP_AUDIT.md`, `docs/VERSION_DECISION.md`.
+
+### Fixed
+
+- **Pillow 10.4.0 had 24 known PYSEC advisories** (dependency, found via
+  `pip-audit` against this project's exact direct-dependency versions).
+  Bumped `pillow>=10.0.0` → `>=12.3.0`; re-audited clean.
+- A ruff-flagged ambiguous variable name (`l`) in `generate_figures.py`
+  (pre-existing, unrelated to this release's own changes).
+- `SECURITY.md` inaccurately implied ZIP-extraction and formula-
+  evaluation attack surfaces exist; neither does (no code anywhere in
+  this repository extracts a ZIP archive or evaluates a formula/eval
+  expression, both grep-verified).
+
+### Removed
+
+- `release_notes.txt`, `tag_msg.txt`: one-time scratch text for the
+  v0.4.0 release, stale for 15+ subsequent versions and referenced
+  nowhere.
+- Superseded scratch artifacts from a prior, incomplete attempt at this
+  same task (`architecture_dump.txt`, `scratch_audit.py`,
+  `src/paperforge/core/manifest.py`, four planning-stage markdown files)
+  — all confirmed unreferenced before removal.
+
+### Known limitations
+
+See the release's completion report for the full itemized list. In
+summary: no interactive intake wizard; no safe import of existing LaTeX/
+BibTeX projects into the canonical manifest (only the pre-existing
+`.paperforge/paper.yaml` import path); no real (non-template) AI
+provider; the reference pipeline, venue-adapter system, and packaging
+lifecycle are otherwise unchanged from 1.6.0; provenance staleness is
+checked at whole-section-file granularity, not true per-sentence
+diffing; generated content from `paperforge generate` is not yet wired
+into the LaTeX `build` pipeline; `promote` validates `current` as already
+produced by `build` rather than orchestrating an independently staged
+build; `init` and `build` do not yet support `--json`.
+
 ## [1.6.0] — 2026-08-06
 
 ### Added

@@ -96,6 +96,25 @@ claim deduplication, stale PDF handling.
 - 25 CLI commands.
 - 499 tests.
 
+### v1.6.0 - v1.7.0
+
+Entries for v1.2.0-v1.4.0 and v1.6.0 were not backfilled into this
+document by the sessions that shipped them; see `CHANGELOG.md` for the
+complete, accurate history.
+
+v1.7.0 added a second, optional workflow around a canonical
+`paperforge.project.yaml` manifest, entirely additive to everything
+above: safe-YAML/path-secured manifest validation and migration,
+mode-aware requirements evaluation, approval-gated structural planning
+with automatic staleness detection, deterministic template-only
+generation (explicitly not an AI source of truth — see Constitution
+principle 5), sentence-level provenance sidecars, build-output
+promotion/rollback, and a centralized timeout-safe subprocess runner.
+Full details in `CHANGELOG.md`'s `[1.7.0]` entry and this pass's honest
+completion report (interactive intake, safe LaTeX/BibTeX import into the
+new manifest, a real AI provider, versioned venue adapters, and reference-
+pipeline hardening were scoped for this pass but not completed).
+
 ## Non-Goals
 
 These will never be in PaperForge core:
