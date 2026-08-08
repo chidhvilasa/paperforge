@@ -347,6 +347,67 @@ def provenance_export(
     )
 
 
+outputs_app = typer.Typer(
+    name="outputs", help="Inspect build output artifacts (current/previous)."
+)
+app.add_typer(outputs_app, name="outputs")
+
+
+@outputs_app.command("list")
+def outputs_list(
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    json_output: bool = typer.Option(False, "--json", help="Output results as JSON."),
+) -> None:
+    """List current/previous build outputs and any staging directories."""
+    from paperforge.commands.outputs_cmd import run_list
+
+    raise typer.Exit(
+        code=run_list(project_root=path.resolve(), json_output=json_output)
+    )
+
+
+@outputs_app.command("verify")
+def outputs_verify(
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    target: str = typer.Option("current", "--target", help="current or previous."),
+    json_output: bool = typer.Option(False, "--json", help="Output results as JSON."),
+) -> None:
+    """Verify build-output artifact completeness (files present, non-trivial size, valid PDF header)."""
+    from paperforge.commands.outputs_cmd import run_verify
+
+    raise typer.Exit(
+        code=run_verify(
+            project_root=path.resolve(), target=target, json_output=json_output
+        )
+    )
+
+
+@app.command()
+def promote(
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    json_output: bool = typer.Option(False, "--json", help="Output results as JSON."),
+) -> None:
+    """Verify the current build output and record it as the promoted submission candidate."""
+    from paperforge.commands.outputs_cmd import run_promote
+
+    raise typer.Exit(
+        code=run_promote(project_root=path.resolve(), json_output=json_output)
+    )
+
+
+@app.command()
+def rollback(
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    json_output: bool = typer.Option(False, "--json", help="Output results as JSON."),
+) -> None:
+    """Atomically swap current and previous build outputs. Resumes an interrupted rollback safely."""
+    from paperforge.commands.outputs_cmd import run_rollback
+
+    raise typer.Exit(
+        code=run_rollback(project_root=path.resolve(), json_output=json_output)
+    )
+
+
 @app.command()
 def capture(
     results: Path = typer.Argument(..., help="Path to metrics JSON file."),
