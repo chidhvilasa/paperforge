@@ -72,11 +72,41 @@ these three checks fire for an unclassified claim. Classification is
 something a project opts into claim-by-claim, not a requirement imposed
 retroactively.
 
+## Provenance sidecars (canonical-manifest workflow, v1.7.0+)
+
+The `evidence_class` checks above apply to the original
+`.paperforge/paper.yaml` + `build` claim workflow. Since v1.7.0, the
+[canonical `paperforge.project.yaml` manifest workflow](PROJECT_MANIFEST.md)
+adds real, sentence-level provenance: every sentence
+`paperforge generate` produces gets one `ProvenanceRecord` — section,
+sentence id, a SHA-256 hash of its exact text, evidence class, claim IDs,
+evidence refs, citation keys, generation method, provider, model,
+confidence, timestamp, author-review status, and warnings — written to
+`.paperforge/provenance/<section>.json` plus a `.paperforge/provenance/index.json`
+summary.
+
+`paperforge provenance validate` checks: staleness (the generated file's
+current content hash no longer matches what's recorded — i.e. it was
+hand-edited or regenerated without updating provenance), a missing
+generated file, a claim id that no longer exists in the manifest, a
+result-shaped claim (`DIRECT_RESULT`/`DERIVED_RESULT`/`STATISTICAL_RESULT`)
+with no evidence or citation reference, a result-shaped claim whose
+`author_review_status` is not `"approved"`/`"reviewed"`, and placeholder
+provenance. See [GENERATION.md](GENERATION.md) and
+[docs/AGENT_INTEGRATION.md](AGENT_INTEGRATION.md) for a worked example.
+
 ## What this does not do (yet)
 
-This is claim-level classification, not full claim-to-sentence
-provenance tracking (a sidecar mapping every sentence of generated prose
-to its exact source range, derivation, and confidence). That richer
-provenance architecture is a larger undertaking and is not implemented
-in the current release — see the project's changelog for what is
-actually shipped in each version.
+- The original `.paperforge/paper.yaml` claim-level `evidence_class`
+  checks (above) remain claim-level only — they are not connected to the
+  newer sentence-level provenance sidecars, which only exist for content
+  produced by `paperforge generate` from the canonical manifest workflow.
+- Provenance validity is checked at whole-section-file granularity (one
+  hash covering the entire generated Markdown file), not a true per-
+  sentence diff against the file on disk — a hand-edit anywhere in a
+  section is detected, but not localized to which sentence changed.
+- There is currently no CLI command to mark a provenance record's
+  `author_review_status` as reviewed; this is done by editing
+  `.paperforge/provenance/<section>.json` directly today.
+- Generated content from `paperforge generate` is not wired into the
+  LaTeX `build` pipeline.

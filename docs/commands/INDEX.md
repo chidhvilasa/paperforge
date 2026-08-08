@@ -11,6 +11,22 @@ Defaults to the current directory.
 |---------|-------------|
 | [inspect](inspect.md) | Read-only reconnaissance of a directory before intake/import |
 | [init](init.md) | Initialize PaperForge in a project |
+| `manifest schema\|validate\|migrate` | Work with the canonical [`paperforge.project.yaml`](../PROJECT_MANIFEST.md) manifest |
+| `requirements` | Evaluate [mode-aware manuscript requirements](../REQUIREMENTS_ENGINE.md) |
+| `plan` | Build an [approval-gated generation plan](../GENERATION_PLANNING.md) (no prose) |
+| `generate` | [Deterministically generate](../GENERATION.md) section content from an approved plan |
+| `provenance show\|validate\|export` | Inspect/validate [generation provenance sidecars](../EVIDENCE_AND_PROVENANCE.md#provenance-sidecars-canonical-manifest-workflow-v170) |
+| `outputs list\|verify` | Inspect [build-output artifact completeness](../OUTPUT_LIFECYCLE.md) |
+| `promote` | Verify and record the current build output as promoted |
+| `rollback` | Atomically swap current/previous build outputs |
+| [preflight](../preflight.md) | Rendered-PDF preflight, template fingerprinting, structural/visual checks |
+| [references](../reference_verification.md) | Verify BibTeX metadata, optionally against Crossref |
+| `import` | Import markdown/CSV/graph scripts from `paper_information/` |
+| `update` | Check PyPI for updates and upgrade in-place |
+| `sync` | Sync `.paperforge/` from `paper_information/` |
+| `validate` | Validate `.paperforge/paper.yaml` project configuration |
+| `clean` | Remove LaTeX aux files from the build output directory |
+| `generate-figures` | Generate matplotlib plots from experiment metrics |
 | [capture](capture.md) | Capture experiment results, create draft claim |
 | [add-claim](add-claim.md) | Interactively create a new claim |
 | [add-figure](add-figure.md) | Interactively create a new figure YAML file |
@@ -64,6 +80,22 @@ paperforge doctor --target ieee
 paperforge build --target ieee
 paperforge export bibtex
 ```
+
+## What's New in v1.7.0
+
+A second, optional workflow around a canonical `paperforge.project.yaml`
+manifest: safe-YAML/path-secured validation and migration
+(`manifest schema|validate|migrate`), mode-aware manuscript requirements
+(`requirements`), approval-gated structural planning (`plan`),
+deterministic evidence-safe generation with a documented no-AI-by-default
+provider interface (`generate`), sentence-level provenance sidecars
+(`provenance show|validate|export`), and build-output lifecycle commands
+(`outputs list|verify`, `promote`, `rollback`). A centralized,
+timeout-safe subprocess runner now backs `paperforge build`'s LaTeX
+compilation. See [PROJECT_MANIFEST.md](../PROJECT_MANIFEST.md) and
+[AGENT_PROTOCOL.md](../AGENT_PROTOCOL.md) for details, and the
+`CHANGELOG.md` for the full, honest scope of what shipped vs. what
+remains outstanding in this release.
 
 ## What's New in v1.0.0
 

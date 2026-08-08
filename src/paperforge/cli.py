@@ -966,12 +966,20 @@ def references(
     online: bool = typer.Option(
         False, "--online", help="Verify DOIs against Crossref API."
     ),
+    json_output: bool = typer.Option(False, "--json", help="Output results as JSON."),
 ) -> None:
     """Verify BibTeX reference metadata and optionally check DOIs against Crossref."""
     from paperforge.core.project import PaperForgeProject
     from paperforge.services.reference_verifier import verify_references
+    from paperforge.utils.envelope import (
+        EXIT_REFERENCES_ERROR,
+        EXIT_SUCCESS,
+        ResultEnvelope,
+        print_envelope,
+    )
 
-    project = PaperForgeProject.load(path.resolve())
+    project_root = path.resolve()
+    project = PaperForgeProject.load(project_root)
     reports_dir = (
         project.output_dir.parent.parent / "reports"
         if project.output_dir.parent.name == "paper_generated"
@@ -980,6 +988,28 @@ def references(
     reports_dir.mkdir(parents=True, exist_ok=True)
 
     rep = verify_references(project, reports_dir, online=online)
+
+    if json_output:
+        env = ResultEnvelope(command="references", project_root=str(project_root))
+        env.outputs["report"] = rep.to_dict()
+        if not rep.passed:
+            for issue in rep.issues:
+                env.errors.append(
+                    {
+                        "code": str(issue.get("code", "REFERENCE_ISSUE")),
+                        "field_path": str(issue.get("citation_key", "")),
+                        "message": str(issue.get("message", issue)),
+                        "remediation": str(issue.get("remediation", "")),
+                        "severity": str(issue.get("severity", "ERROR")),
+                        "line": None,
+                        "column": None,
+                    }
+                )
+        env.finalize(EXIT_REFERENCES_ERROR)
+        if not env.errors:
+            env.status, env.exit_code = "success", EXIT_SUCCESS
+        raise typer.Exit(code=print_envelope(env))
+
     typer.echo(
         f"Reference verification complete. Checked {rep.total_citations} references "
         f"(online verified: {rep.online_verified_count}). Status: {'PASSED' if rep.passed else 'ISSUES FOUND'}"

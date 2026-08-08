@@ -1,0 +1,62 @@
+schema_version: "1.0"
+
+project:
+  title: "Evaluating a Fictional Caching Strategy Under Bursty Load"
+  research_domain: "Computer Systems"
+  study_type: "Experimental"
+  language: "English"
+  target_venue: "generic"
+
+authors:
+  - id: "author_1"
+    name: "Riley Chen"
+    email: "riley@example.org"
+    corresponding: true
+
+research:
+  problem_statement: "Cache miss rates spike under bursty request patterns."
+  primary_question: "Does the proposed adaptive-TTL strategy reduce miss rate under bursty load?"
+  secondary_questions:
+    - "Does the effect hold across all tested burst intensities?"
+
+methodology:
+  study_design: "Controlled benchmark comparison against a fixed-TTL baseline"
+  statistical_plan: "Paired two-sided Wilcoxon signed-rank test, alpha=0.05"
+
+evidence:
+  raw_data:
+    - "data/benchmark_results.csv"
+
+literature:
+  bibliography:
+    - "references.bib"
+
+claims:
+  - id: "c1"
+    text: "the adaptive-TTL strategy reduces cache miss rate by a measurable margin under bursty load"
+    evidence_class: "DIRECT_RESULT"
+    evidence_refs:
+      - "data/benchmark_results.csv"
+  - id: "c2"
+    text: "the observed reduction in miss rate is statistically significant"
+    evidence_class: "STATISTICAL_RESULT"
+    evidence_refs:
+      - "data/benchmark_results.csv"
+  - id: "c3"
+    text: "this evaluation only covers a single workload family and may not generalize"
+    evidence_class: "LIMITATION"
+
+manuscript:
+  generation_policy: "validation_only"
+  required_sections:
+    - abstract
+    - introduction
+    - methodology
+    - results
+    - discussion
+    - conclusion
+
+declarations:
+  funding: "This work received no external funding."
+  conflicts_of_interest: "The authors declare no conflicts of interest."
+  data_availability: "Benchmark data is available in data/benchmark_results.csv."

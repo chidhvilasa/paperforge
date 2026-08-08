@@ -106,6 +106,58 @@ PaperForge does not guarantee publication acceptance. It helps keep
 generated prose traceable to real evidence; scientific judgment and
 responsibility remain the author's.
 
+## Canonical Manifest, Planning, and Evidence-Safe Generation
+
+Since v1.7.0, PaperForge also supports a second, optional workflow built
+around a canonical `paperforge.project.yaml` manifest — independent of, and
+not yet merged with, the older `.paperforge/paper.yaml` project format
+above. It exists for projects (and agents) that want an explicit,
+approval-gated path from structured intake data to generated content:
+
+```bash
+# 1. Write or hand-author paperforge.project.yaml (see examples/), then:
+paperforge manifest validate paperforge.project.yaml --mode draft
+paperforge manifest schema --output paperforge-project.schema.json
+
+# 2. See what's missing for your target mode
+paperforge requirements --mode submission
+
+# 3. Build a structural plan (section order, in-scope claims/evidence/
+#    citations per section -- no prose) and approve it
+paperforge plan
+paperforge plan --approve --mode submission
+
+# 4. Generate. The default mode refuses to run without a currently-valid
+#    approval; --outline-only and --draft-with-placeholders never require one.
+paperforge generate --outline-only        # headings + permitted claims only
+paperforge generate --draft-with-placeholders   # watermarked, not submission-ready
+paperforge generate                       # requires an approved plan
+
+# 5. Every generated sentence has a provenance record
+paperforge provenance validate
+
+# 6. Build-output lifecycle
+paperforge outputs verify
+paperforge promote
+paperforge rollback
+```
+
+Generation is deterministic and evidence-safe by construction: the only
+provider that ships is a template-only `no_ai` provider that wraps each
+claim's *author-written* text in a neutral, evidence-class-aware sentence
+(e.g. "A direct result (c1) indicates: `<your claim text>` (evidence:
+`data.csv`)."). It never invents facts, numbers, or citations. See
+[docs/EVIDENCE_AND_PROVENANCE.md](docs/EVIDENCE_AND_PROVENANCE.md),
+[docs/GENERATION_PLANNING.md](docs/GENERATION_PLANNING.md), and
+[docs/GENERATION.md](docs/GENERATION.md).
+
+This workflow currently covers: manifest validation/migration, mode-aware
+requirements, plan/approval, no-AI generation, and provenance. It does
+**not** yet include an interactive intake wizard, safe import of existing
+LaTeX/BibTeX projects into the manifest, or a real (non-template) AI
+provider — see [docs/AI_PROVIDERS.md](docs/AI_PROVIDERS.md) and the
+"Remaining limitations" notes throughout `docs/` for what's still missing.
+
 ## Install
 
 ```bash
@@ -262,6 +314,14 @@ is preserved in `paper_generated/previous/` for comparison.
 |---------|-------------|
 | `paperforge inspect` | Read-only reconnaissance of a directory before intake/import |
 | `paperforge init` | Initialize PaperForge in a project directory |
+| `paperforge manifest schema\|validate\|migrate` | Work with the canonical `paperforge.project.yaml` manifest |
+| `paperforge requirements` | Evaluate mode-aware manuscript requirements against the manifest |
+| `paperforge plan` | Build an approval-gated, structural generation plan (no prose) |
+| `paperforge generate` | Deterministically generate section content from an approved plan |
+| `paperforge provenance show\|validate\|export` | Inspect and validate generation provenance sidecars |
+| `paperforge outputs list\|verify` | Inspect current/previous build-output artifact completeness |
+| `paperforge promote` | Verify the current build output and record it as the promoted candidate |
+| `paperforge rollback` | Atomically swap current/previous build outputs (resumable) |
 | `paperforge import` | Import markdown files, CSV tables, and graph scripts from `paper_information/` |
 | `paperforge update` | Check PyPI for updates and upgrade in-place (or `--git` for dev installs) |
 | `paperforge capture` | Capture experiment results, create draft claim |
@@ -457,6 +517,24 @@ into Overleaf -- no extra setup needed.
 
 Full command reference: [docs/commands/](docs/commands/INDEX.md)
 
+Canonical manifest workflow: [PROJECT_MANIFEST](docs/PROJECT_MANIFEST.md) ·
+[REQUIREMENTS_ENGINE](docs/REQUIREMENTS_ENGINE.md) ·
+[GENERATION_PLANNING](docs/GENERATION_PLANNING.md) ·
+[GENERATION](docs/GENERATION.md) ·
+[AI_PROVIDERS](docs/AI_PROVIDERS.md) ·
+[EVIDENCE_AND_PROVENANCE](docs/EVIDENCE_AND_PROVENANCE.md) ·
+[OUTPUT_LIFECYCLE](docs/OUTPUT_LIFECYCLE.md) ·
+[MIGRATION](docs/MIGRATION.md)
+
+Agents: [AGENT_PROTOCOL](docs/AGENT_PROTOCOL.md) ·
+[AGENT_INTEGRATION](docs/AGENT_INTEGRATION.md) ·
+[examples/agent_project/](examples/agent_project/)
+
+Security: [SECURITY_MODEL](docs/SECURITY_MODEL.md) ·
+[SECURITY_AUDIT](docs/SECURITY_AUDIT.md) ·
+[PRIVACY](docs/PRIVACY.md) ·
+[SECURITY.md](SECURITY.md)
+
 Roadmap: [docs/ROADMAP.md](docs/ROADMAP.md)
 
 ## Data Storage
@@ -491,6 +569,96 @@ The tool reported "PDF generated ✓" anyway by only checking
 that the PDF file existed. This is fixed: figures are now
 copied into the build directory before compilation, and the
 pdflatex log is parsed to detect broken compilations.
+
+## Using PaperForge with Claude Code, Antigravity, Codex, Cursor, or another coding agent
+
+The prompt below is written for an AI coding agent operating the canonical
+`paperforge.project.yaml` workflow (see above) on your behalf. Two lines are
+adapted from a generic version to match commands that actually exist in this
+release: step 4 (no interactive intake wizard ships yet — start from a
+hand-authored or copied-from-`examples/` manifest instead) and step 14
+(`paperforge references`, not a `references verify` subcommand). Every other
+command below is exactly as shipped and was exercised from an installed
+wheel as part of this release's acceptance checks.
+
+------------------------------------------------------------
+BEGIN README AGENT PROMPT
+------------------------------------------------------------
+
+```
+You are preparing or revising a research manuscript using PaperForge.
+
+Do not begin writing immediately.
+
+Follow this order:
+
+1. Detect the installed PaperForge version: `paperforge --version`.
+2. Run `paperforge inspect --json`.
+3. Locate `paperforge.project.yaml`.
+4. If the manifest is absent, create one (see `examples/minimal_project/`
+   and `examples/complete_project/` for fictional templates) and validate
+   it with `paperforge manifest validate paperforge.project.yaml --json`.
+   PaperForge does not yet ship an interactive intake wizard.
+5. Read:
+   - `.paperforge/missing_requirements.md`;
+   - `.paperforge/requirements.json`;
+   (both written by `paperforge requirements --mode <mode> --json`).
+6. Ask the researcher only for required information that is missing and
+   cannot be safely discovered.
+7. Never invent:
+   - results;
+   - references;
+   - novelty;
+   - sample sizes;
+   - p-values;
+   - effect sizes;
+   - author details;
+   - funding;
+   - ethics approval;
+   - conflicts;
+   - data availability;
+   - code availability.
+8. Run `paperforge plan --json`.
+9. Present the generation plan to the researcher.
+10. Do not generate final manuscript prose until the plan is approved
+    (`paperforge plan --approve --mode submission --json`).
+11. Generate only approved sections using approved claims, evidence, and
+    citations (`paperforge generate --json`).
+12. Maintain provenance for generated text (`paperforge provenance
+    validate --json`).
+13. Never modify evidence to fit prose.
+14. Run:
+    - `paperforge doctor --json`;
+    - `paperforge build`;
+    - `paperforge preflight --json`;
+    - `paperforge references`;
+    - `paperforge outputs verify --json`.
+15. Build and independently test the Overleaf package (`paperforge
+    export`, then extract the zip and rebuild it in a clean directory).
+16. Do not use bypass flags (e.g. `--force-anyway`).
+17. Review every warning.
+18. Report:
+    - generated files;
+    - missing evidence;
+    - unsupported claims;
+    - unresolved citations;
+    - venue issues;
+    - validation results.
+19. Do not call the manuscript submission-ready unless all required gates
+    pass.
+
+PaperForge and the agent assist with intake, structure, evidence
+traceability, compilation, and validation. The researcher remains
+responsible for scientific accuracy and submission decisions.
+```
+
+------------------------------------------------------------
+END README AGENT PROMPT
+------------------------------------------------------------
+
+See [docs/AGENT_PROTOCOL.md](docs/AGENT_PROTOCOL.md) for the full JSON
+envelope schema and exit-code table, and
+[docs/AGENT_INTEGRATION.md](docs/AGENT_INTEGRATION.md) for a worked example.
 
 ## Contributing
 

@@ -56,3 +56,7 @@ audit_output/
 .coverage
 .coverage.*
 htmlcov/
+
+# Generated state from running examples/ locally (never committed)
+examples/*/.paperforge/
+examples/*/paper_generated/
