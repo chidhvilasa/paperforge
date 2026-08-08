@@ -31,6 +31,7 @@ from paperforge.utils.latex import (
     escape_latex_safe,
     markdown_to_latex_inline,
 )
+from paperforge.utils.subprocess_runner import RunResult, run_subprocess
 from paperforge.venues.base import VenuePlugin
 from paperforge.venues.registry import get_plugin
 
@@ -1207,6 +1208,12 @@ def _is_pdf_stale(project_root: Path, output_dir: Path | None = None) -> bool:
     return False
 
 
+#: Hard ceiling on any single latexmk/pdflatex/bibtex invocation. A stuck
+#: MiKTeX "check for updates" prompt (a real, observed failure mode) can
+#: otherwise hang latexmk -- and therefore `paperforge build` -- forever.
+LATEX_SUBPROCESS_TIMEOUT_SECONDS = 300.0
+
+
 def _compile_pdf_full(
     tex_path: Path,
     output_dir: Path,
@@ -1217,7 +1224,7 @@ def _compile_pdf_full(
 
     if latexmk:
         # latexmk handles the full BibTeX pipeline automatically
-        result = subprocess.run(
+        result = run_subprocess(
             [
                 latexmk,
                 "-pdf",
@@ -1226,38 +1233,32 @@ def _compile_pdf_full(
                 f"-outdir={output_dir}",
                 str(tex_path),
             ],
-            capture_output=True,
-            text=True,
-            cwd=output_dir,
-            check=False,
+            cwd=str(output_dir),
+            timeout=LATEX_SUBPROCESS_TIMEOUT_SECONDS,
         )
-        return result.returncode == 0, "latexmk"
+        return result.ok, "latexmk"
 
     if pdflatex:
         tex_name = tex_path.stem  # "paper" without extension
 
-        def run_pdflatex() -> subprocess.CompletedProcess[str]:
-            return subprocess.run(
+        def run_pdflatex() -> RunResult:
+            return run_subprocess(
                 [
                     pdflatex,
                     "-interaction=nonstopmode",
                     f"-output-directory={output_dir}",
                     str(tex_path),
                 ],
-                capture_output=True,
-                text=True,
-                cwd=output_dir,
-                check=False,
+                cwd=str(output_dir),
+                timeout=LATEX_SUBPROCESS_TIMEOUT_SECONDS,
             )
 
-        def run_bibtex() -> subprocess.CompletedProcess[str] | None:
+        def run_bibtex() -> RunResult | None:
             if bibtex:
-                return subprocess.run(
+                return run_subprocess(
                     [bibtex, tex_name],
-                    capture_output=True,
-                    text=True,
-                    cwd=output_dir,
-                    check=False,
+                    cwd=str(output_dir),
+                    timeout=LATEX_SUBPROCESS_TIMEOUT_SECONDS,
                 )
             return None
 
@@ -1266,7 +1267,7 @@ def _compile_pdf_full(
         run_bibtex()  # bibtex: process references
         run_pdflatex()  # pass 2: resolve citations
         result = run_pdflatex()  # pass 3: resolve cross-references
-        return result.returncode == 0, "pdflatex+bibtex"
+        return result.ok, "pdflatex+bibtex"
 
     return False, "none"
 

@@ -204,7 +204,9 @@ def test_build_author_not_double_wrapped(tmp_path: Path) -> None:
     build.run(tmp_path, target="ieee-journal")
     content = _read_tex(tmp_path)
     author_count = content.count("\\author{")
-    assert author_count == 1, f"Expected \\author{{}} exactly once, found {author_count} times"
+    assert author_count == 1, (
+        f"Expected \\author{{}} exactly once, found {author_count} times"
+    )
     assert "\\author{\\author" not in content
 
 
@@ -248,14 +250,20 @@ def test_build_table_label_appears_once(tmp_path: Path) -> None:
     claim2_path = pf_dir / "claims" / "claim_02.yaml"
     claim2_data = yaml.safe_load(claim2_path.read_text(encoding="utf-8"))
     claim2_data["tables"] = ["tbl_01"]
-    claim2_path.write_text(yaml.dump(claim2_data, default_flow_style=False), encoding="utf-8")
+    claim2_path.write_text(
+        yaml.dump(claim2_data, default_flow_style=False), encoding="utf-8"
+    )
 
     build.run(tmp_path, target="ieee-journal")
     content = _read_tex(tmp_path)
     label_count = content.count("\\label{tab:tbl_01}")
-    assert label_count == 1, f"Expected \\label{{tab:tbl_01}} exactly once, found {label_count}"
+    assert label_count == 1, (
+        f"Expected \\label{{tab:tbl_01}} exactly once, found {label_count}"
+    )
     begin_table_count = content.count("\\begin{table}")
-    assert begin_table_count == 1, f"Expected \\begin{{table}} exactly once, found {begin_table_count}"
+    assert begin_table_count == 1, (
+        f"Expected \\begin{{table}} exactly once, found {begin_table_count}"
+    )
 
 
 def test_build_figure_label_appears_once(tmp_path: Path) -> None:
@@ -282,7 +290,9 @@ def test_build_figure_label_appears_once(tmp_path: Path) -> None:
     claim2_path = pf_dir / "claims" / "claim_02.yaml"
     claim2_data = yaml.safe_load(claim2_path.read_text(encoding="utf-8"))
     claim2_data["figures"] = ["fig_01"]
-    claim2_path.write_text(yaml.dump(claim2_data, default_flow_style=False), encoding="utf-8")
+    claim2_path.write_text(
+        yaml.dump(claim2_data, default_flow_style=False), encoding="utf-8"
+    )
 
     claim3_path = pf_dir / "claims" / "claim_03.yaml"
     claim3 = Claim(
@@ -303,9 +313,13 @@ def test_build_figure_label_appears_once(tmp_path: Path) -> None:
     build.run(tmp_path, target="ieee-journal")
     content = _read_tex(tmp_path)
     label_count = content.count("\\label{fig:fig_01}")
-    assert label_count == 1, f"Expected \\label{{fig:fig_01}} exactly once, found {label_count}"
+    assert label_count == 1, (
+        f"Expected \\label{{fig:fig_01}} exactly once, found {label_count}"
+    )
     begin_figure_count = content.count("\\begin{figure}")
-    assert begin_figure_count == 1, f"Expected \\begin{{figure}} exactly once, found {begin_figure_count}"
+    assert begin_figure_count == 1, (
+        f"Expected \\begin{{figure}} exactly once, found {begin_figure_count}"
+    )
 
 
 def test_build_conference_author_not_double_wrapped(tmp_path: Path) -> None:
@@ -385,7 +399,9 @@ def test_build_escapes_percentage_in_claim_text(tmp_path: Path) -> None:
     claim_path = pf_dir / "claims" / "claim_02.yaml"
     claim_data = yaml.safe_load(claim_path.read_text(encoding="utf-8"))
     claim_data["text"] = "achieves 98.4% accuracy"
-    claim_path.write_text(yaml.dump(claim_data, default_flow_style=False), encoding="utf-8")
+    claim_path.write_text(
+        yaml.dump(claim_data, default_flow_style=False), encoding="utf-8"
+    )
 
     build.run(tmp_path, target="ieee-journal")
     content = _read_tex(tmp_path)
@@ -399,7 +415,9 @@ def test_build_escapes_ampersand_in_claim_text(tmp_path: Path) -> None:
     claim_path = pf_dir / "claims" / "claim_02.yaml"
     claim_data = yaml.safe_load(claim_path.read_text(encoding="utf-8"))
     claim_data["text"] = "System A & B comparison"
-    claim_path.write_text(yaml.dump(claim_data, default_flow_style=False), encoding="utf-8")
+    claim_path.write_text(
+        yaml.dump(claim_data, default_flow_style=False), encoding="utf-8"
+    )
 
     build.run(tmp_path, target="ieee-journal")
     content = _read_tex(tmp_path)
@@ -414,7 +432,9 @@ def test_build_claim_appears_once_when_in_multiple_sections(tmp_path: Path) -> N
     claim_data = yaml.safe_load(claim_path.read_text(encoding="utf-8"))
     claim_data["text"] = "Unique claim text for dedup test."
     claim_data["sections"] = ["results", "discussion"]
-    claim_path.write_text(yaml.dump(claim_data, default_flow_style=False), encoding="utf-8")
+    claim_path.write_text(
+        yaml.dump(claim_data, default_flow_style=False), encoding="utf-8"
+    )
 
     build.run(tmp_path, target="ieee-journal")
     content = _read_tex(tmp_path)
@@ -563,55 +583,80 @@ def test_stale_pdf_deleted_before_rebuild(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr("shutil.which", lambda name: None)
     build.run(tmp_path, target="ieee-access")
 
-    assert not pdf_path.exists() or pdf_path.read_text(encoding="utf-8") != "old fake pdf content"
+    assert (
+        not pdf_path.exists()
+        or pdf_path.read_text(encoding="utf-8") != "old fake pdf content"
+    )
 
 
 # --- Test 31: Aux files deleted after build ---
+
 
 def test_aux_files_deleted_after_build(tmp_path: Path, monkeypatch) -> None:
     """After build, no .aux .log .fls .out .bbl .blg files should remain in output_dir."""
     write_journal_project(tmp_path)
 
     # Monkeypatch shutil.which so pdflatex is "found" but fails silently
-    monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/pdflatex" if name in ("pdflatex", "latexmk") else None)
+    monkeypatch.setattr(
+        "shutil.which",
+        lambda name: "/usr/bin/pdflatex" if name in ("pdflatex", "latexmk") else None,
+    )
 
-    # Also monkeypatch subprocess.run so compilation appears to happen but produces no PDF
-    # This exercises the cleanup path after failed compilation
-    import subprocess as _subprocess_mod
-    original_run = _subprocess_mod.run
+    # Also monkeypatch build.run_subprocess (the centralized, timeout-safe
+    # runner _compile_pdf_full calls) so compilation appears to happen but
+    # produces no PDF. This exercises the cleanup path after failed
+    # compilation, without ever invoking a real latexmk/pdflatex process.
+    from paperforge.utils.subprocess_runner import RunResult
 
-    def mock_run(args, **kwargs):
-        # Intercept pdflatex calls; create fake aux files to simulate compilation
-        if args and isinstance(args, list) and any("pdflatex" in str(a) or "latexmk" in str(a) for a in args):
-            # Find output_dir from args
+    def mock_run_subprocess(args, **kwargs):
+        # Intercept pdflatex/latexmk calls; create fake aux files to simulate compilation
+        if (
+            args
+            and isinstance(args, list)
+            and any("pdflatex" in str(a) or "latexmk" in str(a) for a in args)
+        ):
             cwd = kwargs.get("cwd")
             if cwd:
                 from pathlib import Path as _P
+
                 cwd_path = _P(cwd)
                 for ext in [".aux", ".log", ".fls", ".out", ".bbl"]:
                     try:
-                        (cwd_path / f"paper{ext}").write_text(f"fake {ext} content", encoding="utf-8")
+                        (cwd_path / f"paper{ext}").write_text(
+                            f"fake {ext} content", encoding="utf-8"
+                        )
                     except OSError:
                         pass
-            result = _subprocess_mod.CompletedProcess(args, returncode=1)
-            return result
-        return original_run(args, **kwargs)
+            return RunResult(
+                args=list(args),
+                returncode=1,
+                stdout="",
+                stderr="",
+                timed_out=False,
+                duration_seconds=0.0,
+                command_display=" ".join(args),
+            )
+        raise AssertionError(f"unexpected subprocess call in test: {args}")
 
-    monkeypatch.setattr(_subprocess_mod, "run", mock_run)
+    monkeypatch.setattr("paperforge.commands.build.run_subprocess", mock_run_subprocess)
     build.run(tmp_path, target="ieee-access", force_anyway=True)
 
     # Find the output directory
     from paperforge.core.project import PaperForgeProject
+
     project = PaperForgeProject.load(tmp_path)
     output_dir = tmp_path / project.config.build_output_dir
 
     if output_dir.exists():
         aux_exts = {".aux", ".log", ".fls", ".out", ".bbl", ".blg"}
         remaining_aux = [f for f in output_dir.glob("*") if f.suffix in aux_exts]
-        assert remaining_aux == [], f"Aux files remain after build: {[f.name for f in remaining_aux]}"
+        assert remaining_aux == [], (
+            f"Aux files remain after build: {[f.name for f in remaining_aux]}"
+        )
 
 
 # --- Test 32: Rotation keeps only key files ---
+
 
 def test_rotation_keeps_only_key_files(tmp_path: Path, monkeypatch) -> None:
     """previous/ should only contain meaningful files, never aux files."""
@@ -622,6 +667,7 @@ def test_rotation_keeps_only_key_files(tmp_path: Path, monkeypatch) -> None:
     build.run(tmp_path, target="ieee-access", force_anyway=True)
 
     from paperforge.core.project import PaperForgeProject
+
     project = PaperForgeProject.load(tmp_path)
     output_dir = tmp_path / project.config.build_output_dir
 
@@ -637,14 +683,19 @@ def test_rotation_keeps_only_key_files(tmp_path: Path, monkeypatch) -> None:
     if previous_dir.exists():
         prev_files = {f.name for f in previous_dir.iterdir() if f.is_file()}
         allowed = {
-            "paper.pdf", "paper.tex", "references.bib",
-            "paper_overleaf.zip", "paper.docx", "traceability.tex",
+            "paper.pdf",
+            "paper.tex",
+            "references.bib",
+            "paper_overleaf.zip",
+            "paper.docx",
+            "traceability.tex",
         }
         unexpected = prev_files - allowed
         assert unexpected == set(), f"Unexpected files in previous/: {unexpected}"
 
 
 # --- Test 33: Clean command removes aux files ---
+
 
 def test_clean_command_runs(tmp_path: Path, monkeypatch) -> None:
     """paperforge clean should remove manually-placed aux files from paper_generated/."""
@@ -655,6 +706,7 @@ def test_clean_command_runs(tmp_path: Path, monkeypatch) -> None:
     build.run(tmp_path, target="ieee-access", force_anyway=True)
 
     from paperforge.core.project import PaperForgeProject
+
     project = PaperForgeProject.load(tmp_path)
     output_dir = tmp_path / project.config.build_output_dir
 
