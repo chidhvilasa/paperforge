@@ -33,8 +33,18 @@ class OutputPaths:
 
 
 def resolve_output_paths(project_root: Path) -> OutputPaths:
-    project = PaperForgeProject.load(project_root)
-    rel_output = project.config.build_output_dir or "paper_generated/current"
+    # A project may have only the canonical paperforge.project.yaml
+    # manifest (no .paperforge/paper.yaml) -- e.g. one that has run
+    # `manifest`/`requirements`/`plan`/`generate` but never the older
+    # `.paperforge/paper.yaml`-based `build`. In that case there is no
+    # project-configured build_output_dir to read, so fall back to the
+    # documented default rather than letting PaperForgeProject.load's
+    # FileNotFoundError propagate as an unhandled traceback.
+    try:
+        project = PaperForgeProject.load(project_root)
+        rel_output = project.config.build_output_dir or "paper_generated/current"
+    except (FileNotFoundError, OSError):
+        rel_output = "paper_generated/current"
     current = project_root / rel_output
     previous_name = (
         "previous" if current.name == "current" else f"{current.name}.previous"

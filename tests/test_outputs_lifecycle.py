@@ -85,6 +85,38 @@ def test_verify_good_output_passes_and_hashes_recorded(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
+def test_resolve_output_paths_without_legacy_project_config(tmp_path: Path) -> None:
+    """A project with only the canonical paperforge.project.yaml manifest
+    (no .paperforge/paper.yaml) must not crash -- regression test for a
+    real bug found during clean-install acceptance testing: outputs
+    commands unconditionally called PaperForgeProject.load(), which
+    raises FileNotFoundError and surfaces as an unhandled traceback
+    (violating the "no tracebacks by default" contract) for any project
+    that has only ever used the newer canonical-manifest workflow."""
+    (tmp_path / "paperforge.project.yaml").write_text(
+        'schema_version: "1.0"\nproject:\n  title: "x"\n', encoding="utf-8"
+    )
+    assert not (tmp_path / ".paperforge").exists()
+
+    paths = resolve_output_paths(tmp_path)
+    assert paths.current == tmp_path / "paper_generated" / "current"
+    assert paths.previous == tmp_path / "paper_generated" / "previous"
+
+    result = list_outputs(tmp_path)
+    assert result["current"] is None
+    assert result["previous"] is None
+
+
+def test_cli_outputs_list_without_legacy_project_config(tmp_path: Path) -> None:
+    (tmp_path / "paperforge.project.yaml").write_text(
+        'schema_version: "1.0"\nproject:\n  title: "x"\n', encoding="utf-8"
+    )
+    result = runner.invoke(app, ["outputs", "list", "--path", str(tmp_path), "--json"])
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "success"
+
+
 def test_list_outputs_no_current(tmp_path: Path) -> None:
     _init_project(tmp_path)
     # `init` scaffolds empty current/previous directories; remove them to

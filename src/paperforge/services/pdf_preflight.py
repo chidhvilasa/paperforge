@@ -9,7 +9,13 @@ from pathlib import Path
 from typing import Any
 
 try:
-    import fitz  # type: ignore[import-untyped]
+    # `import pymupdf as fitz` (not the legacy `import fitz`) avoids
+    # PyMuPDF's own unconditional "deprecated API" notice, which the
+    # legacy import prints straight to *stdout* on every import -- fatal
+    # for any `--json` command that must emit exactly one clean JSON
+    # object on stdout (e.g. `paperforge doctor --json`, which imports
+    # this module on every invocation, not just --pre-submission).
+    import pymupdf as fitz  # type: ignore[import-untyped]
 except ImportError:
     fitz = None  # type: ignore[assignment]
 

@@ -2040,7 +2040,12 @@ def run(
             }
             for i in all_issues
         ]
-        console.print(json.dumps({"issues": data}, indent=2, ensure_ascii=False))
+        # Deliberately plain print(), not console.print(): rich's Console
+        # reflows/wraps text to the terminal (or default 80-column) width,
+        # which silently inserts real newlines into long JSON string
+        # values and corrupts the output for any machine consumer -- a
+        # real bug found during v1.7.0 clean-install acceptance testing.
+        print(json.dumps({"issues": data}, indent=2, ensure_ascii=False))
         if any(i.severity == "ERROR" for i in all_issues):
             sys.exit(1)
         return

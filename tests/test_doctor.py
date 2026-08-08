@@ -201,3 +201,26 @@ def test_doctor_multiple_errors_all_reported(tmp_path: Path) -> None:
     with pytest.raises(SystemExit) as exc_info:
         doctor.run(project_root=tmp_path, fix=False)
     assert exc_info.value.code == 1
+
+
+def test_doctor_json_output_is_pure_single_json_object_on_stdout(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Regression test: `doctor --json` must print exactly one JSON object
+    to stdout with nothing else -- found during v1.7.0 clean-install
+    acceptance testing that PyMuPDF's legacy `import fitz` unconditionally
+    prints a deprecation notice to stdout (not stderr), corrupting
+    --json output for any machine consumer. Fixed by importing
+    `pymupdf as fitz` instead in services/pdf_preflight.py, which
+    doctor's standard check suite (checks 91-103) always imports."""
+    import json
+
+    init.run(tmp_path)
+    capsys.readouterr()  # discard init's own human-readable panel output
+    with pytest.raises(SystemExit):
+        doctor.run(project_root=tmp_path, json_output=True)
+    captured = capsys.readouterr()
+    # The entire captured stdout must parse as exactly one JSON object --
+    # any stray warning/notice line before or after it would break this.
+    data = json.loads(captured.out)
+    assert "issues" in data
