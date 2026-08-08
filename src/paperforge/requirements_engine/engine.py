@@ -29,14 +29,24 @@ from paperforge.requirements_engine.models import Requirement
 _VENUES_EXPECTING_BIOGRAPHY = frozenset({"ieee", "ieee-access", "ieee-journal"})
 _VENUES_REQUIRING_ORCID: frozenset[str] = frozenset()
 
+#: Study types that specifically imply human/animal-subject involvement.
+#: Deliberately does NOT include generic "experimental"/"clinical" --
+#: most computer-science/systems/ML "Experimental" studies (benchmarks,
+#: simulations, ablations) involve no participants at all, so treating
+#: every experimental study as ethics-applicable would be a false
+#: positive. `methodology.participants` being set is the primary,
+#: reliable signal; this set only widens applicability for study types
+#: that are unambiguous even without that field being filled in yet.
 _HUMAN_SUBJECT_STUDY_TYPES = frozenset(
     {
-        "experimental",
-        "clinical",
         "clinical trial",
+        "randomized controlled trial",
         "human subjects",
+        "human-subjects research",
         "survey",
         "user study",
+        "interview study",
+        "focus group",
     }
 )
 

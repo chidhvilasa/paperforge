@@ -31,18 +31,22 @@ calls an external `llm` command for advisory AI review. Security reports
 relevant to PaperForge specifically include (non-exhaustive):
 
 - unsafe YAML loading (arbitrary code execution via `yaml.load`);
-- path traversal or ZIP-slip in figure/asset resolution, packaging, or
-  Overleaf ZIP extraction;
+- path traversal in figure/asset resolution, manifest path fields, or
+  packaging (the Overleaf ZIP is only ever *created*, never extracted, by
+  any code in this repository — ZIP-slip would require a future feature
+  that extracts an untrusted archive, which does not currently exist);
 - shell/argument injection in subprocess invocations (`pdflatex`,
   `latexmk`, `bibtex`, `git`, `llm`);
-- unrestricted formula/expression evaluation in derived-evidence
-  handling;
+- unrestricted formula/expression evaluation (no formula evaluator
+  currently exists in this codebase; `eval`/`exec` do not appear anywhere
+  in `src/paperforge/`, verified by repo-wide search);
 - secrets or personal data leaking into generated LaTeX, packaged
   output, or logs.
 
-See [`docs/SECURITY_MODEL.md`](docs/SECURITY_MODEL.md) if present for a
-fuller threat model; if that document does not yet exist in the version
-you are using, treat this file as the current source of truth.
+See [`docs/SECURITY_MODEL.md`](docs/SECURITY_MODEL.md) for the fuller
+threat model, [`docs/SECURITY_AUDIT.md`](docs/SECURITY_AUDIT.md) for the
+audit log behind it, and [`docs/PRIVACY.md`](docs/PRIVACY.md) for what
+does and does not leave your machine.
 
 ## Supported versions
 
