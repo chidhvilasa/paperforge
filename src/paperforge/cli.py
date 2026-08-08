@@ -173,6 +173,56 @@ def requirements(
 
 
 @app.command()
+def plan(
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    manifest: Path | None = typer.Option(
+        None,
+        "--manifest",
+        help="Manifest path. Defaults to <path>/paperforge.project.yaml.",
+    ),
+    section: str | None = typer.Option(
+        None, "--section", help="Show only this section."
+    ),
+    refresh: bool = typer.Option(
+        False,
+        "--refresh",
+        help="No-op: the plan is always rebuilt fresh from the current manifest.",
+    ),
+    approve: bool = typer.Option(
+        False, "--approve", help="Record approval of the current plan."
+    ),
+    revoke_approval: bool = typer.Option(
+        False, "--revoke-approval", help="Revoke any existing approval."
+    ),
+    mode: str = typer.Option(
+        "submission", "--mode", "-m", help="Mode the approval is recorded for."
+    ),
+    non_interactive: bool = typer.Option(
+        False,
+        "--non-interactive",
+        help="Do not prompt; approver is recorded as 'agent'.",
+    ),
+    json_output: bool = typer.Option(False, "--json", help="Output results as JSON."),
+) -> None:
+    """Build a structural, approval-gated generation plan (no manuscript prose)."""
+    from paperforge.commands.plan_cmd import run as run_plan
+
+    _ = refresh
+    raise typer.Exit(
+        code=run_plan(
+            project_root=path.resolve(),
+            manifest_path=manifest.resolve() if manifest else None,
+            section=section,
+            approve=approve,
+            revoke_approval=revoke_approval,
+            mode=mode,
+            json_output=json_output,
+            non_interactive=non_interactive,
+        )
+    )
+
+
+@app.command()
 def capture(
     results: Path = typer.Argument(..., help="Path to metrics JSON file."),
     experiment: str = typer.Option(
