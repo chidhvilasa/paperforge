@@ -223,6 +223,131 @@ def plan(
 
 
 @app.command()
+def generate(
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    manifest: Path | None = typer.Option(
+        None,
+        "--manifest",
+        help="Manifest path. Defaults to <path>/paperforge.project.yaml.",
+    ),
+    all_sections: bool = typer.Option(
+        True, "--all/--not-all", help="Generate every planned section (default)."
+    ),
+    section: str | None = typer.Option(
+        None, "--section", help="Generate only this section."
+    ),
+    regenerate: str | None = typer.Option(
+        None, "--regenerate", help="Regenerate only this section."
+    ),
+    outline_only: bool = typer.Option(
+        False,
+        "--outline-only",
+        help="Structural outline only (headings/goals/permitted claims). No prose, no approval required.",
+    ),
+    draft_with_placeholders: bool = typer.Option(
+        False,
+        "--draft-with-placeholders",
+        help="Watermarked draft including placeholder claims. No approval required. Fails submission mode.",
+    ),
+    no_ai: bool = typer.Option(
+        True,
+        "--no-ai/--ai",
+        help="Use the deterministic no-AI provider (default; the only provider that ships).",
+    ),
+    provider: str = typer.Option(
+        "no_ai", "--provider", help="Generation provider: no_ai or fixture."
+    ),
+    review_existing: bool = typer.Option(
+        False,
+        "--review-existing",
+        help="List already-generated sections instead of generating.",
+    ),
+    non_interactive: bool = typer.Option(
+        False,
+        "--non-interactive",
+        help="Never prompt (this command never prompts regardless).",
+    ),
+    json_output: bool = typer.Option(False, "--json", help="Output results as JSON."),
+) -> None:
+    """Deterministically generate manuscript section content from an approved plan."""
+    from paperforge.commands.generate_cmd import run as run_generate
+
+    _ = all_sections  # generating "all" planned sections is the default when no --section/--regenerate given
+    effective_provider = provider if provider != "no_ai" or no_ai else "no_ai"
+    raise typer.Exit(
+        code=run_generate(
+            project_root=path.resolve(),
+            manifest_path=manifest.resolve() if manifest else None,
+            section=section,
+            regenerate=regenerate,
+            outline_only=outline_only,
+            draft_with_placeholders=draft_with_placeholders,
+            provider_name=effective_provider,
+            review_existing=review_existing,
+            non_interactive=non_interactive,
+            json_output=json_output,
+        )
+    )
+
+
+provenance_app = typer.Typer(
+    name="provenance", help="Inspect and validate generation provenance sidecars."
+)
+app.add_typer(provenance_app, name="provenance")
+
+
+@provenance_app.command("show")
+def provenance_show(
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    json_output: bool = typer.Option(False, "--json", help="Output results as JSON."),
+) -> None:
+    """Show recorded provenance for generated sections."""
+    from paperforge.commands.provenance_cmd import run_show
+
+    raise typer.Exit(
+        code=run_show(project_root=path.resolve(), json_output=json_output)
+    )
+
+
+@provenance_app.command("validate")
+def provenance_validate(
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    manifest: Path | None = typer.Option(None, "--manifest", help="Manifest path."),
+    json_output: bool = typer.Option(False, "--json", help="Output results as JSON."),
+) -> None:
+    """Validate provenance: staleness, missing claims/evidence, unreviewed results, placeholders."""
+    from paperforge.commands.provenance_cmd import run_validate
+
+    raise typer.Exit(
+        code=run_validate(
+            project_root=path.resolve(),
+            manifest_path=manifest.resolve() if manifest else None,
+            json_output=json_output,
+        )
+    )
+
+
+@provenance_app.command("export")
+def provenance_export(
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    output: Path | None = typer.Option(
+        None, "--output", help="Write exported provenance JSON here."
+    ),
+    json_output: bool = typer.Option(False, "--json", help="Output results as JSON."),
+) -> None:
+    """Export the full provenance index and records as JSON."""
+    from paperforge.commands.provenance_cmd import run_export
+
+    raise typer.Exit(
+        code=run_export(
+            project_root=path.resolve(),
+            output=output.resolve() if output else None,
+            json_output=json_output,
+        )
+    )
+
+
+@app.command()
 def capture(
     results: Path = typer.Argument(..., help="Path to metrics JSON file."),
     experiment: str = typer.Option(
