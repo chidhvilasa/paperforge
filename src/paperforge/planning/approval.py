@@ -12,6 +12,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import UTC, datetime
+from pathlib import Path
 
 from paperforge.planning.models import GenerationPlan, PlanApproval
 from paperforge.project_manifest.models import ProjectManifest
@@ -26,13 +27,26 @@ def manifest_hash(manifest: ProjectManifest) -> str:
     return _hash_obj(manifest.to_dict())
 
 
-def evidence_hash(manifest: ProjectManifest) -> str:
-    return _hash_obj(
-        {
-            "evidence": manifest.evidence.__dict__,
-            "literature_bibliography": sorted(manifest.literature.bibliography),
-        }
-    )
+def evidence_hash(manifest: ProjectManifest, project_root: Path | None = None) -> str:
+    """Hash of everything a plan approval depends on for "did the evidence
+    change" purposes: the manifest's path-list evidence inventory, the
+    bibliography, and -- when ``project_root`` is given -- the full
+    registered evidence store (direct/derived/statistical records under
+    ``.paperforge/evidence/``). Passing ``project_root`` is what makes a
+    change to registered evidence (a new value, an edited formula, a
+    recomputed derived result) invalidate an existing plan approval; it is
+    optional so callers without a project on disk (unit tests constructing
+    a bare manifest) keep working."""
+
+    payload: dict[str, object] = {
+        "evidence": manifest.evidence.__dict__,
+        "literature_bibliography": sorted(manifest.literature.bibliography),
+    }
+    if project_root is not None:
+        from paperforge.evidence.store import store_fingerprint
+
+        payload["evidence_store"] = store_fingerprint(project_root)
+    return _hash_obj(payload)
 
 
 def claim_set_hash(manifest: ProjectManifest) -> str:
@@ -56,10 +70,11 @@ def approve_plan(
     *,
     approver: str,
     mode: str = "submission",
+    project_root: Path | None = None,
 ) -> PlanApproval:
     return PlanApproval(
         manifest_hash=manifest_hash(manifest),
-        evidence_hash=evidence_hash(manifest),
+        evidence_hash=evidence_hash(manifest, project_root),
         claim_set_hash=claim_set_hash(manifest),
         plan_hash=plan_hash(plan),
         venue=manifest.project.target_venue,
@@ -73,6 +88,8 @@ def check_approval_validity(
     manifest: ProjectManifest,
     plan: GenerationPlan,
     approval: PlanApproval,
+    *,
+    project_root: Path | None = None,
 ) -> list[str]:
     """Return a list of human-readable reasons the approval is stale.
 
@@ -83,9 +100,10 @@ def check_approval_validity(
     reasons = []
     if approval.manifest_hash != manifest_hash(manifest):
         reasons.append("The project manifest has changed since this plan was approved.")
-    if approval.evidence_hash != evidence_hash(manifest):
+    if approval.evidence_hash != evidence_hash(manifest, project_root):
         reasons.append(
-            "The evidence inventory has changed since this plan was approved."
+            "The evidence inventory or registered evidence store has changed since "
+            "this plan was approved."
         )
     if approval.claim_set_hash != claim_set_hash(manifest):
         reasons.append("The claim set has changed since this plan was approved.")

@@ -159,7 +159,7 @@ def run(
         except (OSError, ValueError):
             stored = None
         reasons = (
-            check_approval_validity(manifest, plan, stored)
+            check_approval_validity(manifest, plan, stored, project_root=project_root)
             if stored
             else ["Approval file is corrupt."]
         )

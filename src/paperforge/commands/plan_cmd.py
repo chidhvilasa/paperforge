@@ -128,7 +128,9 @@ def run(
             return env.exit_code
 
         approver = "agent" if non_interactive else _git_user_name()
-        approval = approve_plan(manifest, plan, approver=approver, mode=mode)
+        approval = approve_plan(
+            manifest, plan, approver=approver, mode=mode, project_root=project_root
+        )
         atomic_write_text(
             approval_path,
             json_module.dumps(approval.to_dict(), indent=2, ensure_ascii=False),
@@ -143,7 +145,9 @@ def run(
             stored = PlanApproval.from_dict(
                 json_module.loads(approval_path.read_text(encoding="utf-8"))
             )
-            approval_reasons = check_approval_validity(manifest, plan, stored)
+            approval_reasons = check_approval_validity(
+                manifest, plan, stored, project_root=project_root
+            )
             approval_status = "valid" if not approval_reasons else "stale"
         except (OSError, ValueError, json_module.JSONDecodeError):
             approval_status = "corrupt"
