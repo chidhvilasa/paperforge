@@ -27,6 +27,19 @@ class IEEEPlugin(VenuePlugin):
             self.latex_documentclass = "\\documentclass[10pt,journal,compsoc]{IEEEtran}"
             self.max_pages = 14
 
+    @property
+    def source_url(self) -> str:
+        return "https://template-selector.ieee.org/"
+
+    @property
+    def source_description(self) -> str:
+        return (
+            "IEEEtran class conventions (conference/journal/compsoc "
+            "documentclass options). Page limits and section requirements "
+            "here are PaperForge heuristic defaults, not a per-call/CFP "
+            "check against a specific journal's current requirements."
+        )
+
     def validate(self, project: PaperForgeProject) -> list[VenueIssue]:
         issues = []
         section_names = {c for claim in project.claims for c in claim.sections}

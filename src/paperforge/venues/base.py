@@ -53,6 +53,42 @@ class VenuePlugin(ABC):
     def generate_author_block(self, authors: list[str]) -> str:
         """Return LaTeX author block formatted for this venue."""
 
+    # --- Versioning metadata (Phase 13 / gap #9) --------------------------
+    #
+    # None of these are structurally required (existing plugins predate
+    # them), so they default to honest "we don't know" values rather than
+    # fabricating currency. A blank `checked_date` is not an error; it is
+    # a true statement that this adapter's rules were never verified
+    # against a dated, live official source and should be treated as a
+    # heuristic default, not a guarantee the venue's actual current
+    # requirements match.
+
+    @property
+    def adapter_version(self) -> str:
+        """This adapter's own revision, not a claim about venue currency."""
+        return "1.0"
+
+    @property
+    def checked_date(self) -> str:
+        """ISO date this adapter's rules were last checked against an
+        official source. Empty string means never checked -- callers must
+        not present the rules as current when this is empty."""
+        return ""
+
+    @property
+    def source_url(self) -> str:
+        """Where these rules nominally come from (documentation only --
+        an empty `checked_date` means this URL's content was not verified
+        as part of building this adapter)."""
+        return ""
+
+    @property
+    def source_description(self) -> str:
+        return (
+            "Default heuristic settings shipped with PaperForge. Not verified "
+            "against a dated official venue source."
+        )
+
     @property
     def first_section_heading_policy(self) -> str:
         """How to render the first ("introduction") section heading.

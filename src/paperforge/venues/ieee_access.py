@@ -27,6 +27,19 @@ class IEEEAccessPlugin(VenuePlugin):
         # unconditionally for this venue rather than only "sometimes".
         return "normal_section"
 
+    @property
+    def source_url(self) -> str:
+        return "https://ieeeaccess.ieee.org/guide-for-authors/"
+
+    @property
+    def source_description(self) -> str:
+        return (
+            "IEEE Access has no page limit and uses the IEEEtran journal "
+            "class. Beyond that, section/declaration requirements here are "
+            "PaperForge heuristic defaults, not a live check of the current "
+            "author guide."
+        )
+
     def validate(self, project: PaperForgeProject) -> list[VenueIssue]:
         issues = []
         section_names = {c for claim in project.claims for c in claim.sections}

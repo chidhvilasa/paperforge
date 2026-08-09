@@ -15,6 +15,18 @@ class ACMPlugin(VenuePlugin):
     required_sections: ClassVar[list[str]] = ["abstract", "introduction", "conclusion"]
     max_pages = 12
 
+    @property
+    def source_url(self) -> str:
+        return "https://www.acm.org/publications/proceedings-template"
+
+    @property
+    def source_description(self) -> str:
+        return (
+            "acmart 'sigconf' class conventions. Page limits and section "
+            "requirements are PaperForge heuristic defaults; specific ACM "
+            "venues/CFPs vary and are not individually verified here."
+        )
+
     def validate(self, project: PaperForgeProject) -> list[VenueIssue]:
         issues = []
         section_names = {c for claim in project.claims for c in claim.sections}

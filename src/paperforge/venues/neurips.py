@@ -15,6 +15,18 @@ class NeurIPSPlugin(VenuePlugin):
     required_sections: ClassVar[list[str]] = ["abstract", "introduction", "conclusion"]
     max_pages = 9
 
+    @property
+    def source_url(self) -> str:
+        return "https://neurips.cc/Conferences/2024/PaperInformation/StyleFiles"
+
+    @property
+    def source_description(self) -> str:
+        return (
+            "neurips_2024 style file conventions (preprint mode). NeurIPS "
+            "publishes a fresh style package most years; this adapter is "
+            "not re-verified against each year's package automatically."
+        )
+
     def validate(self, project: PaperForgeProject) -> list[VenueIssue]:
         issues = []
         section_names = {c for claim in project.claims for c in claim.sections}
