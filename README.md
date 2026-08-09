@@ -142,6 +142,42 @@ paperforge promote
 paperforge rollback
 ```
 
+Since v1.8.0, `DIRECT_RESULT`/`DERIVED_RESULT`/`STATISTICAL_RESULT` claims
+can point at real, hash-tracked evidence records instead of a free-text
+reference:
+
+```bash
+# Record a value read from a CSV/JSON/YAML source, or supplied manually
+paperforge evidence direct add --id baseline_latency --type csv \
+  --source-path results/latency.csv --source-locator "row=0;col=latency_ms" --unit ms
+
+# Compute a value from other evidence with the safe (no eval/exec) formula evaluator
+paperforge evidence derived add --id latency_reduction \
+  --formula "(baseline_latency - adaptive_latency) / baseline_latency * 100" \
+  --operands baseline_latency,adaptive_latency --unit percent
+
+# Record an explicit statistical result -- never run automatically
+paperforge evidence statistical add --id latency_sig --test-name paired_t_test \
+  --statistic -4.12 --p-value 0.0018 --sample-size 30 --paired
+
+# Cycles, missing references, and staleness (a changed source file
+# propagates through derived results, statistics, provenance, and any
+# existing plan approval)
+paperforge evidence graph
+paperforge evidence validate
+
+# Author review of generated results, claims, and evidence
+paperforge approvals approve latency_reduction --reviewer alice
+paperforge approvals list
+
+# Versioned, dated venue metadata -- distinct from `paperforge venues` (list)
+paperforge venue show --target ieee
+```
+
+See [docs/EVIDENCE_AND_PROVENANCE.md](docs/EVIDENCE_AND_PROVENANCE.md) for
+the full model and a worked example (raw CSV → direct evidence → derived
+evidence → claim → generated sentence → provenance → review).
+
 Generation is deterministic and evidence-safe by construction: the only
 provider that ships is a template-only `no_ai` provider that wraps each
 claim's *author-written* text in a neutral, evidence-class-aware sentence
@@ -152,11 +188,30 @@ claim's *author-written* text in a neutral, evidence-class-aware sentence
 [docs/GENERATION.md](docs/GENERATION.md).
 
 This workflow currently covers: manifest validation/migration, mode-aware
-requirements, plan/approval, no-AI generation, and provenance. It does
-**not** yet include an interactive intake wizard, safe import of existing
-LaTeX/BibTeX projects into the manifest, or a real (non-template) AI
-provider — see [docs/AI_PROVIDERS.md](docs/AI_PROVIDERS.md) and the
-"Remaining limitations" notes throughout `docs/` for what's still missing.
+requirements, plan/approval, no-AI generation, provenance (including
+per-sentence staleness), a direct/derived/statistical evidence store with
+a safe formula evaluator and dependency graph, author-review approvals,
+and versioned venue metadata. It does **not** yet include an interactive
+intake wizard, safe import of existing LaTeX/BibTeX projects into the
+manifest, a true isolated staging-build lifecycle, automatic statistical
+test execution, or a real (non-template) AI provider — see
+[docs/AI_PROVIDERS.md](docs/AI_PROVIDERS.md) and the "Remaining
+limitations" notes throughout `docs/` for what's still missing.
+
+## What PaperForge does NOT do
+
+- Guarantee publication acceptance.
+- Determine scientific truth, correctness, or novelty automatically.
+- Invent missing results, datasets, methods, references, or authors.
+- Replace peer review or an author's own scientific judgment.
+- Automatically verify that a citation's full text actually supports a
+  claim (only metadata verification and, since 1.8.0, explicit
+  support-status *recording* exist — see
+  [docs/reference_verification.md](docs/reference_verification.md)).
+- Silently create or approve missing research, evidence, or review
+  decisions. Every evidence value, statistical result, and approval in
+  this system is either author-supplied or read verbatim from a named
+  source file; nothing is fabricated to fill a gap.
 
 ## Install
 

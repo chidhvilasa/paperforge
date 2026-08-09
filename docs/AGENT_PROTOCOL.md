@@ -12,7 +12,7 @@ envelope and exit-code table.
   "command": "manifest.validate",
   "status": "success",
   "exit_code": 0,
-  "version": "1.7.0",
+  "version": "1.8.0",
   "project_root": "/path/to/project",
   "outputs": {},
   "summary": { "errors": 0, "warnings": 0 },
@@ -45,6 +45,13 @@ envelope and exit-code table.
 | `paperforge references --json` | `outputs.report` (`ReferenceVerificationReport`). |
 | `paperforge doctor --json` | Pre-dates this pass; own envelope shape. |
 | `paperforge preflight --json` | Pre-dates this pass; own envelope shape. |
+| `paperforge evidence direct\|derived\|statistical add --json` | `outputs.evidence` (the recorded record). |
+| `paperforge evidence show --json` | `outputs.evidence` (`{direct: [...], derived: [...], statistical: [...]}`), `outputs.total`. |
+| `paperforge evidence graph --json` | `outputs.nodes`, `outputs.edges`, `outputs.cycles`, `outputs.missing_references`, `outputs.stale`. |
+| `paperforge evidence validate --json` | `outputs.issues`, `outputs.total_records`. |
+| `paperforge approvals list --json` | `outputs.entries`, `outputs.downgraded_stale`. |
+| `paperforge approvals approve\|reject\|reset --json` | `outputs.decision` (single id) or `outputs.decisions`/`outputs.count` (`--section`). |
+| `paperforge venue show\|validate --json` | `outputs.venue` (adapter metadata; `source_verified` is `bool(checked_date)`). |
 
 `paperforge init` and `paperforge build` do not yet support `--json` —
 see "Remaining limitations" in the release notes. Agents driving those two
@@ -64,6 +71,7 @@ generated file presence.
 | `21` | Submission blocker (mode=submission validation/requirements failure) |
 | `30` | Unsafe manifest or path (safe-YAML/path-security rejection) |
 | `40` | Generation/provenance error (e.g. no valid approved plan) |
+| `45` | Evidence error (unsafe formula, cycle, missing operand/reference, stale evidence, invalid record) |
 | `50` | Build/preflight error *(reserved — build/preflight don't use the shared envelope yet)* |
 | `60` | References error |
 | `70` | Packaging/output-lifecycle error (`outputs`/`promote`/`rollback`) |

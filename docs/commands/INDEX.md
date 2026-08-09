@@ -15,7 +15,10 @@ Defaults to the current directory.
 | `requirements` | Evaluate [mode-aware manuscript requirements](../REQUIREMENTS_ENGINE.md) |
 | `plan` | Build an [approval-gated generation plan](../GENERATION_PLANNING.md) (no prose) |
 | `generate` | [Deterministically generate](../GENERATION.md) section content from an approved plan |
-| `provenance show\|validate\|export` | Inspect/validate [generation provenance sidecars](../EVIDENCE_AND_PROVENANCE.md#provenance-sidecars-canonical-manifest-workflow-v170) |
+| `provenance show\|validate\|export` | Inspect/validate [generation provenance sidecars](../EVIDENCE_AND_PROVENANCE.md#provenance-sidecars-and-per-sentence-staleness) |
+| `evidence direct\|derived\|statistical add`, `show`, `graph`, `validate` | [Direct/derived/statistical evidence](../EVIDENCE_AND_PROVENANCE.md#the-evidence-architecture-paperforge-evidence--since-180), safe formula evaluator, dependency graph |
+| `approvals list\|approve\|reject\|reset` | [Author-review](../EVIDENCE_AND_PROVENANCE.md#author-review-paperforge-approvals--since-180) of generated sentences, claims, and evidence |
+| `venue show\|validate` | [Versioned per-venue metadata](../VENUE_ADAPTERS.md) (adapter version, source, checked date) |
 | `outputs list\|verify` | Inspect [build-output artifact completeness](../OUTPUT_LIFECYCLE.md) |
 | `promote` | Verify and record the current build output as promoted |
 | `rollback` | Atomically swap current/previous build outputs |
@@ -80,6 +83,24 @@ paperforge doctor --target ieee
 paperforge build --target ieee
 paperforge export bibtex
 ```
+
+## What's New in v1.8.0
+
+A completion pass on the v1.7.0 canonical-manifest workflow, entirely
+additive: a real direct/derived/statistical evidence architecture backed
+by a sandboxed AST formula evaluator (`evidence direct|derived|statistical
+add`, no `eval`/`exec` ever), a bounded unit registry, a dependency graph
+with cycle/staleness detection (`evidence graph|validate`), an
+author-review ledger with stale-approval detection (`approvals
+list|approve|reject|reset`), per-sentence provenance staleness (an edit to
+one generated sentence no longer invalidates the whole section), and
+versioned per-venue metadata (`venue show|validate`) that honestly reports
+when a venue's rules were never checked against a dated official source.
+Registering evidence now invalidates an existing plan approval, closing
+the loop from raw data through to a submission-blocking review gate. See
+[EVIDENCE_AND_PROVENANCE.md](../EVIDENCE_AND_PROVENANCE.md) and the
+`CHANGELOG.md` for the full, honest scope of what shipped vs. what remains
+outstanding.
 
 ## What's New in v1.7.0
 
