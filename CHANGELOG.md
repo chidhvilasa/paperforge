@@ -1,5 +1,87 @@
 # Changelog
 
+## [1.8.0] — 2026-08-09
+
+Additive, backward-compatible completion pass on top of the 1.7.0
+canonical-manifest workflow: a real evidence architecture, an author-review
+CLI, finer-grained provenance staleness, and versioned venue metadata. See
+`docs/EVIDENCE_AND_PROVENANCE.md` and `docs/VERSION_DECISION_1_8.md`.
+
+### Added
+
+- **Direct/derived/statistical evidence** (`paperforge evidence ...`):
+  typed, hash-tracked evidence records under `.paperforge/evidence/`.
+  `DirectEvidence` reads a value verbatim from CSV/JSON/YAML (stdlib
+  parsers only, no code execution) or accepts a manual author-supplied
+  value, hashing the whole source file for staleness detection.
+  `DerivedEvidence` computes a value from other evidence via a **sandboxed
+  AST formula evaluator** (`paperforge.evidence.formula`) that never calls
+  `eval`/`exec`: only numeric literals, `+ - * /`, a bounded-exponent `**`,
+  parentheses, and `abs`/`min`/`max`/`round`/`sqrt` are permitted; anything
+  else (attribute access, subscripting, imports, comprehensions, string
+  literals, ...) is rejected before evaluation. `StatisticalEvidence`
+  records an explicit statistical result (test name, statistic, p-value,
+  adjusted p-value, correction family, effect size, confidence interval,
+  alpha, assumptions) — PaperForge never runs a test automatically or
+  infers significance from prose. Bonferroni and Holm-Bonferroni
+  correction are implemented as pure functions.
+- **Bounded unit registry** (`paperforge.evidence.units`): compatibility
+  categories (dimensionless/count/percent/ratio/time/data_size/rate) and
+  exact conversions for time and data-size units; formula validation
+  rejects obviously incompatible `+`/`-` combinations (e.g.
+  `milliseconds + percent`).
+- **Evidence dependency graph** (`paperforge evidence graph|validate`):
+  cycle detection (DFS over the derived-evidence operand graph, so even a
+  hand-edited YAML with a cycle is caught), missing-reference detection, a
+  20,000-node size bound, and staleness propagation: an edited source file
+  marks its `DirectEvidence` stale, which propagates to dependent
+  `DerivedEvidence`/`StatisticalEvidence`, dependent generated-sentence
+  provenance (`PROVENANCE_STALE_EVIDENCE`), and invalidates any existing
+  plan approval.
+- **Author-review approvals** (`paperforge approvals list|approve|reject|reset`):
+  reviews generated provenance sentences, manifest claims, and evidence
+  records. A distinct command from the pre-existing `paperforge review`
+  (AI-assisted advisory review) to avoid any behavior change there. Every
+  decision is ledgered (`.paperforge/approvals.json`) with reviewer,
+  timestamp, and a content hash; a later edit to the reviewed object is
+  detected and the approval is automatically downgraded back to
+  `pending` ("stale approval").
+- **Per-sentence provenance staleness**: `paperforge provenance validate`
+  now localizes a changed generated file down to the individual
+  sentence(s) that changed (`PROVENANCE_STALE_SENTENCE`) instead of
+  flagging the whole section, falling back to whole-section staleness only
+  when the sentence count itself changed or the file no longer looks like
+  generated markdown.
+- **Versioned venue metadata** (`paperforge venue show|validate`):
+  `adapter_version`/`checked_date`/`source_url`/`source_description` on
+  every built-in venue plugin (ieee, ieee-access, acm, neurips, and their
+  variants), plus safe loading of a local custom venue YAML file
+  (`--custom-file`, path-traversal-checked). None of the shipped adapters
+  claim a `checked_date` — they are explicitly reported as heuristic
+  defaults, not verified against a live, dated official source.
+- **Plan-approval evidence integration**: `paperforge.planning.approval.evidence_hash`
+  now optionally folds in a fingerprint of the registered evidence store,
+  so `paperforge plan --approve` followed by a new/changed evidence record
+  correctly reports `approval_status: stale` on the next `paperforge plan`.
+- New exit code `EXIT_EVIDENCE_ERROR = 45` in the shared JSON envelope
+  (`paperforge.utils.envelope`), between the existing provenance (40) and
+  build/preflight (50) groups.
+
+### Changed
+
+- None of the above alters any existing command's default behavior,
+  output shape, or exit code when the new evidence store is unused (empty)
+  — a project that never runs `paperforge evidence ...` sees byte-identical
+  `plan`/`provenance validate` behavior to 1.7.0.
+
+### Fixed
+
+- Nothing user-facing; a handful of newly-enabled Ruff lint rules
+  (`RUF059`, `RUF100`, `SIM102`, `SIM222`) were cleaned up in pre-existing
+  files with no behavior change (one nested-`if` simplification in
+  `project_manifest/path_safety.py`'s symlink-escape check was verified
+  logically equivalent before merging).
+
 ## [1.7.0] — 2026-08-09
 
 A second, optional workflow built around a canonical `paperforge.project.yaml`
