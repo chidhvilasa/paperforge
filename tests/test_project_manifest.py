@@ -503,7 +503,7 @@ def test_migrate_legacy_0_1_to_1_0_produces_valid_manifest() -> None:
 
 def test_migrate_current_version_is_a_no_op() -> None:
     raw = yaml.safe_load(MINIMAL_VALID)
-    migrated, report = migrate(raw)
+    _migrated, report = migrate(raw)
     assert not report.changed
     assert report.applied_steps == []
 

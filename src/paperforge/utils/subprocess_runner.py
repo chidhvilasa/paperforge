@@ -100,7 +100,7 @@ def _kill_process_tree(proc: subprocess.Popen) -> None:
 def _popen_kwargs_for_tree_kill() -> dict[str, object]:
     if sys.platform.startswith("win"):
         return {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
-    return {"preexec_fn": os.setsid}  # noqa: PLW1509 - deliberate, POSIX-only
+    return {"preexec_fn": os.setsid}
 
 
 def run_subprocess(
@@ -131,7 +131,7 @@ def run_subprocess(
         attempts += 1
         start = time.monotonic()
         try:
-            proc = subprocess.Popen(  # type: ignore[call-overload] # noqa: S603 - args is a list, shell=False always
+            proc = subprocess.Popen(  # type: ignore[call-overload]
                 args,
                 cwd=cwd,
                 env=env,

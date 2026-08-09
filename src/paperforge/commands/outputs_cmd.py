@@ -7,8 +7,12 @@ from pathlib import Path
 
 from paperforge.outputs.lifecycle import (
     list_outputs,
-    promote as do_promote,
     resolve_output_paths,
+)
+from paperforge.outputs.lifecycle import (
+    promote as do_promote,
+)
+from paperforge.outputs.lifecycle import (
     rollback as do_rollback,
 )
 from paperforge.outputs.verifier import verify_output_dir

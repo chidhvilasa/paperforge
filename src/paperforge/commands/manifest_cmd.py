@@ -229,7 +229,7 @@ def run_migrate(
         return EXIT_SUCCESS
 
     if dry_run:
-        migrated, report = migrate(raw)
+        _migrated, report = migrate(raw)
         env.outputs["report"] = report.to_dict()
         env.outputs["dry_run"] = True
         env.finalize(EXIT_INVALID_MANIFEST)

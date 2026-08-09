@@ -151,9 +151,7 @@ def _req_ethics(manifest: ProjectManifest) -> Requirement:
     involves_participants = bool(manifest.methodology.participants.strip())
     applicable = involves_participants or study_type in _HUMAN_SUBJECT_STUDY_TYPES
     text = manifest.declarations.ethics_approval
-    if not applicable:
-        status = "NOT_APPLICABLE"
-    elif _is_marked_not_applicable(text):
+    if not applicable or _is_marked_not_applicable(text):
         status = "NOT_APPLICABLE"
     elif text:
         status = "PROVIDED"
@@ -183,9 +181,7 @@ def _req_ethics(manifest: ProjectManifest) -> Requirement:
 def _req_consent(manifest: ProjectManifest) -> Requirement:
     involves_participants = bool(manifest.methodology.participants.strip())
     text = manifest.declarations.informed_consent
-    if not involves_participants:
-        status = "NOT_APPLICABLE"
-    elif _is_marked_not_applicable(text):
+    if not involves_participants or _is_marked_not_applicable(text):
         status = "NOT_APPLICABLE"
     elif text:
         status = "PROVIDED"

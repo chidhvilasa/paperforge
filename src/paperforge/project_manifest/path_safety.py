@@ -138,14 +138,16 @@ def _find_symlink_escape(project_root: Path, raw: str) -> str | None:
     current = project_root
     for part in parts:
         current = current / part
-        if current.exists() or current.is_symlink():
-            if current.is_symlink():
-                target_real = os.path.realpath(str(current))
-                if not (
-                    target_real == root_real
-                    or target_real.startswith(root_real + os.sep)
-                ):
-                    return str(current)
+        # `current.exists() or current.is_symlink()` was equivalent to just
+        # `current.is_symlink()` here (Path.is_symlink() already returns
+        # False, never raises, for a component that doesn't exist), so the
+        # two nested checks collapse into one with no behavior change.
+        if current.is_symlink():
+            target_real = os.path.realpath(str(current))
+            if not (
+                target_real == root_real or target_real.startswith(root_real + os.sep)
+            ):
+                return str(current)
     return None
 
 

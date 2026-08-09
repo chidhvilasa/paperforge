@@ -116,9 +116,8 @@ def test_plan_hash_stable_across_rebuilds() -> None:
     m = _manifest()
     plan1 = build_plan(m)
     plan2 = build_plan(m)
-    assert (
-        plan1.generated_at != plan2.generated_at or True
-    )  # timestamps may coincide; hash excludes them
+    # Timestamps may coincide or differ between the two builds; plan_hash
+    # excludes generated_at, so equality must hold either way.
     assert plan_hash(plan1) == plan_hash(plan2)
 
 
