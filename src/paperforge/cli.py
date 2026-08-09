@@ -1,5 +1,6 @@
 """PaperForge command-line interface."""
 
+from collections.abc import Callable
 from pathlib import Path
 
 import typer
@@ -345,6 +346,335 @@ def provenance_export(
             json_output=json_output,
         )
     )
+
+
+evidence_app = typer.Typer(
+    name="evidence",
+    help="Direct/derived/statistical evidence backing DIRECT_RESULT, "
+    "DERIVED_RESULT, and STATISTICAL_RESULT claims.",
+)
+app.add_typer(evidence_app, name="evidence")
+
+evidence_direct_app = typer.Typer(
+    name="direct", help="Values read verbatim from a source, or recorded manually."
+)
+evidence_app.add_typer(evidence_direct_app, name="direct")
+
+evidence_derived_app = typer.Typer(
+    name="derived", help="Values computed from other evidence by a safe formula."
+)
+evidence_app.add_typer(evidence_derived_app, name="derived")
+
+evidence_statistical_app = typer.Typer(
+    name="statistical", help="Explicitly recorded statistical results."
+)
+evidence_app.add_typer(evidence_statistical_app, name="statistical")
+
+
+@evidence_direct_app.command("add")
+def evidence_direct_add(
+    evidence_id: str = typer.Option(..., "--id", help="Unique evidence id."),
+    type_: str = typer.Option(
+        "manual", "--type", help="csv, json, yaml, or manual."
+    ),
+    source_path: str = typer.Option(
+        "", "--source-path", help="Project-relative path to the source file."
+    ),
+    source_locator: str = typer.Option(
+        "",
+        "--source-locator",
+        help="csv: 'row=0;col=name'. json/yaml: dotted path, e.g. 'results.latency.mean'.",
+    ),
+    value: str | None = typer.Option(
+        None, "--value", help="Value for type=manual (required in that case)."
+    ),
+    value_type: str = typer.Option(
+        "number", "--value-type", help="number, string, or bool."
+    ),
+    unit: str = typer.Option("", "--unit", help="Unit string, e.g. 'ms', 'percent'."),
+    sample_size: int | None = typer.Option(None, "--sample-size"),
+    observations_count: int | None = typer.Option(None, "--observations-count"),
+    notes: str = typer.Option("", "--notes"),
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    json_output: bool = typer.Option(False, "--json", help="Output results as JSON."),
+) -> None:
+    """Record a direct-evidence value (from a CSV/JSON/YAML source, or manual)."""
+    from paperforge.commands.evidence_cmd import run_direct_add
+
+    raise typer.Exit(
+        code=run_direct_add(
+            project_root=path.resolve(),
+            evidence_id=evidence_id,
+            source_type=type_,
+            source_path=source_path,
+            source_locator=source_locator,
+            value=value,
+            value_type=value_type,
+            unit=unit,
+            sample_size=sample_size,
+            observations_count=observations_count,
+            notes=notes,
+            json_output=json_output,
+        )
+    )
+
+
+@evidence_direct_app.command("validate")
+def evidence_direct_validate(
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    json_output: bool = typer.Option(False, "--json", help="Output results as JSON."),
+) -> None:
+    """Validate all recorded direct evidence (structure + source staleness)."""
+    from paperforge.commands.evidence_cmd import run_validate
+
+    raise typer.Exit(
+        code=run_validate(project_root=path.resolve(), kind="direct", json_output=json_output)
+    )
+
+
+@evidence_derived_app.command("add")
+def evidence_derived_add(
+    evidence_id: str = typer.Option(..., "--id", help="Unique evidence id."),
+    formula: str = typer.Option(
+        ..., "--formula", help="Safe expression, e.g. '(baseline - adaptive) / baseline * 100'."
+    ),
+    operands: str = typer.Option(
+        "", "--operands", help="Comma-separated evidence ids referenced by the formula."
+    ),
+    unit: str = typer.Option("", "--unit"),
+    precision: int | None = typer.Option(
+        None, "--precision", help="Round the result to this many decimal digits."
+    ),
+    rounding: str = typer.Option(
+        "half_up", "--rounding", help="half_up, half_even, floor, ceil, or none."
+    ),
+    notes: str = typer.Option("", "--notes"),
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    json_output: bool = typer.Option(False, "--json", help="Output results as JSON."),
+) -> None:
+    """Compute and record a derived-evidence value with the safe formula evaluator."""
+    from paperforge.commands.evidence_cmd import run_derived_add
+
+    operand_ids = [o.strip() for o in operands.split(",") if o.strip()]
+    raise typer.Exit(
+        code=run_derived_add(
+            project_root=path.resolve(),
+            evidence_id=evidence_id,
+            formula=formula,
+            operand_ids=operand_ids,
+            unit=unit,
+            precision=precision,
+            rounding=rounding,
+            notes=notes,
+            json_output=json_output,
+        )
+    )
+
+
+@evidence_derived_app.command("validate")
+def evidence_derived_validate(
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    json_output: bool = typer.Option(False, "--json", help="Output results as JSON."),
+) -> None:
+    """Validate all recorded derived evidence (formula safety, operands, cycles, staleness)."""
+    from paperforge.commands.evidence_cmd import run_validate
+
+    raise typer.Exit(
+        code=run_validate(project_root=path.resolve(), kind="derived", json_output=json_output)
+    )
+
+
+@evidence_statistical_app.command("add")
+def evidence_statistical_add(
+    evidence_id: str = typer.Option(..., "--id", help="Unique evidence id."),
+    test_name: str | None = typer.Option(None, "--test-name"),
+    statistic: float | None = typer.Option(None, "--statistic"),
+    p_value: float | None = typer.Option(None, "--p-value"),
+    adjusted_p_value: float | None = typer.Option(None, "--adjusted-p-value"),
+    correction_family: str | None = typer.Option(
+        None, "--correction-family", help="none, bonferroni, or holm."
+    ),
+    effect_size_name: str | None = typer.Option(None, "--effect-size-name"),
+    effect_size_value: float | None = typer.Option(None, "--effect-size-value"),
+    sample_size: int | None = typer.Option(None, "--sample-size"),
+    paired: bool = typer.Option(False, "--paired/--not-paired"),
+    alpha: float | None = typer.Option(None, "--alpha"),
+    confidence_interval: str | None = typer.Option(
+        None, "--confidence-interval", help="Comma-separated 'low,high'."
+    ),
+    groups: str | None = typer.Option(None, "--groups", help="Comma-separated group names."),
+    observation_refs: str | None = typer.Option(
+        None, "--observation-refs", help="Comma-separated direct-evidence ids these observations came from."
+    ),
+    notes: str | None = typer.Option(None, "--notes"),
+    from_yaml: Path | None = typer.Option(
+        None, "--from-yaml", help="Path to a YAML file with the full field set."
+    ),
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    json_output: bool = typer.Option(False, "--json", help="Output results as JSON."),
+) -> None:
+    """Record an explicit statistical result. Never runs a test automatically."""
+    from paperforge.commands.evidence_cmd import run_statistical_add
+
+    fields: dict[str, object] = {
+        "test_name": test_name,
+        "statistic": statistic,
+        "p_value": p_value,
+        "adjusted_p_value": adjusted_p_value,
+        "correction_family": correction_family,
+        "effect_size_name": effect_size_name,
+        "effect_size_value": effect_size_value,
+        "sample_size": sample_size,
+        "paired": paired,
+        "alpha": alpha,
+        "notes": notes,
+    }
+    if confidence_interval:
+        fields["confidence_interval"] = [
+            float(x.strip()) for x in confidence_interval.split(",") if x.strip()
+        ]
+    if groups:
+        fields["groups"] = [g.strip() for g in groups.split(",") if g.strip()]
+    if observation_refs:
+        fields["observation_refs"] = [
+            o.strip() for o in observation_refs.split(",") if o.strip()
+        ]
+    raise typer.Exit(
+        code=run_statistical_add(
+            project_root=path.resolve(),
+            evidence_id=evidence_id,
+            from_yaml=from_yaml,
+            fields=fields,
+            json_output=json_output,
+        )
+    )
+
+
+@evidence_statistical_app.command("validate")
+def evidence_statistical_validate(
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    json_output: bool = typer.Option(False, "--json", help="Output results as JSON."),
+) -> None:
+    """Validate all recorded statistical evidence."""
+    from paperforge.commands.evidence_cmd import run_validate
+
+    raise typer.Exit(
+        code=run_validate(project_root=path.resolve(), kind="statistical", json_output=json_output)
+    )
+
+
+@evidence_app.command("show")
+def evidence_show(
+    evidence_id: str | None = typer.Option(None, "--id", help="Show only this evidence id."),
+    kind: str | None = typer.Option(
+        None, "--kind", help="Filter to direct, derived, or statistical."
+    ),
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    json_output: bool = typer.Option(False, "--json", help="Output results as JSON."),
+) -> None:
+    """Show recorded evidence."""
+    from paperforge.commands.evidence_cmd import run_show
+
+    raise typer.Exit(
+        code=run_show(
+            project_root=path.resolve(), evidence_id=evidence_id, kind=kind, json_output=json_output
+        )
+    )
+
+
+@evidence_app.command("graph")
+def evidence_graph(
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    json_output: bool = typer.Option(False, "--json", help="Output results as JSON."),
+) -> None:
+    """Show the evidence dependency graph: nodes, edges, cycles, missing refs, staleness."""
+    from paperforge.commands.evidence_cmd import run_graph
+
+    raise typer.Exit(code=run_graph(project_root=path.resolve(), json_output=json_output))
+
+
+@evidence_app.command("validate")
+def evidence_validate(
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    json_output: bool = typer.Option(False, "--json", help="Output results as JSON."),
+) -> None:
+    """Validate the whole evidence store: records, cycles, missing refs, staleness."""
+    from paperforge.commands.evidence_cmd import run_validate
+
+    raise typer.Exit(
+        code=run_validate(project_root=path.resolve(), kind=None, json_output=json_output)
+    )
+
+
+approvals_app = typer.Typer(
+    name="approvals",
+    help="Author-review approvals for generated provenance sentences, "
+    "claims, and evidence records. Distinct from `paperforge review` "
+    "(AI-assisted advisory review).",
+)
+app.add_typer(approvals_app, name="approvals")
+
+
+@approvals_app.command("list")
+def approvals_list(
+    section: str | None = typer.Option(
+        None, "--section", help="Filter to sentence ids in this section."
+    ),
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    json_output: bool = typer.Option(False, "--json", help="Output results as JSON."),
+) -> None:
+    """List every reviewable object and its effective approval status."""
+    from paperforge.commands.approvals_cmd import run_list
+
+    raise typer.Exit(
+        code=run_list(project_root=path.resolve(), section=section, json_output=json_output)
+    )
+
+
+def _approvals_decide_command(decision: str) -> Callable[..., None]:
+    def handler(
+        object_id: str | None = typer.Argument(
+            None, help="Object id: evidence id, provenance sentence id (section:claim_id), or claim id."
+        ),
+        section: str | None = typer.Option(
+            None, "--section", help="Apply to every generated sentence in this section."
+        ),
+        reviewer: str | None = typer.Option(
+            None, "--reviewer", help="Reviewer identity. Defaults to git user.name, or 'agent' with --non-interactive."
+        ),
+        note: str = typer.Option("", "--note", help="Optional review note."),
+        non_interactive: bool = typer.Option(
+            False, "--non-interactive", help="Record reviewer as 'agent' if --reviewer is not given."
+        ),
+        path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+        json_output: bool = typer.Option(False, "--json", help="Output results as JSON."),
+    ) -> None:
+        from paperforge.commands.approvals_cmd import run_decide
+
+        raise typer.Exit(
+            code=run_decide(
+                project_root=path.resolve(),
+                object_id=object_id,
+                section=section,
+                decision=decision,
+                reviewer=reviewer,
+                note=note,
+                non_interactive=non_interactive,
+                json_output=json_output,
+            )
+        )
+
+    handler.__doc__ = {
+        "approved": "Approve a generated sentence, claim, or evidence record.",
+        "rejected": "Reject a generated sentence, claim, or evidence record.",
+        "pending": "Reset a reviewed object back to pending.",
+    }[decision]
+    return handler
+
+
+approvals_app.command("approve")(_approvals_decide_command("approved"))
+approvals_app.command("reject")(_approvals_decide_command("rejected"))
+approvals_app.command("reset")(_approvals_decide_command("pending"))
 
 
 outputs_app = typer.Typer(
@@ -881,6 +1211,52 @@ def venues() -> None:
             str(plugin.max_pages) if plugin.max_pages else "None",
         )
     console.print(table)
+
+
+venue_app = typer.Typer(
+    name="venue",
+    help="Versioned per-venue metadata (adapter version, source, checked "
+    "date). Distinct from `paperforge venues` (lists targets).",
+)
+app.add_typer(venue_app, name="venue")
+
+
+@venue_app.command("show")
+def venue_show(
+    target: str | None = typer.Option(
+        None, "--target", "-t", help="Built-in venue id, e.g. ieee, acm, neurips."
+    ),
+    custom_file: str | None = typer.Option(
+        None, "--custom-file", help="Project-relative path to a custom venue YAML file."
+    ),
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    json_output: bool = typer.Option(False, "--json", help="Output results as JSON."),
+) -> None:
+    """Show a venue's versioned metadata: adapter version, source, checked date."""
+    from paperforge.commands.venue_cmd import run_show
+
+    raise typer.Exit(
+        code=run_show(
+            project_root=path.resolve(), target=target, custom_file=custom_file, json_output=json_output
+        )
+    )
+
+
+@venue_app.command("validate")
+def venue_validate(
+    target: str | None = typer.Option(None, "--target", "-t"),
+    custom_file: str | None = typer.Option(None, "--custom-file"),
+    path: Path = typer.Option(Path("."), "--path", "-p", help="Project root."),
+    json_output: bool = typer.Option(False, "--json", help="Output results as JSON."),
+) -> None:
+    """Validate a venue's metadata (built-in or a custom local file)."""
+    from paperforge.commands.venue_cmd import run_validate
+
+    raise typer.Exit(
+        code=run_validate(
+            project_root=path.resolve(), target=target, custom_file=custom_file, json_output=json_output
+        )
+    )
 
 
 @app.command()
