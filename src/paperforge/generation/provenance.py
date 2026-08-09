@@ -25,7 +25,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from paperforge.generation.no_ai import GeneratedSection
+from paperforge.generation.no_ai import DRAFT_WATERMARK, GeneratedSection
 from paperforge.models.claim import RESULT_EVIDENCE_CLASSES
 from paperforge.project_manifest.models import ProjectManifest
 
@@ -102,6 +102,41 @@ class ProvenanceRecord:
 
 def _text_hash(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+_PLACEHOLDER_SUFFIX = " **[PLACEHOLDER]**"
+_NO_CLAIMS_LINE = "_No approved claims are in scope for this section yet._"
+
+
+def _parse_generated_sentences(markdown_text: str) -> list[str] | None:
+    """Recover the per-sentence text lines (marker stripped) from a
+    generated section's markdown, in order, matching how
+    :meth:`GeneratedSection.to_markdown` renders them.
+
+    Returns ``None`` if the file doesn't look like PaperForge-generated
+    section markdown at all (e.g. hand-replaced content with no recognizable
+    structure) -- callers fall back to whole-file staleness in that case
+    rather than guessing at a sentence split.
+    """
+
+    lines = markdown_text.split("\n")
+    sentences: list[str] = []
+    saw_header = False
+    for line in lines:
+        if line == DRAFT_WATERMARK or line == "":
+            continue
+        if line.startswith("## "):
+            saw_header = True
+            continue
+        if line == _NO_CLAIMS_LINE:
+            continue
+        if line.endswith(_PLACEHOLDER_SUFFIX):
+            sentences.append(line[: -len(_PLACEHOLDER_SUFFIX)])
+        else:
+            sentences.append(line)
+    if not saw_header:
+        return None
+    return sentences
 
 
 def build_records(
@@ -209,6 +244,14 @@ def validate_provenance(
         project_root / ".paperforge" / "generated_sections"
     )
 
+    stale_evidence: set[str] = set()
+    try:
+        from paperforge.evidence.graph import stale_evidence_ids
+
+        stale_evidence = stale_evidence_ids(project_root)
+    except Exception:  # noqa: BLE001 -- evidence store is optional; never block on it
+        stale_evidence = set()
+
     for section_name, meta in index.get("sections", {}).items():
         section_file = gen_dir / f"{section_name}.md"
         if not section_file.exists():
@@ -221,19 +264,59 @@ def validate_provenance(
                 }
             )
             continue
-        current_hash = _text_hash(section_file.read_text(encoding="utf-8"))
+        section_text = section_file.read_text(encoding="utf-8")
+        current_hash = _text_hash(section_text)
+        section_records = records_by_section.get(section_name, [])
+        stale_sentence_ids: set[str] = set()
         if current_hash != meta.get("section_markdown_hash"):
-            issues.append(
-                {
-                    "code": "PROVENANCE_STALE_HASH",
-                    "severity": "ERROR",
-                    "section": section_name,
-                    "message": f"Generated content for '{section_name}' does not match its provenance hash "
-                    "(file was edited or regenerated without updating provenance).",
-                }
-            )
+            # Whole-file hash moved. Try to localize *which* sentence(s)
+            # actually changed instead of flagging every sentence in the
+            # section -- a hand-edit to one sentence should not invalidate
+            # review approvals recorded for the others.
+            parsed = _parse_generated_sentences(section_text)
+            if parsed is not None and len(parsed) == len(section_records):
+                for rec, current_text in zip(section_records, parsed, strict=True):
+                    if _text_hash(current_text) != rec.text_hash:
+                        stale_sentence_ids.add(rec.sentence_id)
+                        issues.append(
+                            {
+                                "code": "PROVENANCE_STALE_SENTENCE",
+                                "severity": "ERROR",
+                                "section": section_name,
+                                "message": f"{rec.sentence_id}: generated text no longer matches its recorded "
+                                "provenance hash (this sentence was hand-edited or regenerated).",
+                            }
+                        )
+                if not stale_sentence_ids:
+                    # File hash moved (e.g. whitespace/heading change) but
+                    # every individual sentence still matches -- not an
+                    # error, just informational.
+                    issues.append(
+                        {
+                            "code": "PROVENANCE_STALE_HASH",
+                            "severity": "WARNING",
+                            "section": section_name,
+                            "message": f"'{section_name}' markdown changed outside its recorded sentences "
+                            "(e.g. formatting); no individual sentence is stale.",
+                        }
+                    )
+            else:
+                # Couldn't safely localize (sentence count changed, or the
+                # file no longer looks like generated markdown at all) --
+                # fall back to whole-section staleness as before.
+                issues.append(
+                    {
+                        "code": "PROVENANCE_STALE_HASH",
+                        "severity": "ERROR",
+                        "section": section_name,
+                        "message": f"Generated content for '{section_name}' does not match its provenance hash "
+                        "(file was edited, sentences were added/removed, or it was regenerated without "
+                        "updating provenance).",
+                    }
+                )
+                stale_sentence_ids = {rec.sentence_id for rec in section_records}
 
-        for rec in records_by_section.get(section_name, []):
+        for rec in section_records:
             if rec.evidence_class == "PLACEHOLDER":
                 issues.append(
                     {
@@ -253,6 +336,16 @@ def validate_provenance(
                             "message": f"{rec.sentence_id}: references claim '{claim_id}', not found in the manifest.",
                         }
                     )
+            stale_refs = sorted(set(rec.evidence_refs) & stale_evidence)
+            if stale_refs:
+                issues.append(
+                    {
+                        "code": "PROVENANCE_STALE_EVIDENCE",
+                        "severity": "ERROR",
+                        "section": section_name,
+                        "message": f"{rec.sentence_id}: references evidence that is now stale: {', '.join(stale_refs)}.",
+                    }
+                )
             if rec.evidence_class in RESULT_EVIDENCE_CLASSES:
                 if not (rec.evidence_refs or rec.citation_keys):
                     issues.append(
